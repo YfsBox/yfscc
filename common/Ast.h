@@ -18,13 +18,13 @@ class Define;
 class FuncFParams;
 
 // using AstNodeShptr = std::shared_ptr<AstNode>;
-using AstNodePtr = std::shared_ptr<AstNode>;
-using ExpressionPtr = std::shared_ptr<Expression>;
-using StatementPtr = std::shared_ptr<Statement>;
-using IdentifierPtr = std::shared_ptr<Identifier>;
-using FuncFParamPtr = std::shared_ptr<FuncFParam>;
+using AstNodePtr = std::unique_ptr<AstNodeType>;
+using ExpressionPtr = std::unique_ptr<Expression>;
+using StatementPtr = std::unique_ptr<Statement>;
+using IdentifierPtr = std::unique_ptr<Identifier>;
+using FuncFParamPtr = std::unique_ptr<FuncFParam>;
 
-class AstNode: std::enable_shared_from_this<AstNode> {
+class AstNode {
 public:
     AstNode() = default;
     virtual ~AstNode() {};
@@ -37,19 +37,19 @@ public:
 class FuncDefine;
 class CompUnit: AstNode {
 public:
-    using DeclPtr = std::shared_ptr<Declare>;
-    using FuncDefinePtr = std::shared_ptr<FuncDefine>;
+    using DeclPtr = std::unique_ptr<Declare>;
+    using FuncDefinePtr = std::unique_ptr<FuncDefine>;
 
     CompUnit() = default;
 
     ~CompUnit() = default;
 
-    void addDeclares(const DeclPtr &decl) {
-        declares_.push_back(decl);
+    void addDeclares(DeclPtr decl) {
+        declares_.push_back(std::move(decl));
     }
 
-    void addFuncDefine(const FuncDefinePtr &funcdef) {
-        func_defs_.push_back(funcdef);
+    void addFuncDefine(FuncDefinePtr funcdef) {
+        func_defs_.push_back(std::move(funcdef));
     }
 
     size_t getDeclNumber() const {
@@ -85,7 +85,7 @@ public:
 
 class ConstDefine: Define {     // 暂时不考虑数组
 public:
-    ConstDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): id_(identifier), init_expr_(expr) {}
+    ConstDefine(IdentifierPtr identifier, ExpressionPtr expr = nullptr): id_(std::move(identifier)), init_expr_(std::move(expr)) {}
 
     ~ConstDefine() = default;
 
@@ -112,7 +112,7 @@ private:
 
 class VarDefine: Define {
 public:
-    VarDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): id_(identifier), init_expr_(expr) {}
+    VarDefine(IdentifierPtr identifier, ExpressionPtr expr = nullptr): id_(std::move(identifier)), init_expr_(std::move(expr)) {}
 
     ~VarDefine() = default;
 
@@ -139,13 +139,13 @@ private:
 
 class FuncDefine: Define {
 public:
-    using FuncFParamsPtr = std::shared_ptr<FuncFParams>;
+    using FuncFParamsPtr = std::unique_ptr<FuncFParams>;
 
-    FuncDefine(BasicType return_type, const IdentifierPtr &identifier, const FuncFParamsPtr &formals, const StatementPtr &block):
+    FuncDefine(BasicType return_type, IdentifierPtr identifier, FuncFParamsPtr formals, StatementPtr block):
         return_type_(return_type),
-        func_id_(identifier),
-        formals_(formals),
-        block_(block){
+        func_id_(std::move(identifier)),
+        formals_(std::move(formals)),
+        block_(std::move(block)){
 
     }
 
@@ -239,7 +239,7 @@ class ConditionExpr : Expression {
 
 class LvalExpr: Expression {        // 包不包括数组？？
 public:
-    explicit LvalExpr(const IdentifierPtr &id): id_(id) {}
+    explicit LvalExpr(IdentifierPtr id): id_(std::move(id)) {}
     void dump() override;
     void generateIR() override;
     Identifier *getId() const {
@@ -295,8 +295,8 @@ public:
 
     ~FuncRParams() = default;
 
-    void addExpr(const ExpressionPtr &expr) {
-        exprs_.push_back(expr);
+    void addExpr(ExpressionPtr expr) {
+        exprs_.push_back(std::move(expr));
     }
 
     Expression *getExprByIdx(int idx) {
@@ -318,7 +318,7 @@ public:
 
 class ExprStatement: Statement {
 public:
-    explicit ExprStatement(const ExpressionPtr &expr): expr_(expr) {}
+    explicit ExprStatement(ExpressionPtr expr): expr_(std::move(expr)) {}
 
     ~ExprStatement() = default;
 
@@ -335,7 +335,7 @@ private:
 
 class AssignStatement: Statement {
 public:
-    AssignStatement(const ExpressionPtr &left, const ExpressionPtr &right):left_(left), right_(right) {}
+    AssignStatement(ExpressionPtr left, ExpressionPtr right):left_(std::move(left)), right_(std::move(right)) {}
 
     ~AssignStatement() = default;
 
@@ -375,8 +375,8 @@ private:
 
 class IfElseStatement: Statement {
 public:
-    IfElseStatement(const ExpressionPtr &cond, const StatementPtr &ifstmt, const StatementPtr &elsestmt = nullptr):
-    cond_(cond),ifstmt_(ifstmt), elsestmt_(elsestmt) {}
+    IfElseStatement(ExpressionPtr cond, StatementPtr ifstmt, StatementPtr elsestmt = nullptr):
+    cond_(std::move(cond)),ifstmt_(std::move(ifstmt)), elsestmt_(std::move(elsestmt)) {}
 
     ~IfElseStatement() = default;
 
@@ -408,7 +408,7 @@ private:
 
 class WhileStatement: Statement {
 public:
-    WhileStatement(const ExpressionPtr &cond, const StatementPtr &statement): cond_(cond), statement_(statement) {}
+    WhileStatement(ExpressionPtr cond, StatementPtr statement): cond_(std::move(cond)), statement_(std::move(statement)) {}
 
     ~WhileStatement() = default;
 
@@ -453,7 +453,7 @@ public:
 
 class ReturnStatement: Statement {
 public:
-    ReturnStatement(const ExpressionPtr &expr): expr_(expr) {}
+    ReturnStatement(ExpressionPtr expr): expr_(std::move(expr)) {}
 
     ~ReturnStatement() = default;
 
@@ -472,7 +472,7 @@ private:
 class FuncFParam: AstNode {
 public:
 
-    FuncFParam(BasicType btype, const IdentifierPtr &identifier): formal_type_(btype), identifier_(identifier) {}
+    FuncFParam(BasicType btype, IdentifierPtr identifier): formal_type_(btype), identifier_(std::move(identifier)) {}
 
     ~FuncFParam() = default;
 
@@ -495,8 +495,8 @@ public:
 
     ~FuncFParams() = default;
 
-    void addFuncFormal(const FuncFParamPtr &formal) {
-        formals_.push_back(formal);
+    void addFuncFormal(FuncFParamPtr formal) {
+        formals_.push_back(std::move(formal));
     }
 
     FuncFParam *getFuncFormal(int idx) const {
