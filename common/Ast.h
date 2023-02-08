@@ -23,19 +23,20 @@ using ExpressionPtr = std::shared_ptr<Expression>;
 using StatementPtr = std::shared_ptr<Statement>;
 using IdentifierPtr = std::shared_ptr<Identifier>;
 using FuncFParamPtr = std::shared_ptr<FuncFParam>;
+using DeclarePtr = std::shared_ptr<Declare>;
 
 class AstNode: std::enable_shared_from_this<AstNode> {
 public:
     AstNode() = default;
     virtual ~AstNode() {};
     explicit AstNode(int lineno): lineno_(lineno){}
-    virtual void generateIR() = 0;
-    virtual void dump() = 0;
+    // virtual void generateIR() = 0;
+    // virtual void dump() = 0;
     int lineno_;
 };
 
 class FuncDefine;
-class CompUnit: AstNode {
+class CompUnit: public AstNode {
 public:
     using DeclPtr = std::shared_ptr<Declare>;
     using FuncDefinePtr = std::shared_ptr<FuncDefine>;
@@ -73,17 +74,22 @@ private:
     std::vector<FuncDefinePtr> func_defs_;
 };
 
-class Declare: AstNode {
+class Statement: public AstNode {
+public:
+    virtual StatementType getStatementType() = 0;
+};
+
+class Declare: public Statement {
 public:
     virtual DeclType getDeclType() = 0;
 };
 
-class Define: AstNode {
+class Define: public AstNode {
 public:
     virtual DefType getDefType() = 0;
 };
 
-class ConstDefine: Define {     // 暂时不考虑数组
+class ConstDefine: public Define {     // 暂时不考虑数组
 public:
     ConstDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): id_(identifier), init_expr_(expr) {}
 
@@ -110,7 +116,7 @@ private:
     ExpressionPtr init_expr_;
 };
 
-class VarDefine: Define {
+class VarDefine: public Define {
 public:
     VarDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): id_(identifier), init_expr_(expr) {}
 
@@ -137,7 +143,7 @@ private:
     ExpressionPtr init_expr_;
 };
 
-class FuncDefine: Define {
+class FuncDefine: public Define {
 public:
     using FuncFParamsPtr = std::shared_ptr<FuncFParams>;
 
@@ -175,23 +181,45 @@ private:
 
 };
 
-class ConstDeclare : Declare {
+class ConstDeclare :public Declare {
 public:
+    using ConstDefPtr = std::shared_ptr<ConstDefine>;
+
+    ConstDeclare(BasicType const_type): const_type_(const_type){}
+
+    ~ConstDeclare() = default;
+
+    void addConstDef(const ConstDefPtr &const_def) {
+        const_defs_.push_back(const_def);
+    }
 
 private:
     BasicType const_type_;
-
+    std::vector<ConstDefPtr> const_defs_;
 };
 
-class VarDeclare : Declare {
+class VarDeclare : public Declare {
 public:
+    using VarDeclarePtr = std::shared_ptr<VarDefine>;
 
+    VarDeclare(BasicType var_type);
+
+    ~VarDeclare() = default;
+
+    void addVarDef(const VarDeclarePtr &var_def) {
+        var_defs_.push_back(var_def);
+    }
+
+private:
+
+    BasicType var_type_;
+    std::vector<VarDeclarePtr> var_defs_;
 };
 
-class Identifier : AstNode {
+class Identifier : public AstNode {
 public:
 
-    explicit Identifier(const std::string &id): id_(id) {}
+    explicit Identifier(std::string *id): id_(*id) {}
 
     Identifier(int lineno, const std::string &id):AstNode(lineno), id_(id) {}
 
@@ -199,23 +227,25 @@ public:
         return id_;
     }
 
-    void generateIR() override;
-
 private:
     std::string id_;
 };
 
-class Number : AstNode {
+class Expression:public AstNode {
+public:
+    BasicType type_;
+};
+
+class Number:public Expression {
 public:
 
-    explicit Number(float val): AstNode(), number_type_(BasicType::FLOAT) {
+    explicit Number(float val): number_type_(BasicType::FLOAT) {
         value_.float_val = val;
     }
-    explicit Number(int32_t val): AstNode(), number_type_(BasicType::INT) {
+
+    explicit Number(int32_t val): number_type_(BasicType::INT) {
         value_.int_val = val;
     }
-
-    void generateIR() override;
 
 private:
     union {
@@ -226,22 +256,16 @@ private:
     BasicType number_type_;
 };
 
-
-class Expression : AstNode {
-public:
-    BasicType type_;
-};
-
-class ConditionExpr : Expression {
+class ConditionExpr : public Expression {
 
 
 };
 
-class LvalExpr: Expression {        // 包不包括数组？？
+class LvalExpr: public Expression {        // 包不包括数组？？
 public:
     explicit LvalExpr(const IdentifierPtr &id): id_(id) {}
-    void dump() override;
-    void generateIR() override;
+    // void dump() override;
+    // void generateIR() override;
     Identifier *getId() const {
         return id_.get();
     }
@@ -249,9 +273,13 @@ private:
     IdentifierPtr id_;
 };
 
-class UnaryExpr : Expression {
+class UnaryExpr : public Expression {
 public:
     UnaryExpr() = default;
+
+    UnaryExpr(UnaryOpType unaryoptype, const ExpressionPtr &expr):
+    optype_(unaryoptype), expr_(expr) {}
+
     Expression *getExpr() const {
         return expr_.get();
     }
@@ -265,10 +293,13 @@ private:
     ExpressionPtr expr_;
 };
 
-class BinaryExpr : Expression {
+class BinaryExpr : public Expression {
 public:
 
     BinaryExpr() = default;
+
+    BinaryExpr(const ExpressionPtr &left, BinaryOpType op, const ExpressionPtr &right):
+        left_expr_(left), optype_(op), right_expr_(right){}
 
     BinaryOpType getOpType() const {
         return optype_;
@@ -288,8 +319,26 @@ private:
     ExpressionPtr right_expr_;
 };
 
-class FuncRParams: AstNode {
+class FuncFParam: public AstNode {
 public:
+
+    FuncFParam(BasicType type, const IdentifierPtr &id):
+    type_(type), id_(id) {}
+
+    ~FuncFParam() = default;
+
+    Identifier *getFormalId() const {
+        return id_.get();
+    }
+
+private:
+    BasicType type_;
+    IdentifierPtr id_;
+};
+
+class FuncRParams: public AstNode {
+public:
+    using FuncRParamPtr = std::shared_ptr<FuncFParam>;
 
     FuncRParams() = default;
 
@@ -311,12 +360,32 @@ private:
     std::vector<ExpressionPtr> exprs_;
 };
 
-class Statement: AstNode {
+class CallFuncExpr: public Expression {
 public:
-    virtual StatementType getStatementType() = 0;
+    using FuncRParamsPtr = std::shared_ptr<FuncRParams>;
+
+    CallFuncExpr(const IdentifierPtr &func_id, const FuncRParamsPtr &actuals = nullptr):
+    func_id_(func_id), actuals_(actuals) {}
+
+    ~CallFuncExpr() = default;
+
+    Identifier *getFuncId() const {
+        return func_id_.get();
+    }
+
+    size_t getActualSize() const {
+        if (!actuals_) {
+            return 0;
+        }
+        return actuals_->getSize();
+    }
+
+private:
+    IdentifierPtr func_id_;
+    FuncRParamsPtr actuals_;
 };
 
-class ExprStatement: Statement {
+class ExprStatement: public Statement {
 public:
     explicit ExprStatement(const ExpressionPtr &expr): expr_(expr) {}
 
@@ -333,7 +402,7 @@ private:
     ExpressionPtr expr_;
 };
 
-class AssignStatement: Statement {
+class AssignStatement: public Statement {
 public:
     AssignStatement(const ExpressionPtr &left, const ExpressionPtr &right):left_(left), right_(right) {}
 
@@ -356,24 +425,51 @@ private:
     ExpressionPtr right_;
 };
 
-class BlockStatement: Statement {
+class BlockIterm: public Statement {
 public:
-    BlockStatement() = default;
-    ~BlockStatement() = default;
+    BlockIterm(const StatementPtr &stmt): stmt_(stmt) {}
 
-    size_t getStatementSize() const {
-        return statements_.size();
-    }
+    BlockIterm(const DeclarePtr &decl): stmt_(decl) {}
 
-    Statement *getStatement(int idx) const {
-        return statements_[idx].get();
-    }
-
+    ~BlockIterm() = default;
 private:
-    std::vector<StatementPtr> statements_;
+    StatementPtr stmt_;
 };
 
-class IfElseStatement: Statement {
+class BlockIterms: public Statement {
+public:
+    using BlockItermPtr = std::shared_ptr<BlockIterm>;
+
+    BlockIterms() = default;
+
+    void addIterm(const BlockItermPtr &iterm) {
+        iterms_.push_back(iterm);
+    }
+private:
+    std::vector<BlockItermPtr> iterms_;
+};
+/*
+class BlockStatement: public Statement {
+public:
+    using BlockItermsPtr = std::shared_ptr<BlockIterms>;
+
+    BlockStatement(const BlockItermsPtr &iterms): iterms_(iterms) {}
+
+    ~BlockStatement() = default;
+
+private:
+    BlockItermsPtr iterms_;
+};*/
+
+class EvalStatement: public Statement {
+public:
+    EvalStatement(const ExpressionPtr &expr): expr_(expr) {}
+    ~EvalStatement() = default;
+private:
+    ExpressionPtr expr_;
+};
+
+class IfElseStatement: public Statement {
 public:
     IfElseStatement(const ExpressionPtr &cond, const StatementPtr &ifstmt, const StatementPtr &elsestmt = nullptr):
             cond_(cond),ifstmt_(ifstmt), elsestmt_(elsestmt) {}
@@ -406,7 +502,7 @@ private:
     StatementPtr elsestmt_;
 };
 
-class WhileStatement: Statement {
+class WhileStatement: public Statement {
 public:
     WhileStatement(const ExpressionPtr &cond, const StatementPtr &statement): cond_(cond), statement_(statement) {}
 
@@ -429,7 +525,7 @@ private:
     StatementPtr statement_;
 };
 
-class BreakStatement: Statement {
+class BreakStatement: public Statement {
 public:
     BreakStatement() = default;
 
@@ -440,7 +536,7 @@ public:
     }
 };
 
-class ContinueStatement: Statement {
+class ContinueStatement: public Statement {
 public:
     ContinueStatement() = default;
 
@@ -451,7 +547,7 @@ public:
     }
 };
 
-class ReturnStatement: Statement {
+class ReturnStatement: public Statement {
 public:
     ReturnStatement(const ExpressionPtr &expr): expr_(expr) {}
 
@@ -469,27 +565,7 @@ private:
     ExpressionPtr expr_;
 };
 
-class FuncFParam: AstNode {
-public:
-
-    FuncFParam(BasicType btype, const IdentifierPtr &identifier): formal_type_(btype), identifier_(identifier) {}
-
-    ~FuncFParam() = default;
-
-    BasicType getFormalType() const {
-        return formal_type_;
-    }
-
-    Identifier *getIdentifier() const {
-        return identifier_.get();
-    }
-
-private:
-    BasicType formal_type_;
-    IdentifierPtr identifier_;
-};
-
-class FuncFParams: AstNode { // formal
+class FuncFParams:public AstNode { // formal
 public:
     FuncFParams() = default;
 
