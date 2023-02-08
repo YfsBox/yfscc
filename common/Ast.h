@@ -24,6 +24,7 @@ using StatementPtr = std::shared_ptr<Statement>;
 using IdentifierPtr = std::shared_ptr<Identifier>;
 using FuncFParamPtr = std::shared_ptr<FuncFParam>;
 using DeclarePtr = std::shared_ptr<Declare>;
+using DefinePtr = std::shared_ptr<Define>;
 
 class AstNode: std::enable_shared_from_this<AstNode> {
 public:
@@ -76,17 +77,18 @@ private:
 
 class Statement: public AstNode {
 public:
-    virtual StatementType getStatementType() = 0;
+    // virtual StatementType getStatementType() = 0;
 };
 
 class Declare: public Statement {
 public:
-    virtual DeclType getDeclType() = 0;
+    // virtual DeclType getDeclType() = 0;
+    virtual void addDef(const std::shared_ptr<Define> &def) = 0;
 };
 
 class Define: public AstNode {
 public:
-    virtual DefType getDefType() = 0;
+    // virtual DefType getDefType() = 0;
 };
 
 class ConstDefine: public Define {     // 暂时不考虑数组
@@ -189,13 +191,13 @@ public:
 
     ~ConstDeclare() = default;
 
-    void addConstDef(const ConstDefPtr &const_def) {
-        const_defs_.push_back(const_def);
+    void addDef(const DefinePtr &def) {
+        const_defs_.push_back(def);
     }
 
 private:
     BasicType const_type_;
-    std::vector<ConstDefPtr> const_defs_;
+    std::vector<DefinePtr> const_defs_;
 };
 
 class VarDeclare : public Declare {
@@ -206,14 +208,13 @@ public:
 
     ~VarDeclare() = default;
 
-    void addVarDef(const VarDeclarePtr &var_def) {
-        var_defs_.push_back(var_def);
+    void addDef(const DefinePtr &def) {
+        var_defs_.push_back(def);
     }
 
 private:
-
     BasicType var_type_;
-    std::vector<VarDeclarePtr> var_defs_;
+    std::vector<DefinePtr> var_defs_;
 };
 
 class Identifier : public AstNode {
@@ -239,11 +240,11 @@ public:
 class Number:public Expression {
 public:
 
-    explicit Number(float val): number_type_(BasicType::FLOAT) {
+    explicit Number(float val): number_type_(BasicType::FLOAT_BTYPE) {
         value_.float_val = val;
     }
 
-    explicit Number(int32_t val): number_type_(BasicType::INT) {
+    explicit Number(int32_t val): number_type_(BasicType::INT_BTYPE) {
         value_.int_val = val;
     }
 
@@ -549,7 +550,7 @@ public:
 
 class ReturnStatement: public Statement {
 public:
-    ReturnStatement(const ExpressionPtr &expr): expr_(expr) {}
+    ReturnStatement(const ExpressionPtr &expr = nullptr): expr_(expr) {}
 
     ~ReturnStatement() = default;
 

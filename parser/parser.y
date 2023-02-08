@@ -17,12 +17,13 @@ extern "C" void yyerror(const char *s);
 %union {
       BasicType type;
       std::string *string;
-      int32_t int_val;
+      std::int32_t int_val;
       float float_val;
       Number *number;
       CompUnit* root;
       FuncDefine* funcdef;
       Declare* declare;
+
       Identifier* ident;
       Expression* expr;
       BlockIterms* block;
@@ -43,12 +44,13 @@ extern "C" void yyerror(const char *s);
 %token <token> LEFT_BRACES RIGHT_BRACES
 %token <token> COMMA SEMICOLON
 %token <string> IDENTIFIER
-%token <token> INTEGER
+%token <int_val> INTEGER
 %token <float_val> FLOATPOINT
 
 %type <root> compunit
 %type <type> basic_type
 %type <declare> decl const_decl var_decl
+
 %type <funcdef> func_def
 %type <ident> identifier
 %type <expr> lval number lorexp landexp eqexp addexp mulexp primaryexp relexp unaryexp
@@ -87,20 +89,20 @@ decl: const_decl SEMICOLON { $$ = $1;}
     | var_decl SEMICOLON { $$ = $1; }
     ;
 
-basic_type: INT { $$ = BasicType::INT; }
-    | FLOAT { $$ = BasicType::FLOAT; }
+basic_type: INT { $$ = BasicType::INT_BTYPE; }
+    | FLOAT { $$ = BasicType::FLOAT_BTYPE; }
     ;
 
 const_decl: CONST basic_type identifier ASSIGN addexp {
             $$ = new ConstDeclare($2);
-            $$->addConstDef(std::shared_ptr<ConstDef>(
+            $$->addDef(std::make_shared<ConstDefine>(
                 std::shared_ptr<Identifier>($3),
                 std::shared_ptr<Expression>($5)
             ));
       }
       | const_decl COMMA identifier ASSIGN addexp {
             $$ = $1;
-            $$->addConstDef(std::shared_ptr<ConstDef>(
+            $$->addDef(std::make_shared<ConstDefine>(
                             std::shared_ptr<Identifier>($3),
                             std::shared_ptr<Expression>($5)
                         ));
@@ -109,22 +111,22 @@ const_decl: CONST basic_type identifier ASSIGN addexp {
 
 var_decl: basic_type identifier {
             $$ = new VarDeclare($1);
-            $$->addVarDef(std::shared_ptr<VarDefine>(std::shared_ptr<Identifier>($2)));
+            $$->addDef(std::make_shared<VarDefine>(std::shared_ptr<Identifier>($2)));
       }
       | basic_type identifier ASSIGN addexp {
              $$ = new VarDeclare($1);
-             $$->addVarDef(std::shared_ptr<VarDefine>(
+             $$->addDef(std::make_shared<VarDefine>(
                 std::shared_ptr<Identifier>($2),
                 std::shared_ptr<Expression>($4)
              ));
       }
       | var_decl COMMA identifier {
             $$ = $1;
-            $$->addVarDef(std::shared_ptr<VarDefine>(std::shared_ptr<Identifier>($2)));
+            $$->addDef(std::make_shared<VarDefine>(std::shared_ptr<Identifier>($3)));
       }
       | var_decl COMMA identifier ASSIGN addexp {
             $$ = $1;
-            $$->addVarDef(std::shared_ptr<VarDefine>(
+            $$->addDef(std::make_shared<VarDefine>(
                             std::shared_ptr<Identifier>($3),
                             std::shared_ptr<Expression>($5)
             ));
@@ -149,34 +151,34 @@ primaryexp: LEFT_PARENTHESES addexp RIGHT_PARENTHESES { $$ = $2; }
       ;
 
 lorexp: landexp { $$ = $1; }
-      | lorexp OR landexp { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::OR, std::shared_ptr<Expression>($3)); }
+      | lorexp OR landexp { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::OR_OPTYPE, std::shared_ptr<Expression>($3)); }
       ;
 
 landexp: eqexp { $$ = $1; }
-      | landexp AND eqexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::AND, std::shared_ptr<Expression>($3)); }
+      | landexp AND eqexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::AND_OPTYPE, std::shared_ptr<Expression>($3)); }
       ;
 
 eqexp: relexp { $$ = $1; }
-     | eqexp EQ relexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::EQ, std::shared_ptr<Expression>($3)); }
-     | eqexp NEQ relexp { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::NEQ, std::shared_ptr<Expression>($3)); }
+     | eqexp EQ relexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::EQ_OPTYPE, std::shared_ptr<Expression>($3)); }
+     | eqexp NEQ relexp { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::NEQ_OPTYPE, std::shared_ptr<Expression>($3)); }
      ;
 
 relexp: addexp { $$ = $1; }
-      | relexp GT addexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::GT, std::shared_ptr<Expression>($3)); }
-      | relexp GTE addexp { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::GTE, std::shared_ptr<Expression>($3)); }
-      | relexp LT addexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::LT, std::shared_ptr<Expression>($3)); }
-      | relexp LTE addexp { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::LTE, std::shared_ptr<Expression>($3)); }
+      | relexp GT addexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::GT_OPTYPE, std::shared_ptr<Expression>($3)); }
+      | relexp GTE addexp { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::GTE_OPTYPE, std::shared_ptr<Expression>($3)); }
+      | relexp LT addexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::LT_OPTYPE, std::shared_ptr<Expression>($3)); }
+      | relexp LTE addexp { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::LTE_OPTYPE, std::shared_ptr<Expression>($3)); }
       ;
 
 addexp: mulexp { $$ = $1; }
-      | addexp ADD mulexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::ADD, std::shared_ptr<Expression>($3)); }
-      | addexp SUB mulexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::SUB, std::shared_ptr<Expression>($3)); }
+      | addexp ADD mulexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::ADD_OPTYPE, std::shared_ptr<Expression>($3)); }
+      | addexp SUB mulexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::SUB_OPTYPE, std::shared_ptr<Expression>($3)); }
       ;
 
 mulexp: unaryexp { $$ = $1; }
-      | mulexp MUL unaryexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::MUL, std::shared_ptr<Expression>($3)); }
-      | mulexp DIV unaryexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::DIV, std::shared_ptr<Expression>($3)); }
-      | mulexp MOD unaryexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::MOD, std::shared_ptr<Expression>($3)); }
+      | mulexp MUL unaryexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::MUL_OPTYPE, std::shared_ptr<Expression>($3)); }
+      | mulexp DIV unaryexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::DIV_OPTYPE, std::shared_ptr<Expression>($3)); }
+      | mulexp MOD unaryexp  { $$ = new BinaryExpr(std::shared_ptr<Expression>($1), BinaryOpType::MOD_OPTYPE, std::shared_ptr<Expression>($3)); }
       ;
 
 unaryexp: primaryexp { $$ = $1; }
@@ -189,9 +191,9 @@ unaryexp: primaryexp { $$ = $1; }
                 std::shared_ptr<FuncRParams>($3)
             );
       }
-      | ADD unaryexp  { $$ = new UnaryExpr(UnaryOp::POSITIVE, std::shared_ptr<Expression>($2)); }
-      | SUB unaryexp  { $$ = new UnaryExpr(UnaryOp::NEGATIVE, std::shared_ptr<Expression>($2)); }
-      | NOT unaryexp  { $$ = new UnaryExpr(UnaryOp::NOT, std::shared_ptr<Expression>($2)); }
+      | ADD unaryexp  { $$ = new UnaryExpr(UnaryOpType::POSITIVE_OPTYPE, std::shared_ptr<Expression>($2)); }
+      | SUB unaryexp  { $$ = new UnaryExpr(UnaryOpType::NEGATIVE_OPTYPE, std::shared_ptr<Expression>($2)); }
+      | NOT unaryexp  { $$ = new UnaryExpr(UnaryOpType::NOTOP_OPTYPE, std::shared_ptr<Expression>($2)); }
       ;
 
 func_def: basic_type identifier LEFT_PARENTHESES RIGHT_PARENTHESES block {
@@ -209,12 +211,12 @@ func_def: basic_type identifier LEFT_PARENTHESES RIGHT_PARENTHESES block {
       ;
 
 func_formals: func_formal {
-            $$ = new FuncRParams();
-            $$->addFuncFormal(std::shared_ptr<FuncRParam>($1));
+            $$ = new FuncFParams();
+            $$->addFuncFormal(std::shared_ptr<FuncFParam>($1));
       }
       | func_formals COMMA func_formal {
             $$ = $1;
-            $$->addFuncFormal(std::shared_ptr<FuncRParam>($3));
+            $$->addFuncFormal(std::shared_ptr<FuncFParam>($3));
       }
       ;
 

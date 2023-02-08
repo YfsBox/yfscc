@@ -6,10 +6,10 @@
 #define YFSCC_TYPES_H
 
 enum BasicType {
-    INT,
-    FLOAT,
-    VOID,
-    UNVALID,
+    INT_BTYPE,
+    FLOAT_BTYPE,
+    VOID_BTYPE,
+    UNVALID_BTYPE,
 };
 
 enum DeclType {
@@ -32,23 +32,23 @@ enum AstNodeType {
 };
 
 enum BinaryOpType {
-    ADD,
-    SUB,
-    MUL,
-    DIV,
-    MOD,
-    LT,
-    LTE,
-    GT,
-    GTE,
-    EQ,
-    NEQ,
-    AND,
-    OR
+    ADD_OPTYPE,
+    SUB_OPTYPE,
+    MUL_OPTYPE,
+    DIV_OPTYPE,
+    MOD_OPTYPE,
+    LT_OPTYPE,
+    LTE_OPTYPE,
+    GT_OPTYPE,
+    GTE_OPTYPE,
+    EQ_OPTYPE,
+    NEQ_OPTYPE,
+    AND_OPTYPE,
+    OR_OPTYPE
 };
 
 enum UnaryOpType {
-    POSITIVE, NEGATIVE, NOT
+    POSITIVE_OPTYPE, NEGATIVE_OPTYPE, NOTOP_OPTYPE
 };
 
 enum StatementType {
