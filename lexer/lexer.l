@@ -9,10 +9,8 @@
 extern "C" void yyerror(const char *s);
 int yycolumn = 1;
 
-#define SAVE_TOKEN     yylval.string = new std::string(yytext, yyleng)
-#define TOKEN(t)       yylval.token = t
-#define YY_USER_ACTION yylloc.first_line = yylineno;            \
-                       yylloc.first_column = yycolumn;          \
+#define YY_USER_ACTION sysylloc.first_line = yylineno;            \
+                       sysylloc.first_column = yycolumn;          \
                        for (auto i : std::string(yytext_ptr)) { \
                            if (i == '\n') {                     \
                                yylineno++;                      \
@@ -69,56 +67,55 @@ TOKEN_IDENTIFIER ({LETTER}|_)({DIGIT}|{LETTER}|_)*
 [ ]                 ;
 [\t\r]              ;
 
-"+"                 return TOKEN(ADD);
-"-"                 return TOKEN(SUB);
-"*"                 return TOKEN(MUL);
-"/"                 return TOKEN(DIV);
-"%"                 return TOKEN(MOD);
+"+"                 return ADD;
+"-"                 return SUB;
+"*"                 return MUL;
+"/"                 return DIV;
+"%"                 return MOD;
 
-"if"                return TOKEN(IF);
-"else"              return TOKEN(ELSE);
-"while"             return TOKEN(WHILE);
-"break"             return TOKEN(BREAK);
-"continue"          return TOKEN(CONTINUE);
-"return"            return TOKEN(RETURN);
+"if"                return IF;
+"else"              return ELSE;
+"while"             return WHILE;
+"break"             return BREAK;
+"continue"          return CONTINUE;
+"return"            return RETURN;
 
-"const"             return TOKEN(CONST);
-"int"               return TOKEN(INT);
-"void"              return TOKEN(VOID);
-"float"             return TOKEN(FLOAT);
+"const"             return CONST;
+"int"               return INT;
+"void"              return VOID;
+"float"             return FLOAT;
 
-{TOKEN_IDENTIFIER}  SAVE_TOKEN; return IDENTIFIER;
-{TOKEN_INTEGER}     yylval.int_val = static_cast<std::int32_t>(strtol(yytext, NULL, 0)); return INTEGER;
-{TOKEN_FLOATPOINT}	yylval.float_val = static_cast<float>(strtod(yytext, NULL)); return FLOATPOINT;
+{TOKEN_IDENTIFIER}  sysylval.string = new std::string(yytext, yyleng); return IDENTIFIER;
+{TOKEN_INTEGER}     sysylval.int_val = static_cast<int32_t>(strtol(yytext, NULL, 0)); return INTEGER;
+{TOKEN_FLOATPOINT}	sysylval.float_val = static_cast<float>(strtod(yytext, NULL)); return FLOATPOINT;
 
-"="                 return TOKEN(ASSIGN);
-"=="                return TOKEN(EQ);
-"!="                return TOKEN(NEQ);
+"="                 return ASSIGN;
+"=="                return EQ;
+"!="                return NEQ;
 
-">"                 return TOKEN(GT);
-">="                return TOKEN(GTE);
-"<"                 return TOKEN(LT);
-"<="                return TOKEN(LTE);
+">"                 return GT;
+">="                return GTE;
+"<"                 return LT;
+"<="                return LTE;
 
-"&&"                return TOKEN(AND);
-"||"                return TOKEN(OR);
-"!"                 return TOKEN(NOT);
+"&&"                return AND;
+"||"                return OR;
+"!"                 return NOT;
 
-"("                 return TOKEN(LEFT_PARENTHESES);
-")"                 return TOKEN(RIGHT_PARENTHESES);
-"["                 return TOKEN(LEFT_BRACKETS);
-"]"                 return TOKEN(RIGHT_BRACKETS);
-"{"                 return TOKEN(LEFT_BRACES);
-"}"                 return TOKEN(RIGHT_BRACES);
+"("                 return LEFT_PARENTHESES;
+")"                 return RIGHT_PARENTHESES;
+"["                 return LEFT_BRACKETS;
+"]"                 return RIGHT_BRACKETS;
+"{"                 return LEFT_BRACES;
+"}"                 return RIGHT_BRACES;
 
-","                 return TOKEN(COMMA);
-";"                 return TOKEN(SEMICOLON);
+","                 return COMMA;
+";"                 return SEMICOLON;
 
 .                   yyerror((std::string("Unknown token: ") + yytext).c_str()); yyterminate();
 
 %%
 
-void scan_string(const char* str)
-{
+void scan_string(const char* str) {
     yy_switch_to_buffer(yy_scan_string(str));
 }

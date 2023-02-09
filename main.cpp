@@ -1,14 +1,22 @@
 #include <iostream>
-#include <memory>
+#include "common/Utils.h"
+#include "parser/parser_sysy.tab.h"
 
-class Testclass {
-public:
-    Testclass(int a, int b) {}
-};
-int main() {
-    std::cout << "Hello, World!" << std::endl;
-    auto test = new Testclass(1, 1);
-    auto ptr = std::make_shared<Testclass>(1, 1);
-    auto nullp = std::shared_ptr<Testclass>(nullptr);
+extern int yyparse();
+extern int scan_string(const char *str);
+
+int main(int argc, char **argv) {
+    // 第一个参数为file name
+    std::string source_file;
+    if (argc > 1) {
+        source_file = argv[1];
+        printf("the src file is: %s\n", source_file.c_str());
+    }
+
+    auto content = getFileContent(source_file);
+    scan_string(content.c_str());
+
+    yyparse();
+    // yylex();
     return 0;
 }

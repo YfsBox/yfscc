@@ -52,14 +52,14 @@ enum UnaryOpType {
 };
 
 enum StatementType {
-    EXPE,
-    ASSIGN,
-    BLOCK,
-    IFELSE,
-    WHILE,
-    BREAK,
-    CONTINUE,
-    RETURN,
+    EXPE_STMTTYPE,
+    ASSIGN_STMTTYPE,
+    BLOCK_STMTTYPE,
+    IFELSE_STMTTYPE,
+    WHILE_STMTTYPE,
+    BREAK_STMTTYPE,
+    CONTINUE_STMTTYPE,
+    RETURN_STMTTYPE,
 };
 
 

@@ -393,7 +393,7 @@ public:
     ~ExprStatement() = default;
 
     StatementType getStatementType() const {
-        return StatementType::EXPE;
+        return StatementType::EXPE_STMTTYPE;
     }
 
     Expression *getExpr() const {
@@ -410,7 +410,7 @@ public:
     ~AssignStatement() = default;
 
     StatementType getStatementType() const {
-        return StatementType::ASSIGN;
+        return StatementType::ASSIGN_STMTTYPE;
     }
 
     Expression *getLeftExpr() const {
@@ -478,7 +478,7 @@ public:
     ~IfElseStatement() = default;
 
     StatementType getStatementType() const {
-        return StatementType::IFELSE;
+        return StatementType::IFELSE_STMTTYPE;
     }
 
     bool hasElse() const {
@@ -510,7 +510,7 @@ public:
     ~WhileStatement() = default;
 
     StatementType getStatementType() const {
-        return StatementType::WHILE;
+        return StatementType::WHILE_STMTTYPE;
     }
 
     Expression *getCond() const {
@@ -533,7 +533,7 @@ public:
     ~BreakStatement() = default;
 
     StatementType getStatementType() const {
-        return StatementType::BREAK;
+        return StatementType::BREAK_STMTTYPE;
     }
 };
 
@@ -544,7 +544,7 @@ public:
     ~ContinueStatement() = default;
 
     StatementType getStatementType() const {
-        return StatementType::CONTINUE;
+        return StatementType::CONTINUE_STMTTYPE;
     }
 };
 
@@ -555,7 +555,7 @@ public:
     ~ReturnStatement() = default;
 
     StatementType getStatementType() const {
-        return StatementType::RETURN;
+        return StatementType::RETURN_STMTTYPE;
     }
 
     Expression *getExpr() const {
