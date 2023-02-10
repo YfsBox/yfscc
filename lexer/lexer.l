@@ -4,13 +4,12 @@
 
 #include <string>
 #include "../common/Ast.h"
-#include "../parser/parser_sysy.tab.h"
+#include "../parser/parser.hpp"
 
-extern "C" void yyerror(const char *s);
 int yycolumn = 1;
 
-#define YY_USER_ACTION sysylloc.first_line = yylineno;            \
-                       sysylloc.first_column = yycolumn;          \
+#define YY_USER_ACTION yylloc.first_line = yylineno;            \
+                       yylloc.first_column = yycolumn;          \
                        for (auto i : std::string(yytext_ptr)) { \
                            if (i == '\n') {                     \
                                yylineno++;                      \
@@ -85,9 +84,9 @@ TOKEN_IDENTIFIER ({LETTER}|_)({DIGIT}|{LETTER}|_)*
 "void"              return VOID;
 "float"             return FLOAT;
 
-{TOKEN_IDENTIFIER}  sysylval.string = new std::string(yytext, yyleng); return IDENTIFIER;
-{TOKEN_INTEGER}     sysylval.int_val = static_cast<int32_t>(strtol(yytext, NULL, 0)); return INTEGER;
-{TOKEN_FLOATPOINT}	sysylval.float_val = static_cast<float>(strtod(yytext, NULL)); return FLOATPOINT;
+{TOKEN_IDENTIFIER}  yylval.string = new std::string(yytext, yyleng); return IDENTIFIER;
+{TOKEN_INTEGER}     yylval.int_val = static_cast<int32_t>(strtol(yytext, NULL, 0)); return INTEGER;
+{TOKEN_FLOATPOINT}	yylval.float_val = static_cast<float>(strtod(yytext, NULL)); return FLOATPOINT;
 
 "="                 return ASSIGN;
 "=="                return EQ;
@@ -112,7 +111,7 @@ TOKEN_IDENTIFIER ({LETTER}|_)({DIGIT}|{LETTER}|_)*
 ","                 return COMMA;
 ";"                 return SEMICOLON;
 
-.                   yyerror((std::string("Unknown token: ") + yytext).c_str()); yyterminate();
+.                   printf("%s\n", (std::string("Unknown token: ") + yytext).c_str()); yyterminate();
 
 %%
 

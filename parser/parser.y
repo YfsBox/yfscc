@@ -1,14 +1,13 @@
 %{
 #include <cstdlib>
 #include <cstdio>
-#include "../common/Ast.h"
 #include "../common/Types.h"
+#include "../common/Ast.h"
 
 std::shared_ptr<CompUnit> root;
 
 extern int yylex(void);
-
-extern "C" void yyerror(const char *s);
+extern void yyerror(const char *s);
 
 %}
 
@@ -17,13 +16,12 @@ extern "C" void yyerror(const char *s);
 %union {
       BasicType type;
       std::string *string;
-      std::int32_t int_val;
+      int32_t int_val;
       float float_val;
-      Number *number;
+      Number* number;
       CompUnit* root;
       FuncDefine* funcdef;
       Declare* declare;
-
       Identifier* ident;
       Expression* expr;
       BlockIterms* block;
@@ -271,7 +269,7 @@ statement: lval ASSIGN addexp SEMICOLON { $$ = new AssignStatement(std::shared_p
 
 %%
 
-extern "C" void yyerror(const char *s) {
-      fprintf(stderr, "%d:%d: error: %s\n", yylloc.first_line,
-              yylloc.first_column, s);
+void yyerror(const char* s) {
+    printf("line:%d\tcolumn:%d\n", yylloc.first_line, yylloc.first_column);
+    printf("ERROR: %s\n", s);
 }

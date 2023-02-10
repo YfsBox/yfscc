@@ -1,3 +1,4 @@
 #!/bin/zsh
 
-flex -d -osysy_lexer.cc lexer.l
+echo "generate lexer file"
+flex -o lexer.cpp lexer.l

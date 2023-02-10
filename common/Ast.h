@@ -204,7 +204,7 @@ class VarDeclare : public Declare {
 public:
     using VarDeclarePtr = std::shared_ptr<VarDefine>;
 
-    VarDeclare(BasicType var_type);
+    VarDeclare(BasicType var_type): var_type_(var_type) {}
 
     ~VarDeclare() = default;
 

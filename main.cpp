@@ -1,9 +1,10 @@
 #include <iostream>
+#include "common/Ast.h"
 #include "common/Utils.h"
-#include "parser/parser_sysy.tab.h"
 
 extern int yyparse();
-extern int scan_string(const char *str);
+extern std::shared_ptr<CompUnit> root;
+extern void scan_string(const char *str);
 
 int main(int argc, char **argv) {
     // 第一个参数为file name
