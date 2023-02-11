@@ -235,6 +235,8 @@ public:
         return id_;
     }
 
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     std::string id_;
 };
@@ -254,6 +256,8 @@ public:
     explicit Number(int32_t val): number_type_(BasicType::INT_BTYPE) {
         value_.int_val = val;
     }
+
+    void dump(std::ostream &out, size_t n) override;
 
 private:
     union {
@@ -277,6 +281,9 @@ public:
     Identifier *getId() const {
         return id_.get();
     }
+
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     IdentifierPtr id_;
 };
@@ -295,6 +302,8 @@ public:
     UnaryOpType getOpType() const {
         return optype_;
     }
+
+    void dump(std::ostream &out, size_t n) override;
 
 private:
     UnaryOpType optype_;
@@ -321,6 +330,8 @@ public:
         return right_expr_.get();
     }
 
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     BinaryOpType optype_;
     ExpressionPtr left_expr_;
@@ -338,6 +349,8 @@ public:
     Identifier *getFormalId() const {
         return id_.get();
     }
+
+    void dump(std::ostream &out, size_t n) override;
 
 private:
     BasicType type_;
@@ -364,6 +377,8 @@ public:
         return exprs_.size();
     }
 
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     std::vector<ExpressionPtr> exprs_;
 };
@@ -388,11 +403,13 @@ public:
         return actuals_->getSize();
     }
 
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     IdentifierPtr func_id_;
     FuncRParamsPtr actuals_;
 };
-
+/*
 class ExprStatement: public Statement {
 public:
     explicit ExprStatement(const ExpressionPtr &expr): expr_(expr) {}
@@ -406,9 +423,12 @@ public:
     Expression *getExpr() const {
         return expr_.get();
     }
+
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     ExpressionPtr expr_;
-};
+};*/
 
 class AssignStatement: public Statement {
 public:
@@ -428,6 +448,8 @@ public:
         return right_.get();
     }
 
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     ExpressionPtr left_;
     ExpressionPtr right_;
@@ -440,6 +462,9 @@ public:
     BlockIterm(const DeclarePtr &decl): stmt_(decl) {}
 
     ~BlockIterm() = default;
+
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     StatementPtr stmt_;
 };
@@ -453,6 +478,9 @@ public:
     void addIterm(const BlockItermPtr &iterm) {
         iterms_.push_back(iterm);
     }
+
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     std::vector<BlockItermPtr> iterms_;
 };
@@ -473,6 +501,7 @@ class EvalStatement: public Statement {
 public:
     EvalStatement(const ExpressionPtr &expr): expr_(expr) {}
     ~EvalStatement() = default;
+    void dump(std::ostream &out, size_t n) override;
 private:
     ExpressionPtr expr_;
 };
@@ -504,6 +533,8 @@ public:
         return elsestmt_.get();
     }
 
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     ExpressionPtr cond_;
     StatementPtr ifstmt_;
@@ -528,6 +559,8 @@ public:
         return statement_.get();
     }
 
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     ExpressionPtr cond_;
     StatementPtr statement_;
@@ -542,6 +575,8 @@ public:
     StatementType getStatementType() const {
         return StatementType::BREAK_STMTTYPE;
     }
+
+    void dump(std::ostream &out, size_t n) override;
 };
 
 class ContinueStatement: public Statement {
@@ -553,6 +588,8 @@ public:
     StatementType getStatementType() const {
         return StatementType::CONTINUE_STMTTYPE;
     }
+
+    void dump(std::ostream &out, size_t n) override;
 };
 
 class ReturnStatement: public Statement {
@@ -569,6 +606,7 @@ public:
         return expr_.get();
     }
 
+    void dump(std::ostream &out, size_t n) override;
 private:
     ExpressionPtr expr_;
 };
@@ -591,6 +629,7 @@ public:
         return formals_.size();
     }
 
+    void dump(std::ostream &out, size_t n) override;
 private:
     std::vector<FuncFParamPtr> formals_;
 };
