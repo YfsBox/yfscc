@@ -32,7 +32,7 @@ public:
     virtual ~AstNode() {};
     explicit AstNode(int lineno): lineno_(lineno){}
     // virtual void generateIR() = 0;
-    // virtual void dump() = 0;
+    virtual void dump(std::ostream &out, size_t n) = 0;
     int lineno_;
 };
 
@@ -45,6 +45,8 @@ public:
     CompUnit() = default;
 
     ~CompUnit() = default;
+
+    void dump(std::ostream &out, size_t n) override;
 
     void addDeclares(const DeclPtr &decl) {
         declares_.push_back(decl);
@@ -78,6 +80,7 @@ private:
 class Statement: public AstNode {
 public:
     // virtual StatementType getStatementType() = 0;
+
 };
 
 class Declare: public Statement {
@@ -195,6 +198,8 @@ public:
         const_defs_.push_back(def);
     }
 
+    void dump(std::ostream &out, size_t n) override;
+
 private:
     BasicType const_type_;
     std::vector<DefinePtr> const_defs_;
@@ -211,6 +216,8 @@ public:
     void addDef(const DefinePtr &def) {
         var_defs_.push_back(def);
     }
+
+    void dump(std::ostream &out, size_t n) override;
 
 private:
     BasicType var_type_;
