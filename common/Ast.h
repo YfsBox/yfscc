@@ -29,11 +29,11 @@ using DefinePtr = std::shared_ptr<Define>;
 class AstNode: std::enable_shared_from_this<AstNode> {
 public:
     AstNode() = default;
-    virtual ~AstNode() {};
+    virtual ~AstNode() = default;
     explicit AstNode(int lineno): lineno_(lineno){}
     // virtual void generateIR() = 0;
-    virtual void dump(std::ostream &out, size_t n) = 0;
-    int lineno_;
+    virtual void dump(std::ostream &out, size_t n) {};
+    int lineno_{-1};
 };
 
 class FuncDefine;
@@ -80,7 +80,6 @@ private:
 class Statement: public AstNode {
 public:
     // virtual StatementType getStatementType() = 0;
-
 };
 
 class Declare: public Statement {
@@ -99,6 +98,8 @@ public:
     ConstDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): id_(identifier), init_expr_(expr) {}
 
     ~ConstDefine() = default;
+
+    void dump(std::ostream &out, size_t n) override;
 
     DefType getDefType() const {
         return DefType::CONSTDEF;
@@ -126,6 +127,8 @@ public:
     VarDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): id_(identifier), init_expr_(expr) {}
 
     ~VarDefine() = default;
+
+    void dump(std::ostream &out, size_t n) override;
 
     DefType getDefType() {
         return DefType::VARDEF;
@@ -159,6 +162,8 @@ public:
             block_(block){
 
     }
+
+    void dump(std::ostream &out, size_t n) override;
 
     ~FuncDefine() = default;
 
@@ -266,11 +271,6 @@ private:
     } value_;
 
     BasicType number_type_;
-};
-
-class ConditionExpr : public Expression {
-
-
 };
 
 class LvalExpr: public Expression {        // 包不包括数组？？
@@ -409,6 +409,7 @@ private:
     IdentifierPtr func_id_;
     FuncRParamsPtr actuals_;
 };
+
 /*
 class ExprStatement: public Statement {
 public:

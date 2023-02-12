@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
     scan_string(content.c_str());
 
     yyparse();
+    root->dump(std::cout, 0);
     // yylex();
     return 0;
 }

@@ -7,5 +7,5 @@ enable_testing()
 
 add_subdirectory(test)
 
-add_executable(yfscc main.cpp parser/parser.cpp lexer/lexer.cpp common/Utils.cc)
+add_executable(yfscc main.cpp parser/parser.cpp lexer/lexer.cpp common/Utils.cc common/Ast.cc)
 target_link_libraries(yfscc fl)

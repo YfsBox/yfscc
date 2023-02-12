@@ -24,6 +24,13 @@ void ConstDeclare::dump(std::ostream &out, size_t n) {
     }
 }
 
+void ConstDefine::dump(std::ostream &out, size_t n) {
+    dumpPrefix(out, n);
+    out << "ConstDefine:\n";
+    id_->dump(out, n + 1);
+    init_expr_->dump(out, n + 1);
+}
+
 void VarDeclare::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
     out << "ConstDeclare(" << basicType2Str(var_type_) << "):\n";
@@ -31,6 +38,23 @@ void VarDeclare::dump(std::ostream &out, size_t n) {
     for (auto &def : var_defs_) {
         def->dump(out, n + 1);
     }
+}
+
+void VarDefine::dump(std::ostream &out, size_t n) {
+    dumpPrefix(out, n);
+    out << "VarDefine:\n";
+    id_->dump(out, n + 1);
+    init_expr_->dump(out, n + 1);
+}
+
+void FuncDefine::dump(std::ostream &out, size_t n) {
+    dumpPrefix(out, n);
+    out << "FuncDefine(" << basicType2Str(return_type_) << "):\n";
+    func_id_->dump(out, n + 1);
+    if (formals_) {
+        formals_->dump(out, n + 1);
+    }
+    block_->dump(out, n + 1);
 }
 
 void Identifier::dump(std::ostream &out, size_t n) {
@@ -84,7 +108,9 @@ void CallFuncExpr::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
     out << "CallFuncExpr:\n";
     func_id_->dump(out, n + 1);
-    actuals_->dump(out, n + 1);
+    if (actuals_) {
+        actuals_->dump(out, n + 1);
+    }
 }
 
 void AssignStatement::dump(std::ostream &out, size_t n) {
