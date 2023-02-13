@@ -50,8 +50,8 @@ extern void yyerror(const char *s);
 %type <declare> decl const_decl var_decl
 
 %type <funcdef> func_def
-%type <ident> identifier
-%type <expr> lval number lorexp landexp eqexp addexp mulexp primaryexp relexp unaryexp
+%type <ident> identifier array_id
+%type <expr> lval number lorexp landexp eqexp addexp mulexp primaryexp relexp unaryexp array_val
 %type <formals> func_formals
 %type <formal> func_formal
 %type <actuals> func_actuals
@@ -104,6 +104,14 @@ const_decl: CONST basic_type identifier ASSIGN addexp {
                             std::shared_ptr<Identifier>($3),
                             std::shared_ptr<Expression>($5)
                         ));
+      }
+      | CONST basic_type array_id ASSIGN array_val {
+             $$ = new DeclareStatement($2);
+             $$->declares_.emplace_back(new ArrayDeclare{$2, $3, $5, true});
+      }
+      | const_decl COMMA array_id ASSIGN array_val {
+             $$ = $1;
+             $$->declares_.emplace_back(new ArrayDeclare{$1->getType(), $3, $5, true});
       }
       ;
 

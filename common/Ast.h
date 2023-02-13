@@ -16,6 +16,7 @@ class FuncFParam;
 class Declare;
 class Define;
 class FuncFParams;
+class ArrayValue;
 
 // using AstNodeShptr = std::shared_ptr<AstNode>;
 using AstNodePtr = std::shared_ptr<AstNode>;
@@ -25,6 +26,7 @@ using IdentifierPtr = std::shared_ptr<Identifier>;
 using FuncFParamPtr = std::shared_ptr<FuncFParam>;
 using DeclarePtr = std::shared_ptr<Declare>;
 using DefinePtr = std::shared_ptr<Define>;
+using ArrayValuePtr = std::shared_ptr<ArrayValue>;
 
 class AstNode: std::enable_shared_from_this<AstNode> {
 public:
@@ -85,7 +87,10 @@ public:
 class Declare: public Statement {
 public:
     // virtual DeclType getDeclType() = 0;
+    explicit Declare(BasicType type): type_(type) {}
     virtual void addDef(const std::shared_ptr<Define> &def) = 0;
+    BasicType type_;
+    std::vector<DefinePtr> defs_;
 };
 
 class Define: public AstNode {
@@ -195,38 +200,30 @@ class ConstDeclare :public Declare {
 public:
     using ConstDefPtr = std::shared_ptr<ConstDefine>;
 
-    ConstDeclare(BasicType const_type): const_type_(const_type){}
+    ConstDeclare(BasicType const_type): Declare(const_type){}
 
     ~ConstDeclare() = default;
 
     void addDef(const DefinePtr &def) {
-        const_defs_.push_back(def);
+        defs_.push_back(def);
     }
 
     void dump(std::ostream &out, size_t n) override;
-
-private:
-    BasicType const_type_;
-    std::vector<DefinePtr> const_defs_;
 };
 
 class VarDeclare : public Declare {
 public:
     using VarDeclarePtr = std::shared_ptr<VarDefine>;
 
-    VarDeclare(BasicType var_type): var_type_(var_type) {}
+    VarDeclare(BasicType var_type): Declare(var_type) {}
 
     ~VarDeclare() = default;
 
     void addDef(const DefinePtr &def) {
-        var_defs_.push_back(def);
+        defs_.push_back(def);
     }
 
     void dump(std::ostream &out, size_t n) override;
-
-private:
-    BasicType var_type_;
-    std::vector<DefinePtr> var_defs_;
 };
 
 class Identifier : public AstNode {
@@ -234,7 +231,7 @@ public:
 
     explicit Identifier(std::string *id): id_(*id) {}
 
-    Identifier(int lineno, const std::string &id):AstNode(lineno), id_(id) {}
+    Identifier(const std::string &id): id_(id) {}
 
     std::string getId() const {
         return id_;
@@ -242,8 +239,13 @@ public:
 
     void dump(std::ostream &out, size_t n) override;
 
+    void addDimension(const ExpressionPtr &expr) {
+        array_dimension_.push_back(expr);
+    }
+
 private:
     std::string id_;
+    std::vector<ExpressionPtr> array_dimension_;
 };
 
 class Expression:public AstNode {
@@ -271,6 +273,27 @@ private:
     } value_;
 
     BasicType number_type_;
+};
+
+class ArrayValue: public Expression {
+public:
+    ArrayValue(bool is_number, const ExpressionPtr &value)
+            :is_number_(is_number), value_(value) {}
+public:
+    bool is_number_;
+    ExpressionPtr value_;
+    std::vector<ArrayValuePtr> valueList_;
+};
+
+class ArrayDeclare : public Declare {
+public:
+    ArrayDeclare(BasicType type, const IdentifierPtr &identifier, const ArrayValuePtr &array_value,
+                 bool is_const)
+            :Declare(type), is_const_(is_const), id_(identifier), value_(array_value) {}
+public:
+    bool is_const_;
+    IdentifierPtr id_;
+    ArrayValuePtr value_;
 };
 
 class LvalExpr: public Expression {        // 包不包括数组？？

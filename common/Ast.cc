@@ -17,9 +17,9 @@ void CompUnit::dump(std::ostream &out, size_t n) {
 
 void ConstDeclare::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
-    out << "ConstDeclare(" << basicType2Str(const_type_) << "):\n";
+    out << "ConstDeclare(" << basicType2Str(type_) << "):\n";
 
-    for (auto &def : const_defs_) {
+    for (auto &def : defs_) {
         def->dump(out, n + 1);
     }
 }
@@ -28,14 +28,16 @@ void ConstDefine::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
     out << "ConstDefine:\n";
     id_->dump(out, n + 1);
-    init_expr_->dump(out, n + 1);
+    if (init_expr_) {
+        init_expr_->dump(out, n + 1);
+    }
 }
 
 void VarDeclare::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
-    out << "ConstDeclare(" << basicType2Str(var_type_) << "):\n";
+    out << "VarDeclare(" << basicType2Str(type_) << "):\n";
 
-    for (auto &def : var_defs_) {
+    for (auto &def : defs_) {
         def->dump(out, n + 1);
     }
 }
@@ -44,7 +46,9 @@ void VarDefine::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
     out << "VarDefine:\n";
     id_->dump(out, n + 1);
-    init_expr_->dump(out, n + 1);
+    if (init_expr_) {
+        init_expr_->dump(out, n + 1);
+    }
 }
 
 void FuncDefine::dump(std::ostream &out, size_t n) {
