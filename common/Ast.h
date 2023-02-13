@@ -118,10 +118,6 @@ public:
         return init_expr_.get();
     }
 
-    bool hasInitExpr() const {
-        return init_expr_ != nullptr;
-    }
-
 private:
     IdentifierPtr id_;
     ExpressionPtr init_expr_;
@@ -277,15 +273,18 @@ private:
 
 class ArrayValue: public Expression {
 public:
-    ArrayValue(bool is_number, const ExpressionPtr &value)
-            :is_number_(is_number), value_(value) {}
+    ArrayValue(bool is_number, const ExpressionPtr &value = nullptr)
+    :is_number_(is_number), value_(value) {}
+    void addArrayValue(const ArrayValuePtr &array_value) {
+        valueList_.push_back(array_value);
+    }
 public:
     bool is_number_;
     ExpressionPtr value_;
     std::vector<ArrayValuePtr> valueList_;
 };
 
-class ArrayDeclare : public Declare {
+class ArrayDeclare: public Declare {
 public:
     ArrayDeclare(BasicType type, const IdentifierPtr &identifier, const ArrayValuePtr &array_value,
                  bool is_const)

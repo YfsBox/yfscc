@@ -26,6 +26,7 @@ extern void yyerror(const char *s);
       Expression* expr;
       BlockIterms* block;
       Statement* stmt;
+      ArrayValue* array_value;
       BlockIterm *block_stmt;
       FuncFParams* formals;
       FuncFParam* formal;
@@ -51,7 +52,8 @@ extern void yyerror(const char *s);
 
 %type <funcdef> func_def
 %type <ident> identifier array_id
-%type <expr> lval number lorexp landexp eqexp addexp mulexp primaryexp relexp unaryexp array_val
+%type <array_value> array_val array_vals
+%type <expr> lval number lorexp landexp eqexp addexp mulexp primaryexp relexp unaryexp
 %type <formals> func_formals
 %type <formal> func_formal
 %type <actuals> func_actuals
@@ -106,12 +108,18 @@ const_decl: CONST basic_type identifier ASSIGN addexp {
                         ));
       }
       | CONST basic_type array_id ASSIGN array_val {
-             $$ = new DeclareStatement($2);
-             $$->declares_.emplace_back(new ArrayDeclare{$2, $3, $5, true});
+             $$ = new ConstDeclare($2);
+             $$->addDef(std::make_shared<ConstDefine>(
+                            std::shared_ptr<Identifier>($3),
+                            std::shared_ptr<Expression>($5)
+             ));
       }
       | const_decl COMMA array_id ASSIGN array_val {
              $$ = $1;
-             $$->declares_.emplace_back(new ArrayDeclare{$1->getType(), $3, $5, true});
+             $$->addDef(std::make_shared<ConstDefine>(
+                            std::shared_ptr<Identifier>($3),
+                            std::shared_ptr<Expression>($5)
+             ));
       }
       ;
 
@@ -137,6 +145,28 @@ var_decl: basic_type identifier {
                             std::shared_ptr<Expression>($5)
             ));
       }
+      | basic_type array_id {
+            $$ = new VarDeclare($1);
+            $$->addDef(std::make_shared<VarDefine>(std::shared_ptr<Identifier>($2)));
+      }
+      | basic_type array_id ASSIGN array_val {
+            $$ = new VarDeclare($1);
+            $$->addDef(std::make_shared<VarDefine>(
+                       std::shared_ptr<Identifier>($2),
+                       std::shared_ptr<Expression>($4)
+            ));
+      }
+      | var_decl COMMA array_id {
+            $$ = $1;
+            $$->addDef(std::make_shared<VarDefine>(std::shared_ptr<Identifier>($3)));
+      }
+      | var_decl COMMA array_id ASSIGN array_val {
+            $$ = $1;
+            $$->addDef(std::make_shared<VarDefine>(
+                       std::shared_ptr<Identifier>($3),
+                       std::shared_ptr<Expression>($5))
+            );
+      }
       ;
 
 number: INTEGER { $$ = new Number($1); }
@@ -147,6 +177,38 @@ identifier: IDENTIFIER {
         $$ = new Identifier($1);
     }
     ;
+
+array_id: identifier LEFT_BRACKETS addexp RIGHT_BRACKETS {
+                $$ = $1;
+                $$->addDimension(std::shared_ptr<Expression>($3));
+        }
+        | array_id LEFT_BRACKETS addexp RIGHT_BRACKETS {
+                $$ = $1;
+                $$->addDimension(std::shared_ptr<Expression>($3));
+        }
+        ;
+
+array_val: LEFT_BRACES RIGHT_BRACES { $$ = new ArrayValue(false); }
+      | LEFT_BRACES array_vals RIGHT_BRACES { $$ = $2; }
+      ;
+
+array_vals: addexp  {
+            $$ = new ArrayValue(false);
+            $$->addArrayValue(std::make_shared<ArrayValue>(true, std::shared_ptr<Expression>($1)));
+      }
+      | array_val {
+            $$ = new ArrayValue(false);
+            $$->addArrayValue(std::shared_ptr<ArrayValue>($1));
+      }
+      | array_vals COMMA addexp {
+            $$ = $1;
+            $$->addArrayValue(std::make_shared<ArrayValue>(true, std::shared_ptr<Expression>($3)));
+      }
+      | array_vals COMMA array_val {
+            $$ = $1;
+            $$->addArrayValue(std::shared_ptr<ArrayValue>($3));
+      }
+      ;
 
 lval: identifier { $$ = new LvalExpr(std::shared_ptr<Identifier>($1)); }
       ;
