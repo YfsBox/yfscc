@@ -65,7 +65,7 @@ void Identifier::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
     out << "ID(" << id_ << ")";
     if (!array_dimension_.empty()) {
-        out << ":\n";
+        out << "'S DIMENSION NUMBER:\n";
         for (auto &dimension : array_dimension_) {
             if (dimension) {
                 dimension->dump(out, n + 1);
@@ -127,6 +127,12 @@ void BinaryExpr::dump(std::ostream &out, size_t n) {
 void FuncFParam::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
     out << "Formal: " << basicType2Str(type_) << " " << id_->getId() << '\n';
+    // dumpPrefix(out, n + 1);
+    if (id_->getDimensionSize()) {
+        dumpPrefix(out, n + 1);
+        out << "ArrayFormal Dimension:";
+
+    }
 }
 
 void FuncRParams::dump(std::ostream &out, size_t n) {
@@ -154,7 +160,9 @@ void AssignStatement::dump(std::ostream &out, size_t n) {
 }
 
 void BlockIterm::dump(std::ostream &out, size_t n) {
-    stmt_->dump(out, n);
+    if (stmt_) {
+        stmt_->dump(out, n);
+    }
 }
 
 void BlockIterms::dump(std::ostream &out, size_t n) {

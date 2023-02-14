@@ -91,6 +91,7 @@ decl: const_decl SEMICOLON { $$ = $1;}
 
 basic_type: INT { $$ = BasicType::INT_BTYPE; }
     | FLOAT { $$ = BasicType::FLOAT_BTYPE; }
+    | VOID { $$ = BasicType::VOID_BTYPE; }
     ;
 
 const_decl: CONST basic_type identifier ASSIGN addexp {

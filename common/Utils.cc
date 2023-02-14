@@ -59,6 +59,8 @@ std::string binaryType2Str(BinaryOpType type) {
             return "LT";
         case LTE_OPTYPE:
             return "LTE";
+        case GT_OPTYPE:
+            return "GT";
         case GTE_OPTYPE:
             return "GTE";
         case EQ_OPTYPE:

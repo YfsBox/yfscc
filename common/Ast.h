@@ -239,6 +239,10 @@ public:
         array_dimension_.push_back(expr);
     }
 
+    size_t getDimensionSize() const {
+        return array_dimension_.size();
+    }
+
 private:
     std::string id_;
     std::vector<ExpressionPtr> array_dimension_;
