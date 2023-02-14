@@ -278,13 +278,14 @@ public:
     void addArrayValue(const ArrayValuePtr &array_value) {
         valueList_.push_back(array_value);
     }
+    void dump(std::ostream &out, size_t n) override;
 public:
     bool is_number_;
     ExpressionPtr value_;
     std::vector<ArrayValuePtr> valueList_;
 };
 
-class ArrayDeclare: public Declare {
+/*class ArrayDeclare: public Declare {
 public:
     ArrayDeclare(BasicType type, const IdentifierPtr &identifier, const ArrayValuePtr &array_value,
                  bool is_const)
@@ -293,7 +294,7 @@ public:
     bool is_const_;
     IdentifierPtr id_;
     ArrayValuePtr value_;
-};
+};*/
 
 class LvalExpr: public Expression {        // 包不包括数组？？
 public:

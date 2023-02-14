@@ -55,7 +55,7 @@ extern void yyerror(const char *s);
 %type <array_value> array_val array_vals
 %type <expr> lval number lorexp landexp eqexp addexp mulexp primaryexp relexp unaryexp
 %type <formals> func_formals
-%type <formal> func_formal
+%type <formal> func_formal func_array_formal
 %type <actuals> func_actuals
 %type <block> block block_iterms
 %type <block_stmt> block_iterm
@@ -211,6 +211,16 @@ array_vals: addexp  {
       ;
 
 lval: identifier { $$ = new LvalExpr(std::shared_ptr<Identifier>($1)); }
+      | identifier LEFT_BRACKETS addexp RIGHT_BRACKETS {
+            auto lval = new LvalExpr(std::shared_ptr<Identifier>($1));
+            lval->getId()->addDimension(std::shared_ptr<Expression>($3));
+            $$ = lval;
+      }
+      | lval LEFT_BRACKETS addexp RIGHT_BRACKETS {
+            auto lval = dynamic_cast<LvalExpr*>($1);
+            lval->getId()->addDimension(std::shared_ptr<Expression>($3));
+            $$ = $1;
+      }
       ;
 
 primaryexp: LEFT_PARENTHESES addexp RIGHT_PARENTHESES { $$ = $2; }
@@ -289,8 +299,19 @@ func_formals: func_formal {
       ;
 
 func_formal: basic_type identifier { $$ = new FuncFParam($1, std::shared_ptr<Identifier>($2)); }
+      | func_array_formal {
+            $$ = $1;
+      }
       ;
 
+func_array_formal: basic_type identifier LEFT_BRACKETS RIGHT_BRACKETS {
+            $$ = new FuncFParam($1, std::shared_ptr<Identifier>($2));
+      }
+      | func_array_formal LEFT_BRACKETS addexp RIGHT_BRACKETS {
+            $$ = $1;
+            $$->getFormalId()->addDimension(std::shared_ptr<Expression>($3));
+      }
+      ;
 
 func_actuals: addexp { $$ = new FuncRParams(); $$->addExpr(std::shared_ptr<Expression>($1)); }
       | func_actuals COMMA addexp { $$ = $1; $$->addExpr(std::shared_ptr<Expression>($3)); }

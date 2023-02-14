@@ -63,7 +63,20 @@ void FuncDefine::dump(std::ostream &out, size_t n) {
 
 void Identifier::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
-    out << "ID:" << id_ << "\n";
+    out << "ID(" << id_ << ")";
+    if (!array_dimension_.empty()) {
+        out << ":\n";
+        for (auto &dimension : array_dimension_) {
+            if (dimension) {
+                dimension->dump(out, n + 1);
+            } else {
+                dumpPrefix(out, n + 1);
+                out << "null dimension\n";
+            }
+        }
+    } else {
+        out << "\n";
+    }
 }
 
 void Number::dump(std::ostream &out, size_t n) {
@@ -73,6 +86,22 @@ void Number::dump(std::ostream &out, size_t n) {
         out << value_.int_val << '\n';
     } else if (number_type_ == BasicType::FLOAT_BTYPE) {
         out << value_.float_val << '\n';
+    }
+}
+
+void ArrayValue::dump(std::ostream &out, size_t n) {
+    dumpPrefix(out, n);
+    out << "ArrayValue:\n";
+    dumpPrefix(out, n + 1);
+    out << "IS_NUMBER: ";
+    if (is_number_) {
+        out << "TRUE\n";
+        value_->dump(out, n + 1);
+    } else {
+        out << "FALSE\n";
+        for (auto & arrayval : valueList_) {
+            arrayval->dump(out, n + 1);
+        }
     }
 }
 
