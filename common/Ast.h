@@ -112,10 +112,6 @@ public:
         return DefType::CONSTDEF;
     }
 
-    Identifier *getIdentifier() const {
-        return id_.get();
-    }
-
     Expression *getInitExpr() const {
         return init_expr_.get();
     }
@@ -134,10 +130,6 @@ public:
 
     DefType getDefType() {
         return DefType::VARDEF;
-    }
-
-    Identifier *getIdentifier() const {
-        return id_.get();
     }
 
     Expression *getInitExpr() const {
@@ -170,10 +162,6 @@ public:
 
     BasicType getReturnType() const {
         return return_type_;
-    }
-
-    Identifier *getId() const {
-        return id_.get();
     }
 
     FuncFParams *getFormals() const {

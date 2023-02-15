@@ -10,6 +10,7 @@
 class AstVisitor {
 
     virtual void visit(const std::shared_ptr<CompUnit> &compunit) = 0;
+    virtual void visit(const std::shared_ptr<Declare> &decl) = 0;
     virtual void visit(const std::shared_ptr<ConstDefine> &def) = 0;
     virtual void visit(const std::shared_ptr<VarDefine> &def) = 0;
     virtual void visit(const std::shared_ptr<FuncDefine> &def) = 0;

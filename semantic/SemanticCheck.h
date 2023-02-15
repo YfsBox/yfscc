@@ -14,6 +14,7 @@ public:
     ~SemanticCheck() = default;
 
     void visit(const std::shared_ptr<CompUnit> &compunit) override;
+    void visit(const std::shared_ptr<Declare> &decl) override;
     void visit(const std::shared_ptr<ConstDefine> &def) override;
     void visit(const std::shared_ptr<VarDefine> &def) override;
     void visit(const std::shared_ptr<FuncDefine> &def) override;
@@ -31,6 +32,7 @@ private:
 
     size_t error_cnt;
     std::vector<std::string> error_msgs_;
+    SymbolTable<FuncDefine> func_systable_;
 };
 
 #endif //YFSCC_SEMANTICCHECK_H

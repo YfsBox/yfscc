@@ -5,7 +5,7 @@
 #include "SemanticCheck.h"
 
 bool SemanticCheck::checkIsValidMain(const FuncDefine *funcdef) {
-    return funcdef->getId()->getId() == "main" && funcdef->getFormals()->getFormalSize() == 0
+    return funcdef->id_->getId() == "main" && funcdef->getFormals()->getFormalSize() == 0
         && funcdef->getReturnType() == BasicType::INT_BTYPE;
 }
 
@@ -17,15 +17,15 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
     auto decl_number = compunit->getDeclNumber();
 
     bool have_main = false;
-    bool have_rename = false;
 
     for (size_t i = 0; i < func_number; ++i) {
         auto func_def = compunit->getFuncDef(i);
-        std::string func_name = func_def->getId()->getId();
+        std::string func_name = func_def->id_->getId();
         if (name_set.find(func_name) != name_set.end()) {       // 如果之前已经存在了
-            have_rename = true;
+            error_cnt++;
+            error_msgs_.push_back("#Function Identifier Redination,the name is " + func_name + "\n");
         }
-        name_set.insert(func_def->getId()->getId());
+        name_set.insert(func_name);
         if (checkIsValidMain(func_def)) {
             have_main = true;
         }
@@ -39,15 +39,29 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
     for (size_t i = 0; i < decl_number; ++i) {
         auto decl = compunit->getDecl(i);
         for (auto &def : decl->defs_) {
-
-
+            std::string name = def->id_->getId();
+            if (name_set.find(name) != name_set.end()) {        // 重复过的名字
+                error_cnt++;
+                error_msgs_.push_back("#Identifier Redination,the name is " + name + "\n");
+            }
+            name_set.insert(name);
         }
     }
 
+    for (size_t i = 0; i < decl_number; ++i) {
+        auto decl = compunit->getDecl(i);
+        visit(std::shared_ptr<Declare>(decl));
+    }
 
+}
 
+void SemanticCheck::visit(const std::shared_ptr<Declare> &decl) {
+    for (auto &def : decl->defs_) {
+        if (dynamic_cast<ConstDefine*>(def.get())) {
 
+        } else {
 
-
+        }
+    }
 }
 
