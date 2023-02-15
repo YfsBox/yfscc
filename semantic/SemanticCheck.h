@@ -52,8 +52,8 @@ private:
     size_t curr_while_depth_;        // 用来记录当前是否处于while之中
     size_t error_cnt;
     std::vector<std::string> error_msgs_;
-    SymbolTable<FuncDefine> func_systable_;
-    SymbolTable<Define> ident_systable_;
+    // SymbolTable<FuncDefine> func_systable_;
+    SymbolTable<SymbolEntry> ident_systable_;
 };
 
 #endif //YFSCC_SEMANTICCHECK_H

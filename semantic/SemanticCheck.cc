@@ -138,8 +138,8 @@ void SemanticCheck::visit(const std::shared_ptr<AssignStatement> &stmt) {
     LvalExpr *lval = dynamic_cast<LvalExpr*>(left);
     std::string name = lval->getId()->getId();
     // 查找符号表,判断是否是const
-    Define *find_lval = ident_systable_.lookupFromAll(name);
-    if (find_lval && find_lval->getDefType() == DefType::CONSTDEF) {  // 如果是存在的
+    auto find_lval = ident_systable_.lookupFromAll(name);
+    if (find_lval && find_lval->isConst()) {  // 如果是存在的
         appendError("#lval in assignment statement can't be const type\n");
     }
     // 然后求出右半部分的

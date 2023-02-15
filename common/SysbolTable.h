@@ -7,33 +7,47 @@
 
 #include <iostream>
 #include <list>
+#include "Types.h"
+#include "Ast.h"
 
-template<class DATA>
 class SymbolEntry {
 public:
-    SymbolEntry(const std::string &name, DATA *data): name_(name), data_(data) {}
+    SymbolEntry(BasicType type, Identifier *id, bool is_const): is_const_(is_const),
+    type_(type), id_(id) {}
+
     ~SymbolEntry() = default;
+
     std::string getName() const {
-        return name_;
+        return id_->getId();
     }
-    DATA *getData() const {
-        return data_;
+
+    bool isConst() const {
+        return is_const_;
     }
+
+    bool isArray() const {
+        return id_->getDimensionSize() != 0;
+    }
+
 private:
-    std::string name_;
-    DATA *data_;
+    bool is_const_;
+    BasicType type_;
+    Identifier *id_;
 };
 
 
 template<class DATA>
 class SymbolTable {
 public:
-    using Entry = SymbolEntry<DATA>;
-    using SymbolScope = std::list<Entry>;
+    using SymbolScope = std::list<DATA>;
 
     SymbolTable() = default;
 
     ~SymbolTable() = default;
+
+    void addIdent(const DATA &entry) {      // 在当前作用域加入新的identifier
+        scope_lists_.front().push_back(entry);
+    }
 
     DATA *lookupFromCurrScope(const std::string &name) {
         if (scope_lists_.empty()) {
@@ -43,7 +57,7 @@ public:
 
         for (auto &entry : curr_scope) {
             if (entry.getName() == name) {
-                return entry.getData();
+                return &entry;
             }
         }
 
@@ -54,7 +68,7 @@ public:
         for (auto &scope : scope_lists_) {
             for (auto &entry : scope) {
                 if (entry.getName() == name) {
-                    return entry.getData();
+                    return &entry;
                 }
             }
         }
