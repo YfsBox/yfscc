@@ -11,17 +11,17 @@
 template<class DATA>
 class SymbolEntry {
 public:
-    SymbolEntry(const std::string &name, DATA *data): name_(name), date_(data) {}
+    SymbolEntry(const std::string &name, DATA *data): name_(name), data_(data) {}
     ~SymbolEntry() = default;
     std::string getName() const {
         return name_;
     }
     DATA *getData() const {
-        return date_;
+        return data_;
     }
 private:
     std::string name_;
-    DATA *date_;
+    DATA *data_;
 };
 
 
@@ -32,6 +32,7 @@ public:
     using SymbolScope = std::list<Entry>;
 
     SymbolTable() = default;
+
     ~SymbolTable() = default;
 
     DATA *lookupFromCurrScope(const std::string &name) {

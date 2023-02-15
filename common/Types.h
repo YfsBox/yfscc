@@ -24,7 +24,12 @@ enum DefType {
 };
 
 enum ExprType {     // 一个表达式求值之后的类型，在语义分析中会使用到
-
+    NUMBER_TYPE,
+    ARRAYVALUE_TYPE,
+    LVAL_TYPE,
+    UNARY_TYPE,
+    BINARY_TYPE,
+    CALLFUNC_TYPE,
 };
 
 enum AstNodeType {

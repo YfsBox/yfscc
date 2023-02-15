@@ -10,7 +10,7 @@
 
 class SemanticCheck: public AstVisitor {
 public:
-    SemanticCheck(): error_cnt(0) {}
+    SemanticCheck(): error_cnt(0), curr_while_depth_(0) {}
     ~SemanticCheck() = default;
 
     void visit(const std::shared_ptr<CompUnit> &compunit) override;
@@ -25,14 +25,35 @@ public:
     void visit(const std::shared_ptr<WhileStatement> &stmt) override;
     void visit(const std::shared_ptr<BreakStatement> &stmt) override;
     void visit(const std::shared_ptr<ContinueStatement> &stmt) override;
-    void visit(const std::shared_ptr<ReturnStatement> *stmt) override;
+    void visit(const std::shared_ptr<ReturnStatement> &stmt) override;
+    void visit(const std::shared_ptr<Number> &number) override;
+    void visit(const std::shared_ptr<Expression> &expr) override;
 
 private:
+
     bool checkIsValidMain(const FuncDefine *funcdef);
 
+    void appendError(const std::string &msg) {
+        error_msgs_.push_back(msg);
+    }
+
+    void addWhileDepth() {
+        curr_while_depth_++;
+    }
+
+    void descWhileDepth() {
+        curr_while_depth_--;
+    }
+
+    bool isInWhile() const {
+        return curr_while_depth_ != 0;
+    }
+
+    size_t curr_while_depth_;        // 用来记录当前是否处于while之中
     size_t error_cnt;
     std::vector<std::string> error_msgs_;
     SymbolTable<FuncDefine> func_systable_;
+    SymbolTable<Define> ident_systable_;
 };
 
 #endif //YFSCC_SEMANTICCHECK_H

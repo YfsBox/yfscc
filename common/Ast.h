@@ -86,7 +86,6 @@ public:
 
 class Declare: public Statement {
 public:
-    // virtual DeclType getDeclType() = 0;
     explicit Declare(BasicType type): type_(type) {}
     virtual void addDef(const std::shared_ptr<Define> &def) = 0;
     BasicType type_;
@@ -97,6 +96,7 @@ class Define: public AstNode {
 public:
     // virtual DefType getDefType() = 0;
     explicit Define(const IdentifierPtr &ident): id_(ident) {}
+    virtual DefType getDefType() = 0;
     IdentifierPtr id_;
 };
 
@@ -108,7 +108,7 @@ public:
 
     void dump(std::ostream &out, size_t n) override;
 
-    DefType getDefType() const {
+    DefType getDefType() override {
         return DefType::CONSTDEF;
     }
 
@@ -128,7 +128,7 @@ public:
 
     void dump(std::ostream &out, size_t n) override;
 
-    DefType getDefType() {
+    DefType getDefType() override {
         return DefType::VARDEF;
     }
 
@@ -238,7 +238,8 @@ private:
 
 class Expression:public AstNode {
 public:
-    BasicType type_;
+    BasicType expr_type_;
+    virtual ExprType getExprNodeType() = 0;
 };
 
 class Number:public Expression {
@@ -250,6 +251,14 @@ public:
 
     explicit Number(int32_t val): number_type_(BasicType::INT_BTYPE) {
         value_.int_val = val;
+    }
+
+    BasicType getBtype() const {
+        return number_type_;
+    }
+
+    ExprType getExprNodeType() override {
+        return NUMBER_TYPE;
     }
 
     void dump(std::ostream &out, size_t n) override;
@@ -270,6 +279,11 @@ public:
     void addArrayValue(const ArrayValuePtr &array_value) {
         valueList_.push_back(array_value);
     }
+
+    ExprType getExprNodeType() override {
+        return ARRAYVALUE_TYPE;
+    }
+
     void dump(std::ostream &out, size_t n) override;
 public:
     bool is_number_;
@@ -297,6 +311,10 @@ public:
         return id_.get();
     }
 
+    ExprType getExprNodeType() override {
+        return LVAL_TYPE;
+    }
+
     void dump(std::ostream &out, size_t n) override;
 
 private:
@@ -316,6 +334,10 @@ public:
 
     UnaryOpType getOpType() const {
         return optype_;
+    }
+
+    ExprType getExprNodeType() override {
+        return UNARY_TYPE;
     }
 
     void dump(std::ostream &out, size_t n) override;
@@ -343,6 +365,10 @@ public:
 
     Expression *getRightExpr() const {
         return right_expr_.get();
+    }
+
+    ExprType getExprNodeType() override {
+        return BINARY_TYPE;
     }
 
     void dump(std::ostream &out, size_t n) override;
@@ -416,6 +442,10 @@ public:
             return 0;
         }
         return actuals_->getSize();
+    }
+
+    ExprType getExprNodeType() override {
+        return CALLFUNC_TYPE;
     }
 
     void dump(std::ostream &out, size_t n) override;
@@ -613,10 +643,6 @@ public:
     ReturnStatement(const ExpressionPtr &expr = nullptr): expr_(expr) {}
 
     ~ReturnStatement() = default;
-
-    StatementType getStatementType() const {
-        return StatementType::RETURN_STMTTYPE;
-    }
 
     Expression *getExpr() const {
         return expr_.get();
