@@ -3,7 +3,7 @@
 //
 #include "Utils.h"
 
-static char dump_prefix[] = "--------------------------------------------------------------------------------";
+static char dump_prefix[] = "---------------------------------------------------------------------------------------------------------------------------------------------------------------";
 
 std::string getFileContent(const std::string& path) {
     std::ifstream file(path);
@@ -16,7 +16,7 @@ void dumpPrefix(std::ostream &out, size_t n) {
     if (n == 0) {
         return;
     }
-    out << dump_prefix + 80 - n;
+    out << dump_prefix + 160 - n;
 }
 
 std::string basicType2Str(BasicType type) {

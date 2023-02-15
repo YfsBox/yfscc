@@ -16,7 +16,6 @@ class AstVisitor {
     virtual void visit(const std::shared_ptr<UnaryExpr> &expr) = 0;
     virtual void visit(const std::shared_ptr<BinaryExpr> &expr) = 0;
     virtual void visit(const std::shared_ptr<AssignStatement> &stmt) = 0;
-    virtual void visit(const std::shared_ptr<BlockStatement> &stmt) = 0;
     virtual void visit(const std::shared_ptr<IfElseStatement> &stmt) = 0;
     virtual void visit(const std::shared_ptr<WhileStatement> &stmt) = 0;
     virtual void visit(const std::shared_ptr<BreakStatement> &stmt) = 0;

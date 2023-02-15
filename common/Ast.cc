@@ -54,7 +54,7 @@ void VarDefine::dump(std::ostream &out, size_t n) {
 void FuncDefine::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
     out << "FuncDefine(" << basicType2Str(return_type_) << "):\n";
-    func_id_->dump(out, n + 1);
+    id_->dump(out, n + 1);
     if (formals_) {
         formals_->dump(out, n + 1);
     }
@@ -128,10 +128,19 @@ void FuncFParam::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
     out << "Formal: " << basicType2Str(type_) << " " << id_->getId() << '\n';
     // dumpPrefix(out, n + 1);
-    if (id_->getDimensionSize()) {
+    auto dsize = id_->getDimensionSize();
+    if (dsize) {
         dumpPrefix(out, n + 1);
-        out << "ArrayFormal Dimension:";
-
+        out << "ArrayFormal Dimension:\n";
+        for (size_t i = 0; i < dsize; ++i) {
+            auto expr = id_->getDimensionExpr(i);
+            if (expr) {
+                expr->dump(out, n + 2);
+            } else {
+                dumpPrefix(out, n + 2);
+                out << "NULL DIMENSION\n";
+            }
+        }
     }
 }
 

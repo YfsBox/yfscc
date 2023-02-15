@@ -96,11 +96,13 @@ public:
 class Define: public AstNode {
 public:
     // virtual DefType getDefType() = 0;
+    explicit Define(const IdentifierPtr &ident): id_(ident) {}
+    IdentifierPtr id_;
 };
 
 class ConstDefine: public Define {     // 暂时不考虑数组
 public:
-    ConstDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): id_(identifier), init_expr_(expr) {}
+    ConstDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): Define(identifier), init_expr_(expr) {}
 
     ~ConstDefine() = default;
 
@@ -119,13 +121,12 @@ public:
     }
 
 private:
-    IdentifierPtr id_;
     ExpressionPtr init_expr_;
 };
 
 class VarDefine: public Define {
 public:
-    VarDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): id_(identifier), init_expr_(expr) {}
+    VarDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): Define(identifier), init_expr_(expr) {}
 
     ~VarDefine() = default;
 
@@ -148,7 +149,6 @@ public:
     }
 
 private:
-    IdentifierPtr id_;
     ExpressionPtr init_expr_;
 };
 
@@ -157,8 +157,8 @@ public:
     using FuncFParamsPtr = std::shared_ptr<FuncFParams>;
 
     FuncDefine(BasicType return_type, const IdentifierPtr &identifier, const FuncFParamsPtr &formals, const StatementPtr &block):
+            Define(identifier),
             return_type_(return_type),
-            func_id_(identifier),
             formals_(formals),
             block_(block){
 
@@ -173,7 +173,7 @@ public:
     }
 
     Identifier *getId() const {
-        return func_id_.get();
+        return id_.get();
     }
 
     FuncFParams *getFormals() const {
@@ -186,10 +186,8 @@ public:
 
 private:
     BasicType return_type_;
-    IdentifierPtr func_id_;
     FuncFParamsPtr formals_;
     StatementPtr block_;
-
 };
 
 class ConstDeclare :public Declare {
@@ -238,9 +236,11 @@ public:
     void addDimension(const ExpressionPtr &expr) {
         array_dimension_.push_back(expr);
     }
-
     size_t getDimensionSize() const {
         return array_dimension_.size();
+    }
+    Expression *getDimensionExpr(size_t idx) const {
+        return array_dimension_[idx].get();
     }
 
 private:

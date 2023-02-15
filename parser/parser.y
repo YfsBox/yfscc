@@ -307,6 +307,7 @@ func_formal: basic_type identifier { $$ = new FuncFParam($1, std::shared_ptr<Ide
 
 func_array_formal: basic_type identifier LEFT_BRACKETS RIGHT_BRACKETS {
             $$ = new FuncFParam($1, std::shared_ptr<Identifier>($2));
+            $$->getFormalId()->addDimension(std::shared_ptr<Expression>(nullptr));
       }
       | func_array_formal LEFT_BRACKETS addexp RIGHT_BRACKETS {
             $$ = $1;
