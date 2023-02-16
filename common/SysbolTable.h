@@ -43,7 +43,6 @@ private:
     Identifier *id_;
 };
 
-
 template<class DATA>
 class SymbolTable {
 public:

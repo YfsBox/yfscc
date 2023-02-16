@@ -455,6 +455,10 @@ public:
         return CALLFUNC_TYPE;
     }
 
+    Expression *getActual(size_t idx) const {
+        return actuals_->getExprByIdx(idx);
+    }
+
     void dump(std::ostream &out, size_t n) override;
 
 private:

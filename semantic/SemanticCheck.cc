@@ -4,6 +4,11 @@
 #include <unordered_set>
 #include "SemanticCheck.h"
 
+void SemanticCheck::addLibFunc() {
+
+
+}
+
 bool SemanticCheck::checkIsValidMain(const FuncDefine *funcdef) {
     return funcdef->id_->getId() == "main" && funcdef->getFormals()->getFormalSize() == 0
         && funcdef->getReturnType() == BasicType::INT_BTYPE;
@@ -25,6 +30,7 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
             appendError("#Function Identifier Redination,the name is " + func_name + "\n");
         }
         name_set.insert(func_name);
+        func_map_.insert({func_name, func_def});
         if (checkIsValidMain(func_def)) {
             have_main = true;
         }
@@ -158,6 +164,11 @@ void SemanticCheck::visit(const std::shared_ptr<AssignStatement> &stmt) {
 }
 
 void SemanticCheck::visit(const std::shared_ptr<IfElseStatement> &stmt) {
+    auto cond_expr = stmt->getCond();
+    visit(ExpressionPtr(cond_expr));
+    if (cond_expr->expr_type_ == BasicType::VOID_BTYPE) {
+        appendError("#The condition in if-else can't be void type\n");
+    }
 
 
 
@@ -178,6 +189,35 @@ void SemanticCheck::visit(const std::shared_ptr<ContinueStatement> &stmt) {
     if (!isInWhile()) {
         appendError("#Continue statement not in while.\n");
     }
+}
+
+void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
+    // 首先查找该函数的identifier是否存在
+    std::string func_name = expr->getFuncId()->getId();
+    auto find_func = func_map_.find(func_name);
+    if (find_func == func_map_.end()) {     // 如果该函数不存在
+        appendError("#Call a function " + func_name + " not exist.\n");
+        return;
+    }
+    // 检查是否是标准库中的函数，待补充
+
+
+    // 首先检查参数的数量是否是匹配的
+    FuncDefine *func_def = find_func->second;
+    expr->expr_type_ = func_def->getReturnType();
+
+    size_t actual_size = expr->getActualSize();
+    size_t formal_size = func_def->getFormals()->getFormalSize();
+    if (actual_size != formal_size) {
+        appendError("#The size of actuals not equal the size of formals\n");
+        return;
+    }
+    // 通过环境表获取到表项之后,需要检查参数是否是匹配的
+    for (size_t i = 0; i < actual_size; ++i) {
+        auto actual_expr = expr->getActual(i);
+        visit(ExpressionPtr(actual_expr));
+    }
+
 }
 
 void SemanticCheck::visit(const std::shared_ptr<ReturnStatement> &stmt) {
@@ -217,4 +257,8 @@ void SemanticCheck::visit(const std::shared_ptr<LvalExpr> &expr) {
     } else {
         appendError("#The LvalExpr named " + ident->getId() + " not declared\n");
     }
+}
+
+void SemanticCheck::visit(const std::shared_ptr<Statement> &stmt) {
+
 }

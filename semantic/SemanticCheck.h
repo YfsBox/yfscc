@@ -5,11 +5,14 @@
 #ifndef YFSCC_SEMANTICCHECK_H
 #define YFSCC_SEMANTICCHECK_H
 
+#include <unordered_map>
 #include "../common/AstVisitor.h"
 #include "../common/SysbolTable.h"
 
 class SemanticCheck: public AstVisitor {
 public:
+    using FuncDefineMap = std::unordered_map<std::string, FuncDefine*>;
+
     SemanticCheck(): curr_while_depth_(0), error_cnt(0), curr_func_scope_(nullptr) {}
     ~SemanticCheck() = default;
 
@@ -25,10 +28,12 @@ public:
     void visit(const std::shared_ptr<WhileStatement> &stmt) override;
     void visit(const std::shared_ptr<BreakStatement> &stmt) override;
     void visit(const std::shared_ptr<ContinueStatement> &stmt) override;
+    void visit(const std::shared_ptr<CallFuncExpr> &expr) override;
     void visit(const std::shared_ptr<ReturnStatement> &stmt) override;
     void visit(const std::shared_ptr<Number> &number) override;
     void visit(const std::shared_ptr<Expression> &expr) override;
     void visit(const std::shared_ptr<LvalExpr> &expr) override;
+    void visit(const std::shared_ptr<Statement> &stmt) override;
 
 private:
 
@@ -50,11 +55,14 @@ private:
         return curr_while_depth_ != 0;
     }
 
+    void addLibFunc();
+
     size_t curr_while_depth_;        // 用来记录当前是否处于while之中
     size_t error_cnt;
     FuncDefine *curr_func_scope_;
     std::vector<std::string> error_msgs_;
     // SymbolTable<FuncDefine> func_systable_;
+    FuncDefineMap func_map_;
     SymbolTable<SymbolEntry> ident_systable_;
 };
 
