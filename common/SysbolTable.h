@@ -21,12 +21,20 @@ public:
         return id_->getId();
     }
 
+    BasicType getType() const {
+        return type_;
+    }
+
     bool isConst() const {
         return is_const_;
     }
 
     bool isArray() const {
         return id_->getDimensionSize() != 0;
+    }
+
+    Identifier *getId() const {
+        return id_;
     }
 
 private:

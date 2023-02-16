@@ -97,6 +97,9 @@ public:
     // virtual DefType getDefType() = 0;
     explicit Define(const IdentifierPtr &ident): id_(ident) {}
     virtual DefType getDefType() = 0;
+    Identifier *getId() const {
+        return id_.get();
+    }
     IdentifierPtr id_;
 };
 
@@ -389,6 +392,10 @@ public:
 
     Identifier *getFormalId() const {
         return id_.get();
+    }
+
+    BasicType getBtype() const {
+        return type_;
     }
 
     void dump(std::ostream &out, size_t n) override;

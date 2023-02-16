@@ -10,7 +10,7 @@
 
 class SemanticCheck: public AstVisitor {
 public:
-    SemanticCheck(): error_cnt(0), curr_while_depth_(0) {}
+    SemanticCheck(): curr_while_depth_(0), error_cnt(0), curr_func_scope_(nullptr) {}
     ~SemanticCheck() = default;
 
     void visit(const std::shared_ptr<CompUnit> &compunit) override;
@@ -28,6 +28,7 @@ public:
     void visit(const std::shared_ptr<ReturnStatement> &stmt) override;
     void visit(const std::shared_ptr<Number> &number) override;
     void visit(const std::shared_ptr<Expression> &expr) override;
+    void visit(const std::shared_ptr<LvalExpr> &expr) override;
 
 private:
 
@@ -51,6 +52,7 @@ private:
 
     size_t curr_while_depth_;        // 用来记录当前是否处于while之中
     size_t error_cnt;
+    FuncDefine *curr_func_scope_;
     std::vector<std::string> error_msgs_;
     // SymbolTable<FuncDefine> func_systable_;
     SymbolTable<SymbolEntry> ident_systable_;

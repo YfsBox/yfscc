@@ -54,21 +54,28 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
 
 void SemanticCheck::visit(const std::shared_ptr<Declare> &decl) {
     for (auto &def : decl->defs_) {
-        if (dynamic_cast<ConstDefine*>(def.get())) {
-
-        } else {
-
+        if (def->getDefType() == DefType::CONSTDEF) {
+            visit(std::dynamic_pointer_cast<ConstDefine>(def));
+        } else if (def->getDefType() == DefType::VARDEF) {
+            visit(std::dynamic_pointer_cast<VarDefine>(def));
         }
     }
 }
 
-void SemanticCheck::visit(const std::shared_ptr<ConstDefine> &def) {}
+void SemanticCheck::visit(const std::shared_ptr<ConstDefine> &def) {
 
-void SemanticCheck::visit(const std::shared_ptr<VarDefine> &def) {}
+
+}
+
+void SemanticCheck::visit(const std::shared_ptr<VarDefine> &def) {
+
+
+}
 
 void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
     // 首先创建新的作用域
     ident_systable_.enterScope();
+    curr_func_scope_ = def.get();
     std::unordered_set<std::string> formal_name_set;
     for (size_t i = 0; i < def->getFormals()->getFormalSize(); ++i) {
         auto formal = def->getFormals()->getFuncFormal(i);
@@ -78,10 +85,13 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
             appendError("#the formal name invalid in function " + def->id_->getId() + ".\n");
         }
         formal_name_set.insert(formal_name);
-
+        // 加入到符号表中
+        SymbolEntry new_symbol(formal->getBtype(), formal->getFormalId(), false);
+        ident_systable_.addIdent(new_symbol);
     }
+    // 之后分析block部分的代码
 
-
+    curr_func_scope_ = nullptr;
     ident_systable_.exitScope();
 }
 
@@ -147,9 +157,16 @@ void SemanticCheck::visit(const std::shared_ptr<AssignStatement> &stmt) {
     visit(ExpressionPtr(right));
 }
 
-void SemanticCheck::visit(const std::shared_ptr<IfElseStatement> &stmt) {}
+void SemanticCheck::visit(const std::shared_ptr<IfElseStatement> &stmt) {
 
-void SemanticCheck::visit(const std::shared_ptr<WhileStatement> &stmt) {}
+
+
+}
+
+void SemanticCheck::visit(const std::shared_ptr<WhileStatement> &stmt) {
+
+
+}
 
 void SemanticCheck::visit(const std::shared_ptr<BreakStatement> &stmt) {
     if (!isInWhile()) {
@@ -164,11 +181,40 @@ void SemanticCheck::visit(const std::shared_ptr<ContinueStatement> &stmt) {
 }
 
 void SemanticCheck::visit(const std::shared_ptr<ReturnStatement> &stmt) {
-    if (stmt->getExpr()) {
-
+    if (!curr_func_scope_) {
+        appendError("#The return statement not in a function scope\n");
+    } else {
+        auto ret_type = curr_func_scope_->getReturnType();
+        std::string func_name = curr_func_scope_->getId()->getId();
+        auto ret_expr = stmt->getExpr();
+        /*if (ret_type != BasicType::VOID_BTYPE && !ret_expr) {    // 返回类型为int或者float时，表达式不应该为null
+            appendError("#The function " + func_name + " can't have a return statement with null\n");
+        } else*/
+        if (ret_type == BasicType::VOID_BTYPE && ret_expr) {
+            appendError("The function(VOID) can't have a return statement(expr)\n");
+        }
     }
 }
 
 void SemanticCheck::visit(const std::shared_ptr<Number> &number) {
     number->expr_type_ = number->getBtype();
+}
+
+void SemanticCheck::visit(const std::shared_ptr<LvalExpr> &expr) {
+    // 首先检查其对应的name是否存在
+    auto ident = expr->getId();
+    auto symbol_entry = ident_systable_.lookupFromAll(ident->getId());
+    if (symbol_entry) { // 如果存在
+        bool is_array = symbol_entry->isArray();
+        size_t dimension_size = expr->getId()->getDimensionSize();
+        if (is_array && expr->getId()->getDimensionSize() != dimension_size) {  // 如果时数组类型
+            appendError("#The LvalExpr array size error\n");
+        } else if (!is_array && dimension_size > 0) {      // 单变量但是存在维度
+            appendError("#The LvalExpr should't have dimension\n");
+        } else {    // 合法的情况
+            expr->expr_type_ = symbol_entry->getType();
+        }
+    } else {
+        appendError("#The LvalExpr named " + ident->getId() + " not declared\n");
+    }
 }
