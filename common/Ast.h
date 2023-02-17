@@ -6,6 +6,8 @@
 
 #include <vector>
 #include <memory>
+#include <algorithm>
+#include <string>
 #include "Types.h"
 
 class AstNode;
@@ -81,13 +83,16 @@ private:
 
 class Statement: public AstNode {
 public:
-    // virtual StatementType getStatementType() = 0;
+    virtual StatementType getStmtType() = 0;
 };
 
 class Declare: public Statement {
 public:
     explicit Declare(BasicType type): type_(type) {}
     virtual void addDef(const std::shared_ptr<Define> &def) = 0;
+    StatementType getStmtType() override {
+        return StatementType::DECL_STMTTYPE;
+    }
     BasicType type_;
     std::vector<DefinePtr> defs_;
 };
@@ -165,6 +170,10 @@ public:
 
     BasicType getReturnType() const {
         return return_type_;
+    }
+
+    DefType getDefType() override {
+        return DefType::FUNCDEF;
     }
 
     FuncFParams *getFormals() const {
@@ -293,17 +302,6 @@ public:
     ExpressionPtr value_;
     std::vector<ArrayValuePtr> valueList_;
 };
-
-/*class ArrayDeclare: public Declare {
-public:
-    ArrayDeclare(BasicType type, const IdentifierPtr &identifier, const ArrayValuePtr &array_value,
-                 bool is_const)
-            :Declare(type), is_const_(is_const), id_(identifier), value_(array_value) {}
-public:
-    bool is_const_;
-    IdentifierPtr id_;
-    ArrayValuePtr value_;
-};*/
 
 class LvalExpr: public Expression {        // 包不包括数组？？
 public:
@@ -466,34 +464,13 @@ private:
     FuncRParamsPtr actuals_;
 };
 
-/*
-class ExprStatement: public Statement {
-public:
-    explicit ExprStatement(const ExpressionPtr &expr): expr_(expr) {}
-
-    ~ExprStatement() = default;
-
-    StatementType getStatementType() const {
-        return StatementType::EXPE_STMTTYPE;
-    }
-
-    Expression *getExpr() const {
-        return expr_.get();
-    }
-
-    void dump(std::ostream &out, size_t n) override;
-
-private:
-    ExpressionPtr expr_;
-};*/
-
 class AssignStatement: public Statement {
 public:
     AssignStatement(const ExpressionPtr &left, const ExpressionPtr &right):left_(left), right_(right) {}
 
     ~AssignStatement() = default;
 
-    StatementType getStatementType() const {
+    StatementType getStmtType() override {
         return StatementType::ASSIGN_STMTTYPE;
     }
 
@@ -512,13 +489,17 @@ private:
     ExpressionPtr right_;
 };
 
-class BlockIterm: public Statement {
+class BlockItem: public Statement {
 public:
-    BlockIterm(const StatementPtr &stmt): stmt_(stmt) {}
+    BlockItem(const StatementPtr &stmt): stmt_(stmt) {}
 
-    BlockIterm(const DeclarePtr &decl): stmt_(decl) {}
+    BlockItem(const DeclarePtr &decl): stmt_(decl) {}
 
-    ~BlockIterm() = default;
+    ~BlockItem() = default;
+
+    StatementType getStmtType() override {
+        return StatementType::BLOCKITEM_STMTTYPE;
+    }
 
     void dump(std::ostream &out, size_t n) override;
 
@@ -526,39 +507,57 @@ private:
     StatementPtr stmt_;
 };
 
-class BlockIterms: public Statement {
+class BlockItems: public Statement {
 public:
-    using BlockItermPtr = std::shared_ptr<BlockIterm>;
+    using BlockItemPtr = std::shared_ptr<BlockItem>;
 
-    BlockIterms() = default;
+    BlockItems() = default;
 
-    void addIterm(const BlockItermPtr &iterm) {
-        iterms_.push_back(iterm);
+    void addItem(const BlockItemPtr &iterm) {
+        items_.push_back(iterm);
+    }
+
+    StatementType getStmtType() override {
+        return StatementType::BLOCKITEMS_STMTTYPE;
+    }
+
+    size_t getItemSize() const {
+        return items_.size();
+    }
+
+    BlockItem *getBlockItem(size_t idx) const {
+        return items_[idx].get();
     }
 
     void dump(std::ostream &out, size_t n) override;
 
 private:
-    std::vector<BlockItermPtr> iterms_;
+    std::vector<BlockItemPtr> items_;
 };
 /*
 class BlockStatement: public Statement {
 public:
-    using BlockItermsPtr = std::shared_ptr<BlockIterms>;
+    using BlockItemsPtr = std::shared_ptr<BlockItems>;
 
-    BlockStatement(const BlockItermsPtr &iterms): iterms_(iterms) {}
+    BlockStatement(const BlockItemsPtr &iterms): iterms_(iterms) {}
 
     ~BlockStatement() = default;
 
 private:
-    BlockItermsPtr iterms_;
+    BlockItemsPtr iterms_;
 };*/
 
 class EvalStatement: public Statement {
 public:
     EvalStatement(const ExpressionPtr &expr): expr_(expr) {}
     ~EvalStatement() = default;
+
     void dump(std::ostream &out, size_t n) override;
+
+    StatementType getStmtType() override {
+        return StatementType::EVAL_STMTTYPE;
+    }
+
 private:
     ExpressionPtr expr_;
 };
@@ -570,7 +569,7 @@ public:
 
     ~IfElseStatement() = default;
 
-    StatementType getStatementType() const {
+    StatementType getStmtType() override {
         return StatementType::IFELSE_STMTTYPE;
     }
 
@@ -604,7 +603,7 @@ public:
 
     ~WhileStatement() = default;
 
-    StatementType getStatementType() const {
+    StatementType getStmtType() override {
         return StatementType::WHILE_STMTTYPE;
     }
 
@@ -629,7 +628,7 @@ public:
 
     ~BreakStatement() = default;
 
-    StatementType getStatementType() const {
+    StatementType getStmtType() override {
         return StatementType::BREAK_STMTTYPE;
     }
 
@@ -642,7 +641,7 @@ public:
 
     ~ContinueStatement() = default;
 
-    StatementType getStatementType() const {
+    StatementType getStmtType() override {
         return StatementType::CONTINUE_STMTTYPE;
     }
 
@@ -660,6 +659,11 @@ public:
     }
 
     void dump(std::ostream &out, size_t n) override;
+
+    StatementType getStmtType() override {
+        return StatementType::RETURN_STMTTYPE;
+    }
+
 private:
     ExpressionPtr expr_;
 };

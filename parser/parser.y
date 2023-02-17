@@ -24,10 +24,10 @@ extern void yyerror(const char *s);
       Declare* declare;
       Identifier* ident;
       Expression* expr;
-      BlockIterms* block;
+      BlockItems* block;
       Statement* stmt;
       ArrayValue* array_value;
-      BlockIterm *block_stmt;
+      BlockItem *block_stmt;
       FuncFParams* formals;
       FuncFParam* formal;
       FuncRParams* actuals;
@@ -57,8 +57,8 @@ extern void yyerror(const char *s);
 %type <formals> func_formals
 %type <formal> func_formal func_array_formal
 %type <actuals> func_actuals
-%type <block> block block_iterms
-%type <block_stmt> block_iterm
+%type <block> block block_items
+%type <block_stmt> block_item
 %type <stmt> statement
 
 %start compunit
@@ -320,25 +320,25 @@ func_actuals: addexp { $$ = new FuncRParams(); $$->addExpr(std::shared_ptr<Expre
       ;
 
 block: LEFT_BRACES RIGHT_BRACES {
-            $$ = new BlockIterms();
+            $$ = new BlockItems();
       }
-     | LEFT_BRACES block_iterms RIGHT_BRACES {
+     | LEFT_BRACES block_items RIGHT_BRACES {
             $$ = $2;
       }
      ;
 
-block_iterms: block_iterm {
-            $$ = new BlockIterms();
-            if ($1 != nullptr) $$->addIterm(std::shared_ptr<BlockIterm>($1));
+block_items: block_item {
+            $$ = new BlockItems();
+            if ($1 != nullptr) $$->addItem(std::shared_ptr<BlockItem>($1));
       }
-      | block_iterms block_iterm {
+      | block_items block_item {
             $$ = $1;
-            if ($1 != nullptr) $$->addIterm(std::shared_ptr<BlockIterm>($2));
+            if ($1 != nullptr) $$->addItem(std::shared_ptr<BlockItem>($2));
       }
       ;
 
-block_iterm: decl { $$ = new BlockIterm(std::shared_ptr<Declare>($1)); }
-      | statement { $$ = new BlockIterm(std::shared_ptr<Statement>($1)); }
+block_item: decl { $$ = new BlockItem(std::shared_ptr<Declare>($1)); }
+      | statement { $$ = new BlockItem(std::shared_ptr<Statement>($1)); }
       ;
 
 statement: lval ASSIGN addexp SEMICOLON { $$ = new AssignStatement(std::shared_ptr<Expression>($1), std::shared_ptr<Expression>($3)); }

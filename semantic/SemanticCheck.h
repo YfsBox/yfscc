@@ -23,6 +23,8 @@ public:
     void visit(const std::shared_ptr<FuncDefine> &def) override;
     void visit(const std::shared_ptr<UnaryExpr> &expr) override;
     void visit(const std::shared_ptr<BinaryExpr> &expr) override;
+    void visit(const std::shared_ptr<BlockItems> &stmt) override;
+    void visit(const std::shared_ptr<BlockItem> &stmt) override;
     void visit(const std::shared_ptr<AssignStatement> &stmt) override;
     void visit(const std::shared_ptr<IfElseStatement> &stmt) override;
     void visit(const std::shared_ptr<WhileStatement> &stmt) override;

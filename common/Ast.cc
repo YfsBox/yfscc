@@ -168,16 +168,16 @@ void AssignStatement::dump(std::ostream &out, size_t n) {
     right_->dump(out, n + 1);
 }
 
-void BlockIterm::dump(std::ostream &out, size_t n) {
+void BlockItem::dump(std::ostream &out, size_t n) {
     if (stmt_) {
         stmt_->dump(out, n);
     }
 }
 
-void BlockIterms::dump(std::ostream &out, size_t n) {
+void BlockItems::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n);
     out << "Block:\n";
-    for (auto &item : iterms_) {
+    for (auto &item : items_) {
         item->dump(out, n + 1);
     }
 }

@@ -147,6 +147,22 @@ void SemanticCheck::visit(const std::shared_ptr<BinaryExpr> &expr) {
     }
 }
 
+void SemanticCheck::visit(const std::shared_ptr<BlockItems> &stmt) {
+    size_t item_size = stmt->getItemSize();
+    ident_systable_.enterScope();
+    for (size_t i = 0; i < item_size; ++i) {
+        auto item = stmt->getBlockItem(i);
+        if (item) {
+            visit(std::shared_ptr<BlockItem>(item));
+        }
+    }
+    ident_systable_.exitScope();
+}
+
+void SemanticCheck::visit(const std::shared_ptr<BlockItem> &stmt) {
+
+}
+
 void SemanticCheck::visit(const std::shared_ptr<AssignStatement> &stmt) {
     // 首先求出左半部分
     auto left = stmt->getLeftExpr();
@@ -165,17 +181,37 @@ void SemanticCheck::visit(const std::shared_ptr<AssignStatement> &stmt) {
 
 void SemanticCheck::visit(const std::shared_ptr<IfElseStatement> &stmt) {
     auto cond_expr = stmt->getCond();
-    visit(ExpressionPtr(cond_expr));
+    if (cond_expr) {
+        visit(ExpressionPtr(cond_expr));
+    }
     if (cond_expr->expr_type_ == BasicType::VOID_BTYPE) {
         appendError("#The condition in if-else can't be void type\n");
     }
-
-
+    auto ifstmt = stmt->getIfStmt();
+    if (ifstmt) {
+        visit(StatementPtr(ifstmt));
+    }
+    auto elsestmt = stmt->getElseStmt();
+    if (elsestmt) {
+        visit(StatementPtr(elsestmt));
+    }
 
 }
 
 void SemanticCheck::visit(const std::shared_ptr<WhileStatement> &stmt) {
+    auto cond_expr = stmt->getCond();
+    if (cond_expr) {
+        visit(ExpressionPtr(cond_expr));
+    }
 
+    if (cond_expr->expr_type_ == BasicType::VOID_BTYPE) {
+        appendError("#The condition in while can't be void type");
+    }
+
+    auto blockstmt = stmt->getStatement();
+    if (blockstmt) {
+        visit(StatementPtr(blockstmt));
+    }
 
 }
 
@@ -260,5 +296,33 @@ void SemanticCheck::visit(const std::shared_ptr<LvalExpr> &expr) {
 }
 
 void SemanticCheck::visit(const std::shared_ptr<Statement> &stmt) {
-
+    auto stmt_type = stmt->getStmtType();
+    switch (stmt_type) {
+        case EXPE_STMTTYPE:
+            return;
+        case ASSIGN_STMTTYPE:
+            visit(std::dynamic_pointer_cast<AssignStatement>(stmt));
+            return;
+        case BLOCKITEM_STMTTYPE:
+            visit(std::dynamic_pointer_cast<BlockItems>(stmt));
+            return;
+        case BLOCKITEMS_STMTTYPE:
+            visit(std::dynamic_pointer_cast<BlockItems>(stmt));
+            return;
+        case IFELSE_STMTTYPE:
+            visit(std::dynamic_pointer_cast<IfElseStatement>(stmt));
+            return;
+        case WHILE_STMTTYPE:
+            visit(std::dynamic_pointer_cast<WhileStatement>(stmt));
+            return;
+        case BREAK_STMTTYPE:
+            visit(std::dynamic_pointer_cast<BreakStatement>(stmt));
+            return;
+        case CONTINUE_STMTTYPE:
+            visit(std::dynamic_pointer_cast<ContinueStatement>(stmt));
+            return;
+        case RETURN_STMTTYPE:
+            visit(std::dynamic_pointer_cast<ReturnStatement>(stmt));
+            return;
+    }
 }
