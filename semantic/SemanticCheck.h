@@ -18,6 +18,8 @@ public:
 
     void visit(const std::shared_ptr<CompUnit> &compunit) override;
     void visit(const std::shared_ptr<Declare> &decl) override;
+    void visit(const std::shared_ptr<ConstDeclare> &decl) override;
+    void visit(const std::shared_ptr<VarDeclare> &decl) override;
     void visit(const std::shared_ptr<ConstDefine> &def) override;
     void visit(const std::shared_ptr<VarDefine> &def) override;
     void visit(const std::shared_ptr<FuncDefine> &def) override;

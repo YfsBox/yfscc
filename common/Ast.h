@@ -501,6 +501,10 @@ public:
         return StatementType::BLOCKITEM_STMTTYPE;
     }
 
+    Statement *getStmt() const {
+        return stmt_.get();
+    }
+
     void dump(std::ostream &out, size_t n) override;
 
 private:

@@ -23,6 +23,8 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
 
     bool have_main = false;
 
+    ident_systable_.enterScope();       // 进入全局作用域
+
     for (size_t i = 0; i < func_number; ++i) {
         auto func_def = compunit->getFuncDef(i);
         std::string func_name = func_def->id_->getId();
@@ -56,6 +58,8 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
         visit(DeclarePtr(decl));
     }
 
+    ident_systable_.exitScope();    // 退出全局作用域
+
 }
 
 void SemanticCheck::visit(const std::shared_ptr<Declare> &decl) {
@@ -68,14 +72,43 @@ void SemanticCheck::visit(const std::shared_ptr<Declare> &decl) {
     }
 }
 
-void SemanticCheck::visit(const std::shared_ptr<ConstDefine> &def) {
+void SemanticCheck::visit(const std::shared_ptr<ConstDeclare> &decl) {
+    for (auto &def : decl->defs_) {
 
+
+    }
+}
+
+void SemanticCheck::visit(const std::shared_ptr<VarDeclare> &decl) {
+    for (auto &def : decl->defs_) {
+
+
+    }
+}
+
+void SemanticCheck::visit(const std::shared_ptr<ConstDefine> &def) {
+    // 这里的处理是要区分是否是数组的
+    auto def_id = def->getId();
+    if (!def_id->getDimensionSize()) {      // 非数组
+
+
+    } else {
+
+
+    }
 
 }
 
 void SemanticCheck::visit(const std::shared_ptr<VarDefine> &def) {
+    auto def_id = def->getId();
+    // 首先需要检查的是，在当前作用域之下，有没有重复定义的问题
+    if (!def_id->getDimensionSize()) {      // 非数组
 
 
+    } else {
+
+
+    }
 }
 
 void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
@@ -96,7 +129,7 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
         ident_systable_.addIdent(new_symbol);
     }
     // 之后分析block部分的代码
-
+    visit(StatementPtr(def->getBlock()));
     curr_func_scope_ = nullptr;
     ident_systable_.exitScope();
 }
@@ -160,7 +193,10 @@ void SemanticCheck::visit(const std::shared_ptr<BlockItems> &stmt) {
 }
 
 void SemanticCheck::visit(const std::shared_ptr<BlockItem> &stmt) {
-
+    auto item_stmt = stmt->getStmt();
+    if (item_stmt) {
+        visit(StatementPtr(item_stmt));
+    }
 }
 
 void SemanticCheck::visit(const std::shared_ptr<AssignStatement> &stmt) {
@@ -210,7 +246,10 @@ void SemanticCheck::visit(const std::shared_ptr<WhileStatement> &stmt) {
 
     auto blockstmt = stmt->getStatement();
     if (blockstmt) {
+        // 进入一层while的作用域
+        curr_while_depth_++;
         visit(StatementPtr(blockstmt));
+        curr_while_depth_--;
     }
 
 }
@@ -298,8 +337,6 @@ void SemanticCheck::visit(const std::shared_ptr<LvalExpr> &expr) {
 void SemanticCheck::visit(const std::shared_ptr<Statement> &stmt) {
     auto stmt_type = stmt->getStmtType();
     switch (stmt_type) {
-        case EXPE_STMTTYPE:
-            return;
         case ASSIGN_STMTTYPE:
             visit(std::dynamic_pointer_cast<AssignStatement>(stmt));
             return;
