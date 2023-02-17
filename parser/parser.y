@@ -346,13 +346,25 @@ statement: lval ASSIGN addexp SEMICOLON { $$ = new AssignStatement(std::shared_p
       | addexp SEMICOLON { $$ = new EvalStatement(std::shared_ptr<Expression>($1)); }
       | block { $$ = $1; }
       | IF LEFT_PARENTHESES lorexp RIGHT_PARENTHESES statement {
-            $$ = new IfElseStatement(std::shared_ptr<Expression>($3), std::shared_ptr<Statement>($5));
+            auto then_stmt_block = std::make_shared<BlockItems>();
+            auto then_stmt_block_item = std::make_shared<BlockItem>(std::shared_ptr<Statement>($5));
+            then_stmt_block->addItem(then_stmt_block_item);
+            $$ = new IfElseStatement(std::shared_ptr<Expression>($3), then_stmt_block);
       }
       | IF LEFT_PARENTHESES lorexp RIGHT_PARENTHESES statement ELSE statement {
-            $$ = new IfElseStatement(std::shared_ptr<Expression>($3), std::shared_ptr<Statement>($5), std::shared_ptr<Statement>($7));
+            auto then_stmt_block = std::make_shared<BlockItems>();
+            auto then_stmt_block_item = std::make_shared<BlockItem>(std::shared_ptr<Statement>($5));
+            then_stmt_block->addItem(then_stmt_block_item);
+            auto else_stmt_block = std::make_shared<BlockItems>();
+            auto else_stmt_block_item = std::make_shared<BlockItem>(std::shared_ptr<Statement>($7));
+            else_stmt_block->addItem(else_stmt_block_item);
+            $$ = new IfElseStatement(std::shared_ptr<Expression>($3), then_stmt_block, else_stmt_block);
       }
       | WHILE LEFT_PARENTHESES lorexp RIGHT_PARENTHESES statement {
-            $$ = new WhileStatement(std::shared_ptr<Expression>($3), std::shared_ptr<Statement>($5));
+            auto block_items = new BlockItems();
+            auto block_item = new BlockItem(std::shared_ptr<Statement>($5));
+            block_items->addItem(std::shared_ptr<BlockItem>(block_item));
+            $$ = new WhileStatement(std::shared_ptr<Expression>($3), std::shared_ptr<Statement>(block_items));
       }
       | BREAK SEMICOLON { $$ = new BreakStatement(); }
       | CONTINUE SEMICOLON { $$ = new ContinueStatement(); }
