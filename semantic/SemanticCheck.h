@@ -59,6 +59,8 @@ private:
         return curr_while_depth_ != 0;
     }
 
+    bool canCalculated(Expression *init, float *value);
+
     void addLibFunc();
 
     size_t curr_while_depth_;        // 用来记录当前是否处于while之中

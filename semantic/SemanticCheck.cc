@@ -9,6 +9,108 @@ void SemanticCheck::addLibFunc() {
 
 }
 
+bool SemanticCheck::canCalculated(Expression *init, float *value) {
+    auto expr_type = init->getExprNodeType();
+    visit(ExpressionPtr(init));
+    // 用于根据表达式的不同类型计算出value
+    switch (expr_type) {
+        case ExprType::NUMBER_TYPE: {
+            auto number_expr = dynamic_cast<Number *>(init);
+            if (number_expr->getBtype() == BasicType::INT_BTYPE) {
+                *value = static_cast<float>(number_expr->getIntValue());
+            } else if (number_expr->getBtype() == BasicType::FLOAT_BTYPE) {
+                *value = number_expr->getFloatValue();
+            } else {
+                return false;
+            }
+            return true;
+        }
+        case ExprType::BINARY_TYPE: {
+            auto binary_expr = dynamic_cast<BinaryExpr *>(init);
+            float value_1, value_2;
+            if (canCalculated(binary_expr->getLeftExpr(), &value_1)
+                && canCalculated(binary_expr->getRightExpr(), &value_2)) {
+                switch (binary_expr->getOpType()) {
+                    case BinaryOpType::GT_OPTYPE:
+                        *value = (value_1 > value_2);
+                        break;
+                    case BinaryOpType::OR_OPTYPE:
+                        *value = (value_1 || value_2);
+                        break;
+                    case BinaryOpType::AND_OPTYPE:
+                        *value = (value_1 && value_2);
+                        break;
+                    case BinaryOpType::NEQ_OPTYPE:
+                        *value = (value_1 != value_2);
+                        break;
+                    case BinaryOpType::EQ_OPTYPE:
+                        *value = (value_1 == value_2);
+                        break;
+                    case BinaryOpType::GTE_OPTYPE:
+                        *value = (value_1 >= value_2);
+                        break;
+                    case BinaryOpType::LT_OPTYPE:
+                        *value = (value_1 < value_2);
+                        break;
+                    case BinaryOpType::LTE_OPTYPE:
+                        *value = (value_1 <= value_2);
+                        break;
+                    case BinaryOpType::MOD_OPTYPE:
+                        *value = (static_cast<int32_t>(value_1) % static_cast<int32_t>(value_2));
+                        break;
+                    case BinaryOpType::MUL_OPTYPE:
+                        *value = (value_1 * value_2);
+                        break;
+                    case BinaryOpType::DIV_OPTYPE:
+                        *value = (value_1 / value_2);
+                        break;
+                    case BinaryOpType::SUB_OPTYPE:
+                        *value = (value_1 - value_2);
+                        break;
+                    case BinaryOpType::ADD_OPTYPE:
+                        *value = (value_1 + value_2);
+                        break;
+                    default:
+                        return false;
+                }
+                return true;
+            }
+            return false;
+        }
+        case ExprType::UNARY_TYPE: {
+            auto unary_expr = dynamic_cast<UnaryExpr *>(init);
+            float tmp_value;
+            if (canCalculated(unary_expr->getExpr(), &tmp_value)) {
+                auto unaryop_type = unary_expr->getOpType();
+                switch (unaryop_type) {
+                    case UnaryOpType::POSITIVE_OPTYPE: {
+                        *value = tmp_value;
+                        break;
+                    }
+                    case UnaryOpType::NEGATIVE_OPTYPE: {
+                        *value = ~static_cast<int32_t>(tmp_value);
+                        break;
+                    }
+                    case UnaryOpType::NOTOP_OPTYPE: {
+                        *value = !static_cast<int32_t>(tmp_value);
+                        break;
+                    }
+                    default: {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+        case ExprType::LVAL_TYPE: {
+
+        }
+        default:
+            return false;
+    }
+}
+
 bool SemanticCheck::checkIsValidMain(const FuncDefine *funcdef) {
     return funcdef->id_->getId() == "main" && funcdef->getFormals()->getFormalSize() == 0
         && funcdef->getReturnType() == BasicType::INT_BTYPE;
@@ -41,15 +143,18 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
     if (!have_main) {
         appendError("#Not have a valid main function\n");
     }
-
+    // 尽可能将全局变量加入到环境表中
     for (size_t i = 0; i < decl_number; ++i) {
         auto decl = compunit->getDecl(i);
         for (auto &def : decl->defs_) {
             std::string name = def->id_->getId();
+            bool is_const = (def->getDefType() == DefType::CONSTDEF);
             if (name_set.find(name) != name_set.end()) {        // 重复过的名字
                 appendError("#Identifier Redination,the name is " + name + "\n");
             }
             name_set.insert(name);
+            SymbolEntry new_symbol(decl->type_, def->getId(), is_const);
+            ident_systable_.addIdent(new_symbol);
         }
     }
 
@@ -72,19 +177,9 @@ void SemanticCheck::visit(const std::shared_ptr<Declare> &decl) {
     }
 }
 
-void SemanticCheck::visit(const std::shared_ptr<ConstDeclare> &decl) {
-    for (auto &def : decl->defs_) {
+void SemanticCheck::visit(const std::shared_ptr<ConstDeclare> &decl) {}
 
-
-    }
-}
-
-void SemanticCheck::visit(const std::shared_ptr<VarDeclare> &decl) {
-    for (auto &def : decl->defs_) {
-
-
-    }
-}
+void SemanticCheck::visit(const std::shared_ptr<VarDeclare> &decl) {}
 
 void SemanticCheck::visit(const std::shared_ptr<ConstDefine> &def) {
     // 这里的处理是要区分是否是数组的

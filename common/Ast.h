@@ -275,6 +275,14 @@ public:
 
     void dump(std::ostream &out, size_t n) override;
 
+    int32_t getIntValue() const {
+        return value_.int_val;
+    }
+
+    float getFloatValue() const {
+        return value_.float_val;
+    }
+
 private:
     union {
         int32_t int_val;
