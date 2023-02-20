@@ -131,7 +131,7 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
         auto func_def = compunit->getFuncDef(i);
         std::string func_name = func_def->id_->getId();
         if (name_set.find(func_name) != name_set.end()) {       // 如果之前已经存在了
-            appendError("#Function Identifier Redination,the name is " + func_name + "\n");
+            appendError(compunit.get(), "#Function Identifier Redination,the name is " + func_name + "\n");
         }
         name_set.insert(func_name);
         func_map_.insert({func_name, func_def});
@@ -141,7 +141,7 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
     }
 
     if (!have_main) {
-        appendError("#Not have a valid main function\n");
+        appendError(compunit.get(), "#Not have a valid main function\n");
     }
     // 尽可能将全局变量加入到环境表中
     for (size_t i = 0; i < decl_number; ++i) {
@@ -150,7 +150,7 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
             std::string name = def->id_->getId();
             bool is_const = (def->getDefType() == DefType::CONSTDEF);
             if (name_set.find(name) != name_set.end()) {        // 重复过的名字
-                appendError("#Identifier Redination,the name is " + name + "\n");
+                appendError(def.get(), "#Identifier Redination,the name is " + name + "\n");
             }
             name_set.insert(name);
             SymbolEntry new_symbol(decl->type_, def->getId(), is_const);
@@ -170,9 +170,9 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
 void SemanticCheck::visit(const std::shared_ptr<Declare> &decl) {
     for (auto &def : decl->defs_) {
         if (def->getDefType() == DefType::CONSTDEF) {
-            visit(std::dynamic_pointer_cast<ConstDefine>(def));
+            checkConstDefine(std::dynamic_pointer_cast<ConstDefine>(def), decl->type_);
         } else if (def->getDefType() == DefType::VARDEF) {
-            visit(std::dynamic_pointer_cast<VarDefine>(def));
+            checkVarDefine(std::dynamic_pointer_cast<VarDefine>(def), decl->type_);
         }
     }
 }
@@ -181,30 +181,66 @@ void SemanticCheck::visit(const std::shared_ptr<ConstDeclare> &decl) {}
 
 void SemanticCheck::visit(const std::shared_ptr<VarDeclare> &decl) {}
 
-void SemanticCheck::visit(const std::shared_ptr<ConstDefine> &def) {
-    // 这里的处理是要区分是否是数组的
-    auto def_id = def->getId();
-    if (!def_id->getDimensionSize()) {      // 非数组
+void SemanticCheck::visit(const std::shared_ptr<ConstDefine> &def) {}
 
-
-    } else {
-
-
-    }
-
-}
-
-void SemanticCheck::visit(const std::shared_ptr<VarDefine> &def) {
+void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicType basic_type) {
     auto def_id = def->getId();
     // 首先需要检查的是，在当前作用域之下，有没有重复定义的问题
     if (!def_id->getDimensionSize()) {      // 非数组
-
-
-    } else {
+        auto init_expr = def->getInitExpr();
+        float init_value;
+        if (init_expr) {
+            bool cancal = canCalculated(init_expr, &init_value);
+            if (init_expr->expr_type_ == BasicType::VOID_BTYPE) {       // 不合法的类型
+                appendError(init_expr, "#The init expression can't be void type\n");
+                return;
+            }
+            if (cancal) {       // 如果可以编译期计算
+                auto new_initexpr = (basic_type == BasicType::INT_BTYPE) ?
+                                    std::make_shared<Number>(static_cast<int32_t>(init_value)) : std::make_shared<Number>(init_value);
+                def->init_expr_ = new_initexpr;
+            }
+        } else if (ident_systable_.isInGlobalScope()) {     // 如果是没有init表达式的全局变量,就将其初始化为0
+            init_value = 0;
+            auto new_initexpr = (basic_type == BasicType::INT_BTYPE) ?
+                    std::make_shared<Number>(static_cast<int32_t>(init_value)) : std::make_shared<Number>(init_value);
+        }
+    } else {        // 对于数组类型的判断
 
 
     }
 }
+
+void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, BasicType basic_type) {
+    auto def_id = def->getId();
+    if (!def_id->getDimensionSize()) {      // 非数组
+        auto init_expr = def->getInitExpr();
+        float init_value;
+        if (init_expr) {
+            bool cancal = canCalculated(init_expr, &init_value);
+            if (init_expr->expr_type_ == BasicType::VOID_BTYPE) {       // 不合法的类型
+                appendError(init_expr, "#The init expression can't be void type\n");
+                return;
+            }
+            if (cancal) {       // 如果可以编译期计算
+                auto new_initexpr = (basic_type == BasicType::INT_BTYPE) ?
+                                    std::make_shared<Number>(static_cast<int32_t>(init_value)) : std::make_shared<Number>(init_value);
+                def->init_expr_ = new_initexpr;
+            } else if (ident_systable_.isInGlobalScope()) {     // 全局变量 && 不可编译期计算的情况，这种情况应该报错
+                appendError(def.get(), "#The global const var must have a calculated init expression\n");
+                return;
+            }
+        } else {     // 对于const类型的来说，必须要有init表达式进行初始化
+            appendError(def.get(), "#The global const var must have a init expression\n");
+        }
+    } else {
+
+
+    }
+
+}
+
+void SemanticCheck::visit(const std::shared_ptr<VarDefine> &def) {}
 
 void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
     // 首先创建新的作用域
@@ -216,7 +252,7 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
         // 检查是否有重名的
         std::string formal_name = formal->getFormalId()->getId();
         if (formal_name_set.find(formal_name) != formal_name_set.end()) {
-            appendError("#the formal name invalid in function " + def->id_->getId() + ".\n");
+            appendError(def.get(), "#the formal name invalid in function " + def->id_->getId() + ".\n");
         }
         formal_name_set.insert(formal_name);
         // 加入到符号表中
@@ -268,7 +304,7 @@ void SemanticCheck::visit(const std::shared_ptr<BinaryExpr> &expr) {
     if (left->expr_type_ == right->expr_type_) {
         expr->expr_type_ = left->expr_type_;
         if (expr->expr_type_ == BasicType::VOID_BTYPE) {
-            appendError("#The left and right can't be void.\n");
+            appendError(expr.get(), "#The left and right can't be void.\n");
         }
     } else {
         expr->expr_type_ = BasicType::INT_BTYPE;
@@ -303,7 +339,7 @@ void SemanticCheck::visit(const std::shared_ptr<AssignStatement> &stmt) {
     // 查找符号表,判断是否是const
     auto find_lval = ident_systable_.lookupFromAll(name);
     if (find_lval && find_lval->isConst()) {  // 如果是存在的
-        appendError("#lval in assignment statement can't be const type\n");
+        appendError(stmt.get(), "#lval in assignment statement can't be const type\n");
     }
     // 然后求出右半部分的
     auto right = stmt->getRightExpr();
@@ -316,7 +352,7 @@ void SemanticCheck::visit(const std::shared_ptr<IfElseStatement> &stmt) {
         visit(ExpressionPtr(cond_expr));
     }
     if (cond_expr->expr_type_ == BasicType::VOID_BTYPE) {
-        appendError("#The condition in if-else can't be void type\n");
+        appendError(stmt.get(), "#The condition in if-else can't be void type\n");
     }
     auto ifstmt = stmt->getIfStmt();
     if (ifstmt) {
@@ -336,7 +372,7 @@ void SemanticCheck::visit(const std::shared_ptr<WhileStatement> &stmt) {
     }
 
     if (cond_expr->expr_type_ == BasicType::VOID_BTYPE) {
-        appendError("#The condition in while can't be void type");
+        appendError(stmt.get(), "#The condition in while can't be void type");
     }
 
     auto blockstmt = stmt->getStatement();
@@ -351,13 +387,13 @@ void SemanticCheck::visit(const std::shared_ptr<WhileStatement> &stmt) {
 
 void SemanticCheck::visit(const std::shared_ptr<BreakStatement> &stmt) {
     if (!isInWhile()) {
-        appendError("#Break statement not in while.\n");
+        appendError(stmt.get(), "#Break statement not in while.\n");
     }
 }
 
 void SemanticCheck::visit(const std::shared_ptr<ContinueStatement> &stmt) {
     if (!isInWhile()) {
-        appendError("#Continue statement not in while.\n");
+        appendError(stmt.get(), "#Continue statement not in while.\n");
     }
 }
 
@@ -366,7 +402,7 @@ void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
     std::string func_name = expr->getFuncId()->getId();
     auto find_func = func_map_.find(func_name);
     if (find_func == func_map_.end()) {     // 如果该函数不存在
-        appendError("#Call a function " + func_name + " not exist.\n");
+        appendError(expr.get(), "#Call a function " + func_name + " not exist.\n");
         return;
     }
     // 检查是否是标准库中的函数，待补充
@@ -379,7 +415,7 @@ void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
     size_t actual_size = expr->getActualSize();
     size_t formal_size = func_def->getFormals()->getFormalSize();
     if (actual_size != formal_size) {
-        appendError("#The size of actuals not equal the size of formals\n");
+        appendError(expr.get(), "#The size of actuals not equal the size of formals\n");
         return;
     }
     // 通过环境表获取到表项之后,需要检查参数是否是匹配的
@@ -392,7 +428,7 @@ void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
 
 void SemanticCheck::visit(const std::shared_ptr<ReturnStatement> &stmt) {
     if (!curr_func_scope_) {
-        appendError("#The return statement not in a function scope\n");
+        appendError(stmt.get(), "#The return statement not in a function scope\n");
     } else {
         auto ret_type = curr_func_scope_->getReturnType();
         std::string func_name = curr_func_scope_->getId()->getId();
@@ -401,7 +437,7 @@ void SemanticCheck::visit(const std::shared_ptr<ReturnStatement> &stmt) {
             appendError("#The function " + func_name + " can't have a return statement with null\n");
         } else*/
         if (ret_type == BasicType::VOID_BTYPE && ret_expr) {
-            appendError("The function(VOID) can't have a return statement(expr)\n");
+            appendError(stmt.get(), "The function(VOID) can't have a return statement(expr)\n");
         }
     }
 }
@@ -418,14 +454,14 @@ void SemanticCheck::visit(const std::shared_ptr<LvalExpr> &expr) {
         bool is_array = symbol_entry->isArray();
         size_t dimension_size = expr->getId()->getDimensionSize();
         if (is_array && expr->getId()->getDimensionSize() != dimension_size) {  // 如果时数组类型
-            appendError("#The LvalExpr array size error\n");
+            appendError(expr.get(), "#The LvalExpr array size error\n");
         } else if (!is_array && dimension_size > 0) {      // 单变量但是存在维度
-            appendError("#The LvalExpr should't have dimension\n");
+            appendError(expr.get(), "#The LvalExpr should't have dimension\n");
         } else {    // 合法的情况
             expr->expr_type_ = symbol_entry->getType();
         }
     } else {
-        appendError("#The LvalExpr named " + ident->getId() + " not declared\n");
+        appendError(expr.get(), "#The LvalExpr named " + ident->getId() + " not declared\n");
     }
 }
 

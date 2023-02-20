@@ -34,10 +34,11 @@ class AstNode: std::enable_shared_from_this<AstNode> {
 public:
     AstNode() = default;
     virtual ~AstNode() = default;
-    explicit AstNode(int lineno): lineno_(lineno){}
+    explicit AstNode(int lineno): lineno_(lineno), is_error_(false){}
     // virtual void generateIR() = 0;
     virtual void dump(std::ostream &out, size_t n) {};
     int lineno_{-1};
+    bool is_error_;
 };
 
 class FuncDefine;
@@ -100,17 +101,18 @@ public:
 class Define: public AstNode {
 public:
     // virtual DefType getDefType() = 0;
-    explicit Define(const IdentifierPtr &ident): id_(ident) {}
+    explicit Define(const IdentifierPtr &ident, const ExpressionPtr &expr = nullptr): id_(ident), init_expr_(expr) {}
     virtual DefType getDefType() = 0;
     Identifier *getId() const {
         return id_.get();
     }
     IdentifierPtr id_;
+    ExpressionPtr init_expr_;
 };
 
 class ConstDefine: public Define {     // 暂时不考虑数组
 public:
-    ConstDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): Define(identifier), init_expr_(expr) {}
+    ConstDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): Define(identifier, expr) {}
 
     ~ConstDefine() = default;
 
@@ -125,12 +127,12 @@ public:
     }
 
 private:
-    ExpressionPtr init_expr_;
+
 };
 
 class VarDefine: public Define {
 public:
-    VarDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): Define(identifier), init_expr_(expr) {}
+    VarDefine(const IdentifierPtr &identifier, const ExpressionPtr &expr = nullptr): Define(identifier, expr) {}
 
     ~VarDefine() = default;
 
@@ -147,9 +149,6 @@ public:
     bool hasInitExpr() const {
         return init_expr_ != nullptr;
     }
-
-private:
-    ExpressionPtr init_expr_;
 };
 
 class FuncDefine: public Define {

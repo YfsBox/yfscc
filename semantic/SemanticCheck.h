@@ -43,7 +43,8 @@ private:
 
     bool checkIsValidMain(const FuncDefine *funcdef);
 
-    void appendError(const std::string &msg) {
+    void appendError(AstNode *node, const std::string &msg) {
+        node->is_error_ = true;
         error_msgs_.push_back(msg);
     }
 
@@ -62,6 +63,10 @@ private:
     bool canCalculated(Expression *init, float *value);
 
     void addLibFunc();
+
+    void checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicType basic_type);
+
+    void checkConstDefine(const std::shared_ptr<ConstDefine> &def, BasicType basic_type);
 
     size_t curr_while_depth_;        // 用来记录当前是否处于while之中
     size_t error_cnt;
