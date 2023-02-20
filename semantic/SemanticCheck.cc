@@ -9,7 +9,7 @@ void SemanticCheck::addLibFunc() {
 
 }
 
-bool SemanticCheck::canCalculated(Expression *init, float *value) {
+bool SemanticCheck::canCalculated(Expression *init, double *value) {
     auto expr_type = init->getExprNodeType();
     visit(ExpressionPtr(init));
     // 用于根据表达式的不同类型计算出value
@@ -17,7 +17,7 @@ bool SemanticCheck::canCalculated(Expression *init, float *value) {
         case ExprType::NUMBER_TYPE: {
             auto number_expr = dynamic_cast<Number *>(init);
             if (number_expr->getBtype() == BasicType::INT_BTYPE) {
-                *value = static_cast<float>(number_expr->getIntValue());
+                *value = static_cast<double>(number_expr->getIntValue());
             } else if (number_expr->getBtype() == BasicType::FLOAT_BTYPE) {
                 *value = number_expr->getFloatValue();
             } else {
@@ -27,7 +27,7 @@ bool SemanticCheck::canCalculated(Expression *init, float *value) {
         }
         case ExprType::BINARY_TYPE: {
             auto binary_expr = dynamic_cast<BinaryExpr *>(init);
-            float value_1, value_2;
+            double value_1, value_2;
             if (canCalculated(binary_expr->getLeftExpr(), &value_1)
                 && canCalculated(binary_expr->getRightExpr(), &value_2)) {
                 switch (binary_expr->getOpType()) {
@@ -79,7 +79,7 @@ bool SemanticCheck::canCalculated(Expression *init, float *value) {
         }
         case ExprType::UNARY_TYPE: {
             auto unary_expr = dynamic_cast<UnaryExpr *>(init);
-            float tmp_value;
+            double tmp_value;
             if (canCalculated(unary_expr->getExpr(), &tmp_value)) {
                 auto unaryop_type = unary_expr->getOpType();
                 switch (unaryop_type) {
@@ -104,7 +104,20 @@ bool SemanticCheck::canCalculated(Expression *init, float *value) {
             return false;
         }
         case ExprType::LVAL_TYPE: {
-
+            // 首先从环境表中查找该id对应的项
+            auto lval_expr = dynamic_cast<LvalExpr *>(init);
+            std::string lval_name = lval_expr->getId()->getId();
+            auto entry = ident_systable_.lookupFromAll(lval_name);
+            if (entry) {    // 如果能够找到这一项
+                if (entry->canCalculated()) {
+                    *value = entry->getCalValue();
+                    return true;
+                }
+                appendError(lval_expr, "#The lval expression can't have calculated value\n");
+                return false;   // 对于左值无法编译期计算的情况
+            }
+            appendError(lval_expr, "#The lval expression's identifier not find in sysbol table\n");
+            return false;
         }
         default:
             return false;
@@ -143,7 +156,7 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
     if (!have_main) {
         appendError(compunit.get(), "#Not have a valid main function\n");
     }
-    // 尽可能将全局变量加入到环境表中
+    // 遍历一遍，用于检查是否有全局变量的重名
     for (size_t i = 0; i < decl_number; ++i) {
         auto decl = compunit->getDecl(i);
         for (auto &def : decl->defs_) {
@@ -153,8 +166,9 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
                 appendError(def.get(), "#Identifier Redination,the name is " + name + "\n");
             }
             name_set.insert(name);
-            SymbolEntry new_symbol(decl->type_, def->getId(), is_const);
-            ident_systable_.addIdent(new_symbol);
+            // 这个时候还不应该急着加入环境表，应该等到后来decl对define进行检查时再做处理
+            /*SymbolEntry new_symbol(decl->type_, false, 0, def->getId(), is_const);
+            ident_systable_.addIdent(new_symbol);*/
         }
     }
 
@@ -164,7 +178,6 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
     }
 
     ident_systable_.exitScope();    // 退出全局作用域
-
 }
 
 void SemanticCheck::visit(const std::shared_ptr<Declare> &decl) {
@@ -186,45 +199,50 @@ void SemanticCheck::visit(const std::shared_ptr<ConstDefine> &def) {}
 void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicType basic_type) {
     auto def_id = def->getId();
     // 首先需要检查的是，在当前作用域之下，有没有重复定义的问题
+    bool cancal = false;
+    double init_value = 0;
+
     if (!def_id->getDimensionSize()) {      // 非数组
         auto init_expr = def->getInitExpr();
-        float init_value;
         if (init_expr) {
-            bool cancal = canCalculated(init_expr, &init_value);
+            cancal = canCalculated(init_expr, &init_value);
             if (init_expr->expr_type_ == BasicType::VOID_BTYPE) {       // 不合法的类型
                 appendError(init_expr, "#The init expression can't be void type\n");
                 return;
             }
             if (cancal) {       // 如果可以编译期计算
                 auto new_initexpr = (basic_type == BasicType::INT_BTYPE) ?
-                                    std::make_shared<Number>(static_cast<int32_t>(init_value)) : std::make_shared<Number>(init_value);
+                                    std::make_shared<Number>(static_cast<int32_t>(init_value))
+                                            :std::make_shared<Number>(static_cast<float>(init_value));
                 def->init_expr_ = new_initexpr;
             }
         } else if (ident_systable_.isInGlobalScope()) {     // 如果是没有init表达式的全局变量,就将其初始化为0
-            init_value = 0;
             auto new_initexpr = (basic_type == BasicType::INT_BTYPE) ?
-                    std::make_shared<Number>(static_cast<int32_t>(init_value)) : std::make_shared<Number>(init_value);
+                    std::make_shared<Number>(static_cast<int32_t>(init_value)) : std::make_shared<Number>(static_cast<float>(init_value));
         }
     } else {        // 对于数组类型的判断
 
 
     }
+    ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id, false));
 }
 
 void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, BasicType basic_type) {
     auto def_id = def->getId();
+    bool cancal = false;
+    double init_value;
     if (!def_id->getDimensionSize()) {      // 非数组
         auto init_expr = def->getInitExpr();
-        float init_value;
         if (init_expr) {
-            bool cancal = canCalculated(init_expr, &init_value);
+            cancal = canCalculated(init_expr, &init_value);
             if (init_expr->expr_type_ == BasicType::VOID_BTYPE) {       // 不合法的类型
                 appendError(init_expr, "#The init expression can't be void type\n");
                 return;
             }
             if (cancal) {       // 如果可以编译期计算
                 auto new_initexpr = (basic_type == BasicType::INT_BTYPE) ?
-                                    std::make_shared<Number>(static_cast<int32_t>(init_value)) : std::make_shared<Number>(init_value);
+                                    std::make_shared<Number>(static_cast<int32_t>(init_value))
+                                            :std::make_shared<Number>(static_cast<float>(init_value));
                 def->init_expr_ = new_initexpr;
             } else if (ident_systable_.isInGlobalScope()) {     // 全局变量 && 不可编译期计算的情况，这种情况应该报错
                 appendError(def.get(), "#The global const var must have a calculated init expression\n");
@@ -235,8 +253,8 @@ void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, Ba
         }
     } else {
 
-
     }
+    ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id, true));
 
 }
 
@@ -247,7 +265,7 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
     ident_systable_.enterScope();
     curr_func_scope_ = def.get();
     std::unordered_set<std::string> formal_name_set;
-    for (size_t i = 0; i < def->getFormals()->getFormalSize(); ++i) {
+    for (size_t i = 0; i < def->getFormals()->getFormalSize(); ++i) {       // 函数形参
         auto formal = def->getFormals()->getFuncFormal(i);
         // 检查是否有重名的
         std::string formal_name = formal->getFormalId()->getId();
@@ -255,8 +273,8 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
             appendError(def.get(), "#the formal name invalid in function " + def->id_->getId() + ".\n");
         }
         formal_name_set.insert(formal_name);
-        // 加入到符号表中
-        SymbolEntry new_symbol(formal->getBtype(), formal->getFormalId(), false);
+        // 加入到符号表中,这些值都是不可以执行编译期计算的
+        SymbolEntry new_symbol(formal->getBtype(), false, 0, formal->getFormalId(), false);
         ident_systable_.addIdent(new_symbol);
     }
     // 之后分析block部分的代码
@@ -433,7 +451,7 @@ void SemanticCheck::visit(const std::shared_ptr<ReturnStatement> &stmt) {
         auto ret_type = curr_func_scope_->getReturnType();
         std::string func_name = curr_func_scope_->getId()->getId();
         auto ret_expr = stmt->getExpr();
-        /*if (ret_type != BasicType::VOID_BTYPE && !ret_expr) {    // 返回类型为int或者float时，表达式不应该为null
+        /*if (ret_type != BasicType::VOID_BTYPE && !ret_expr) {    // 返回类型为int或者double时，表达式不应该为null
             appendError("#The function " + func_name + " can't have a return statement with null\n");
         } else*/
         if (ret_type == BasicType::VOID_BTYPE && ret_expr) {

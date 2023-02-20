@@ -12,8 +12,8 @@
 
 class SymbolEntry {
 public:
-    SymbolEntry(BasicType type, Identifier *id, bool is_const): is_const_(is_const),
-    type_(type), id_(id) {}
+    SymbolEntry(BasicType type, bool cancal, double calval, Identifier *id, bool is_const): is_const_(is_const),
+    can_calculated_(cancal), cal_value_(calval), type_(type), id_(id) {}
 
     ~SymbolEntry() = default;
 
@@ -33,12 +33,22 @@ public:
         return id_->getDimensionSize() != 0;
     }
 
+    bool canCalculated() const {
+        return can_calculated_;
+    }
+
     Identifier *getId() const {
         return id_;
     }
 
+    double getCalValue() const {
+        return cal_value_;
+    }
+
 private:
     bool is_const_;
+    bool can_calculated_;
+    double cal_value_;
     BasicType type_;
     Identifier *id_;
 };

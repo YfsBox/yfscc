@@ -60,7 +60,7 @@ private:
         return curr_while_depth_ != 0;
     }
 
-    bool canCalculated(Expression *init, float *value);
+    bool canCalculated(Expression *init, double *value);
 
     void addLibFunc();
 
