@@ -38,6 +38,7 @@ public:
     void visit(const std::shared_ptr<Expression> &expr) override;
     void visit(const std::shared_ptr<LvalExpr> &expr) override;
     void visit(const std::shared_ptr<Statement> &stmt) override;
+    void visit(const std::shared_ptr<ArrayValue> &arrayval) override;
 
 private:
 
@@ -67,6 +68,8 @@ private:
     void checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicType basic_type);
 
     void checkConstDefine(const std::shared_ptr<ConstDefine> &def, BasicType basic_type);
+
+    bool checkArrayVarDefine(const std::shared_ptr<Define> &def, BasicType basic_type);
 
     size_t curr_while_depth_;        // 用来记录当前是否处于while之中
     size_t error_cnt;

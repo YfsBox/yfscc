@@ -258,6 +258,56 @@ void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, Ba
 
 }
 
+bool SemanticCheck::checkArrayVarDefine(const std::shared_ptr<Define> &def, BasicType basic_type) {
+    Identifier *ident = def->getId();
+    size_t dim_size = ident->getDimensionSize();
+
+    for (size_t i = 0; i < dim_size; ++i) {
+        auto dim_expr = ident->getDimensionExpr(i);
+        double value = 0;
+
+        if (!canCalculated(dim_expr, &value)) {
+            appendError(def.get(), "#The Array define can't have dimension expression can't be calculated\n");
+            return false;
+        }
+
+        if (dim_expr->expr_type_ != BasicType::INT_BTYPE) {
+            appendError(def.get(), "#The Array define number not INT_TYPE\n");
+            return false;
+        }
+
+        if (value < 0) {
+            appendError(def.get(), "#The Array dimension number < 0\n");
+            return false;
+        }
+        // 重新设置ident
+        ident->setDimensionExpr(i, std::make_shared<Number>(static_cast<int32_t>(value)));
+    }
+
+    std::string id_name = ident->getId();
+    // 然后需要查找符号表，判断是否有重复的元素
+    if (ident_systable_.lookupFromCurrScope(id_name)) {
+        appendError(def.get(), "#The Identifier of this array " + id_name + " has defined\n");
+        return false;
+    }
+    // 对于const类型来说，必须要有init表达式
+    if (def->getDefType() == DefType::CONSTDEF && !def->init_expr_) {
+        appendError(def.get(), "#The Const ArrayVal " + id_name + " not has a init expression\n");
+        return false;
+    }
+
+    if (def->init_expr_) {
+        // 对于数组初始化list表达式进行的语义分析
+        visit(def->init_expr_);
+        if (def->init_expr_->is_error_) {
+            return false;
+        }
+    }
+
+    ident_systable_.addIdent(SymbolEntry(basic_type, false, 0, ident, def->getDefType() == DefType::CONSTDEF));
+    return true;
+}
+
 void SemanticCheck::visit(const std::shared_ptr<VarDefine> &def) {}
 
 void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
@@ -511,4 +561,8 @@ void SemanticCheck::visit(const std::shared_ptr<Statement> &stmt) {
             visit(std::dynamic_pointer_cast<ReturnStatement>(stmt));
             return;
     }
+}
+
+void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
+
 }

@@ -31,6 +31,7 @@ class AstVisitor {
     virtual void visit(const std::shared_ptr<Expression> &expr) = 0;
     virtual void visit(const std::shared_ptr<LvalExpr> &expr) = 0;
     virtual void visit(const std::shared_ptr<Statement> &stmt) = 0;
+    virtual void visit(const std::shared_ptr<ArrayValue> &arrayval) = 0;
 
 };
 

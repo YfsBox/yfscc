@@ -238,8 +238,13 @@ public:
     size_t getDimensionSize() const {
         return array_dimension_.size();
     }
+
     Expression *getDimensionExpr(size_t idx) const {
         return array_dimension_[idx].get();
+    }
+
+    void setDimensionExpr(size_t idx, const ExpressionPtr &expr) {
+        array_dimension_[idx] = expr;
     }
 
 private:
