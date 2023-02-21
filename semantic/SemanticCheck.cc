@@ -314,16 +314,38 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
     // 首先创建新的作用域
     ident_systable_.enterScope();
     curr_func_scope_ = def.get();
+
     std::unordered_set<std::string> formal_name_set;
-    for (size_t i = 0; i < def->getFormals()->getFormalSize(); ++i) {       // 函数形参
+    std::string func_def_name = def->id_->getId();
+    size_t formal_size = def->getFormals()->getFormalSize();
+
+    for (size_t i = 0; i < formal_size; ++i) {       // 函数形参
         auto formal = def->getFormals()->getFuncFormal(i);
         // 检查是否有重名的
         std::string formal_name = formal->getFormalId()->getId();
         if (formal_name_set.find(formal_name) != formal_name_set.end()) {
-            appendError(def.get(), "#the formal name invalid in function " + def->id_->getId() + ".\n");
+            appendError(def.get(), "#the formal name invalid in function " + func_def_name + ".\n");
+            return;
         }
         formal_name_set.insert(formal_name);
         // 加入到符号表中,这些值都是不可以执行编译期计算的
+        Identifier *formal_ident = formal->getFormalId();
+        size_t dim_size = formal_ident->getDimensionSize();
+        if (dim_size) {
+            for (size_t j = 0; j < dim_size; ++j) {
+                auto dim_expr = formal_ident->getDimensionExpr(j);
+                if (!dim_expr) {
+                    continue;
+                }
+                double dim_value = 0;
+                if (!canCalculated(dim_expr, &dim_value)) {     // 要求必须是可以编译期计算的
+                    appendError(def.get(), "#The Array Formal " + formal_name + " in Funcion " + func_def_name + " must has calculated dimension\n");
+                    return;
+                }
+                // 重新设置这其中的dimension表达式
+                formal_ident->setDimensionExpr(j, std::make_shared<Number>(static_cast<int32_t>(dim_value)));
+            }
+        }
         SymbolEntry new_symbol(formal->getBtype(), false, 0, formal->getFormalId(), false);
         ident_systable_.addIdent(new_symbol);
     }
@@ -521,13 +543,36 @@ void SemanticCheck::visit(const std::shared_ptr<LvalExpr> &expr) {
     if (symbol_entry) { // 如果存在
         bool is_array = symbol_entry->isArray();
         size_t dimension_size = expr->getId()->getDimensionSize();
+        /*
         if (is_array && expr->getId()->getDimensionSize() != dimension_size) {  // 如果时数组类型
             appendError(expr.get(), "#The LvalExpr array size error\n");
         } else if (!is_array && dimension_size > 0) {      // 单变量但是存在维度
             appendError(expr.get(), "#The LvalExpr should't have dimension\n");
         } else {    // 合法的情况
             expr->expr_type_ = symbol_entry->getType();
+        }*/
+        if (is_array) {
+            if (expr->getId()->getDimensionSize() != dimension_size) {
+                appendError(expr.get(), "#The LvalExpr array size error\n");
+                return;
+            }
+            // 检查其数组的纬度数是否是可以计算的
+            size_t array_size = expr->getId()->getDimensionSize();
+            for (size_t i = 0; i < array_size; ++i) {
+                auto array_dim_expr = expr->getId()->getDimensionExpr(i);
+                double dim_value = 0;
+                if (canCalculated(array_dim_expr, &dim_value)) {
+                    // 重新设置
+                    expr->getId()->setDimensionExpr(i, std::make_shared<Number>(static_cast<int32_t>(dim_value)));
+                }
+            }
+            expr->expr_type_ = symbol_entry->getType();
+
+        } else if (dimension_size > 0) {
+            appendError(expr.get(), "#The LvalExpr should't have dimension\n");
+            return;
         }
+
     } else {
         appendError(expr.get(), "#The LvalExpr named " + ident->getId() + " not declared\n");
     }
