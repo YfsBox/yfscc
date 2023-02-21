@@ -1,6 +1,7 @@
 #include <iostream>
 #include "common/Ast.h"
 #include "common/Utils.h"
+#include "semantic/SemanticCheck.h"
 
 extern int yyparse();
 extern std::shared_ptr<CompUnit> root;
@@ -18,7 +19,11 @@ int main(int argc, char **argv) {
     scan_string(content.c_str());
 
     yyparse();
+    auto checker = std::make_unique<SemanticCheck>(std::cout);
+    checker->visit(root);
+
     root->dump(std::cout, 0);
+
     // yylex();
     return 0;
 }

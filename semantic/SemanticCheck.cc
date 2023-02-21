@@ -4,18 +4,21 @@
 #include <unordered_set>
 #include "SemanticCheck.h"
 
+SemanticCheck::SemanticCheck(std::ostream &out):
+AstVisitor(), curr_while_depth_(0), error_cnt(0), curr_func_scope_(nullptr) {}
+
 void SemanticCheck::addLibFunc() {
 
 
 }
 
-bool SemanticCheck::canCalculated(Expression *init, double *value) {
-    auto expr_type = init->getExprNodeType();
-    visit(ExpressionPtr(init));
+bool SemanticCheck::canCalculated(const std::shared_ptr<Expression> &init, double *value) {
+    visit(init);
     // 用于根据表达式的不同类型计算出value
+    auto expr_type = init->getExprNodeType();
     switch (expr_type) {
         case ExprType::NUMBER_TYPE: {
-            auto number_expr = dynamic_cast<Number *>(init);
+            auto number_expr = std::dynamic_pointer_cast<Number>(init);
             if (number_expr->getBtype() == BasicType::INT_BTYPE) {
                 *value = static_cast<double>(number_expr->getIntValue());
             } else if (number_expr->getBtype() == BasicType::FLOAT_BTYPE) {
@@ -26,7 +29,8 @@ bool SemanticCheck::canCalculated(Expression *init, double *value) {
             return true;
         }
         case ExprType::BINARY_TYPE: {
-            auto binary_expr = dynamic_cast<BinaryExpr *>(init);
+            std::cout << "BINARY_EXPR dynatic_cast\n";
+            auto binary_expr = std::dynamic_pointer_cast<BinaryExpr>(init);
             double value_1, value_2;
             if (canCalculated(binary_expr->getLeftExpr(), &value_1)
                 && canCalculated(binary_expr->getRightExpr(), &value_2)) {
@@ -78,7 +82,8 @@ bool SemanticCheck::canCalculated(Expression *init, double *value) {
             return false;
         }
         case ExprType::UNARY_TYPE: {
-            auto unary_expr = dynamic_cast<UnaryExpr *>(init);
+            auto unary_expr = std::dynamic_pointer_cast<UnaryExpr>(init);
+            std::cout << "UNARY_TYPE dynatic_cast\n";
             double tmp_value;
             if (canCalculated(unary_expr->getExpr(), &tmp_value)) {
                 auto unaryop_type = unary_expr->getOpType();
@@ -105,7 +110,8 @@ bool SemanticCheck::canCalculated(Expression *init, double *value) {
         }
         case ExprType::LVAL_TYPE: {
             // 首先从环境表中查找该id对应的项
-            auto lval_expr = dynamic_cast<LvalExpr *>(init);
+            auto lval_expr = std::dynamic_pointer_cast<LvalExpr>(init);
+            std::cout << "LVAL_TYPE dynatic_cast\n";
             std::string lval_name = lval_expr->getId()->getId();
             auto entry = ident_systable_.lookupFromAll(lval_name);
             if (entry) {    // 如果能够找到这一项
@@ -113,10 +119,10 @@ bool SemanticCheck::canCalculated(Expression *init, double *value) {
                     *value = entry->getCalValue();
                     return true;
                 }
-                appendError(lval_expr, "#The lval expression can't have calculated value\n");
+                appendError(lval_expr.get(), "#The lval expression can't have calculated value\n");
                 return false;   // 对于左值无法编译期计算的情况
             }
-            appendError(lval_expr, "#The lval expression's identifier not find in sysbol table\n");
+            appendError(lval_expr.get(), "#The lval expression's identifier not find in sysbol table\n");
             return false;
         }
         default:
@@ -125,7 +131,7 @@ bool SemanticCheck::canCalculated(Expression *init, double *value) {
 }
 
 bool SemanticCheck::checkIsValidMain(const FuncDefine *funcdef) {
-    return funcdef->id_->getId() == "main" && funcdef->getFormals()->getFormalSize() == 0
+    return funcdef->id_->getId() == "main" && funcdef->getFormals() == nullptr
         && funcdef->getReturnType() == BasicType::INT_BTYPE;
 }
 
@@ -147,8 +153,8 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
             appendError(compunit.get(), "#Function Identifier Redination,the name is " + func_name + "\n");
         }
         name_set.insert(func_name);
-        func_map_.insert({func_name, func_def});
-        if (checkIsValidMain(func_def)) {
+        func_map_.insert({func_name, func_def.get()});
+        if (checkIsValidMain(func_def.get())) {
             have_main = true;
         }
     }
@@ -207,7 +213,7 @@ void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicT
         if (init_expr) {
             cancal = canCalculated(init_expr, &init_value);
             if (init_expr->expr_type_ == BasicType::VOID_BTYPE) {       // 不合法的类型
-                appendError(init_expr, "#The init expression can't be void type\n");
+                appendError(init_expr.get(), "#The init expression can't be void type\n");
                 return;
             }
             if (cancal) {       // 如果可以编译期计算
@@ -224,19 +230,19 @@ void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicT
 
 
     }
-    ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id, false));
+    ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), false));
 }
 
 void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, BasicType basic_type) {
     auto def_id = def->getId();
     bool cancal = false;
-    double init_value;
+    double init_value = 0;
     if (!def_id->getDimensionSize()) {      // 非数组
         auto init_expr = def->getInitExpr();
         if (init_expr) {
             cancal = canCalculated(init_expr, &init_value);
             if (init_expr->expr_type_ == BasicType::VOID_BTYPE) {       // 不合法的类型
-                appendError(init_expr, "#The init expression can't be void type\n");
+                appendError(init_expr.get(), "#The init expression can't be void type\n");
                 return;
             }
             if (cancal) {       // 如果可以编译期计算
@@ -254,12 +260,12 @@ void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, Ba
     } else {
 
     }
-    ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id, true));
+    ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), true));
 
 }
 
 bool SemanticCheck::checkArrayVarDefine(const std::shared_ptr<Define> &def, BasicType basic_type) {
-    Identifier *ident = def->getId();
+    auto ident = def->getId();
     size_t dim_size = ident->getDimensionSize();
 
     for (size_t i = 0; i < dim_size; ++i) {
@@ -304,7 +310,7 @@ bool SemanticCheck::checkArrayVarDefine(const std::shared_ptr<Define> &def, Basi
         }
     }
 
-    ident_systable_.addIdent(SymbolEntry(basic_type, false, 0, ident, def->getDefType() == DefType::CONSTDEF));
+    ident_systable_.addIdent(SymbolEntry(basic_type, false, 0, ident.get(), def->getDefType() == DefType::CONSTDEF));
     return true;
 }
 
@@ -329,7 +335,7 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
         }
         formal_name_set.insert(formal_name);
         // 加入到符号表中,这些值都是不可以执行编译期计算的
-        Identifier *formal_ident = formal->getFormalId();
+        auto formal_ident = formal->getFormalId();
         size_t dim_size = formal_ident->getDimensionSize();
         if (dim_size) {
             for (size_t j = 0; j < dim_size; ++j) {
@@ -346,13 +352,14 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
                 formal_ident->setDimensionExpr(j, std::make_shared<Number>(static_cast<int32_t>(dim_value)));
             }
         }
-        SymbolEntry new_symbol(formal->getBtype(), false, 0, formal->getFormalId(), false);
+        SymbolEntry new_symbol(formal->getBtype(), false, 0, formal->getFormalId().get(), false);
         ident_systable_.addIdent(new_symbol);
     }
     // 之后分析block部分的代码
     visit(StatementPtr(def->getBlock()));
     curr_func_scope_ = nullptr;
     ident_systable_.exitScope();
+
 }
 
 void SemanticCheck::visit(const std::shared_ptr<Expression> &expr) {
@@ -424,7 +431,7 @@ void SemanticCheck::visit(const std::shared_ptr<AssignStatement> &stmt) {
     // 首先求出左半部分
     auto left = stmt->getLeftExpr();
     visit(ExpressionPtr(left));
-    LvalExpr *lval = dynamic_cast<LvalExpr*>(left);
+    auto lval = std::dynamic_pointer_cast<LvalExpr>(left);
     std::string name = lval->getId()->getId();
     // 查找符号表,判断是否是const
     auto find_lval = ident_systable_.lookupFromAll(name);
@@ -533,6 +540,7 @@ void SemanticCheck::visit(const std::shared_ptr<ReturnStatement> &stmt) {
 }
 
 void SemanticCheck::visit(const std::shared_ptr<Number> &number) {
+    std::cout << "a number visit\n";
     number->expr_type_ = number->getBtype();
 }
 
@@ -584,9 +592,6 @@ void SemanticCheck::visit(const std::shared_ptr<Statement> &stmt) {
         case ASSIGN_STMTTYPE:
             visit(std::dynamic_pointer_cast<AssignStatement>(stmt));
             return;
-        case BLOCKITEM_STMTTYPE:
-            visit(std::dynamic_pointer_cast<BlockItems>(stmt));
-            return;
         case BLOCKITEMS_STMTTYPE:
             visit(std::dynamic_pointer_cast<BlockItems>(stmt));
             return;
@@ -605,9 +610,14 @@ void SemanticCheck::visit(const std::shared_ptr<Statement> &stmt) {
         case RETURN_STMTTYPE:
             visit(std::dynamic_pointer_cast<ReturnStatement>(stmt));
             return;
+        default:
+            return;
     }
 }
 
 void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
 
 }
+
+// 千万不要从裸指针生成shared_ptr之后带入函数，这样容易造成意外地内存释放
+// 因此一旦用了shared_ptr很容易需要都用shared_ptr

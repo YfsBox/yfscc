@@ -13,8 +13,11 @@ class SemanticCheck: public AstVisitor {
 public:
     using FuncDefineMap = std::unordered_map<std::string, FuncDefine*>;
 
-    SemanticCheck(): curr_while_depth_(0), error_cnt(0), curr_func_scope_(nullptr) {}
-    ~SemanticCheck() = default;
+    SemanticCheck():AstVisitor(), curr_while_depth_(0), error_cnt(0), curr_func_scope_(nullptr) {}
+
+    explicit SemanticCheck(std::ostream &out);
+
+    ~SemanticCheck() {}
 
     void visit(const std::shared_ptr<CompUnit> &compunit) override;
     void visit(const std::shared_ptr<Declare> &decl) override;
@@ -61,7 +64,7 @@ private:
         return curr_while_depth_ != 0;
     }
 
-    bool canCalculated(Expression *init, double *value);
+    bool canCalculated(const std::shared_ptr<Expression> &init, double *value);
 
     void addLibFunc();
 

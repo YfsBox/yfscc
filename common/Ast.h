@@ -69,12 +69,12 @@ public:
         return func_defs_.size();
     }
 
-    Declare *getDecl(int idx) {
-        return declares_[idx].get();
+    DeclPtr getDecl(size_t idx) {
+        return declares_[idx];
     }
 
-    FuncDefine *getFuncDef(int idx) {
-        return func_defs_[idx].get();
+    FuncDefinePtr getFuncDef(size_t idx) {
+        return func_defs_[idx];
     }
 
 private:
@@ -103,8 +103,8 @@ public:
     // virtual DefType getDefType() = 0;
     explicit Define(const IdentifierPtr &ident, const ExpressionPtr &expr = nullptr): id_(ident), init_expr_(expr) {}
     virtual DefType getDefType() = 0;
-    Identifier *getId() const {
-        return id_.get();
+    IdentifierPtr getId() const {
+        return id_;
     }
     IdentifierPtr id_;
     ExpressionPtr init_expr_;
@@ -122,8 +122,8 @@ public:
         return DefType::CONSTDEF;
     }
 
-    Expression *getInitExpr() const {
-        return init_expr_.get();
+    ExpressionPtr getInitExpr() const {
+        return init_expr_;
     }
 
 private:
@@ -142,8 +142,8 @@ public:
         return DefType::VARDEF;
     }
 
-    Expression *getInitExpr() const {
-        return init_expr_.get();
+    ExpressionPtr getInitExpr() const {
+        return init_expr_;
     }
 
     bool hasInitExpr() const {
@@ -175,12 +175,13 @@ public:
         return DefType::FUNCDEF;
     }
 
-    FuncFParams *getFormals() const {
-        return formals_.get();
+    FuncFParamsPtr getFormals() const {
+        return formals_;
     }
 
-    Statement *getBlock() const {
-        return block_.get();
+
+    StatementPtr getBlock() const {
+        return block_;
     }
 
 private:
@@ -239,8 +240,8 @@ public:
         return array_dimension_.size();
     }
 
-    Expression *getDimensionExpr(size_t idx) const {
-        return array_dimension_[idx].get();
+    ExpressionPtr getDimensionExpr(size_t idx) const {
+        return array_dimension_[idx];
     }
 
     void setDimensionExpr(size_t idx, const ExpressionPtr &expr) {
@@ -320,8 +321,8 @@ public:
     explicit LvalExpr(const IdentifierPtr &id): id_(id) {}
     // void dump() override;
     // void generateIR() override;
-    Identifier *getId() const {
-        return id_.get();
+    IdentifierPtr getId() const {
+        return id_;
     }
 
     ExprType getExprNodeType() override {
@@ -341,8 +342,8 @@ public:
     UnaryExpr(UnaryOpType unaryoptype, const ExpressionPtr &expr):
     optype_(unaryoptype), expr_(expr) {}
 
-    Expression *getExpr() const {
-        return expr_.get();
+    ExpressionPtr getExpr() const {
+        return expr_;
     }
 
     UnaryOpType getOpType() const {
@@ -372,12 +373,12 @@ public:
         return optype_;
     }
 
-    Expression *getLeftExpr() const {
-        return left_expr_.get();
+    ExpressionPtr getLeftExpr() const {
+        return left_expr_;
     }
 
-    Expression *getRightExpr() const {
-        return right_expr_.get();
+    ExpressionPtr getRightExpr() const {
+        return right_expr_;
     }
 
     ExprType getExprNodeType() override {
@@ -400,8 +401,8 @@ public:
 
     ~FuncFParam() = default;
 
-    Identifier *getFormalId() const {
-        return id_.get();
+    IdentifierPtr getFormalId() const {
+        return id_;
     }
 
     BasicType getBtype() const {
@@ -427,8 +428,8 @@ public:
         exprs_.push_back(expr);
     }
 
-    Expression *getExprByIdx(int idx) {
-        return exprs_[idx].get();
+    ExpressionPtr getExprByIdx(int idx) {
+        return exprs_[idx];
     }
 
     size_t getSize() const {
@@ -450,8 +451,8 @@ public:
 
     ~CallFuncExpr() = default;
 
-    Identifier *getFuncId() const {
-        return func_id_.get();
+    IdentifierPtr getFuncId() const {
+        return func_id_;
     }
 
     size_t getActualSize() const {
@@ -465,7 +466,7 @@ public:
         return CALLFUNC_TYPE;
     }
 
-    Expression *getActual(size_t idx) const {
+    ExpressionPtr getActual(size_t idx) const {
         return actuals_->getExprByIdx(idx);
     }
 
@@ -486,12 +487,12 @@ public:
         return StatementType::ASSIGN_STMTTYPE;
     }
 
-    Expression *getLeftExpr() const {
-        return left_.get();
+    ExpressionPtr getLeftExpr() const {
+        return left_;
     }
 
-    Expression *getRightExpr() const {
-        return right_.get();
+    ExpressionPtr getRightExpr() const {
+        return right_;
     }
 
     void dump(std::ostream &out, size_t n) override;
@@ -513,8 +514,8 @@ public:
         return StatementType::BLOCKITEM_STMTTYPE;
     }
 
-    Statement *getStmt() const {
-        return stmt_.get();
+    StatementPtr getStmt() const {
+        return stmt_;
     }
 
     void dump(std::ostream &out, size_t n) override;
@@ -541,8 +542,8 @@ public:
         return items_.size();
     }
 
-    BlockItem *getBlockItem(size_t idx) const {
-        return items_[idx].get();
+    BlockItemPtr getBlockItem(size_t idx) const {
+        return items_[idx];
     }
 
     void dump(std::ostream &out, size_t n) override;
@@ -593,16 +594,16 @@ public:
         return elsestmt_ != nullptr;
     }
 
-    Expression *getCond() const {
-        return cond_.get();
+    ExpressionPtr getCond() const {
+        return cond_;
     }
 
-    Statement *getIfStmt() const {
-        return ifstmt_.get();
+    StatementPtr getIfStmt() const {
+        return ifstmt_;
     }
 
-    Statement *getElseStmt() const {
-        return elsestmt_.get();
+    StatementPtr getElseStmt() const {
+        return elsestmt_;
     }
 
     void dump(std::ostream &out, size_t n) override;
@@ -623,12 +624,12 @@ public:
         return StatementType::WHILE_STMTTYPE;
     }
 
-    Expression *getCond() const {
-        return cond_.get();
+    ExpressionPtr getCond() const {
+        return cond_;
     }
 
-    Statement *getStatement() const {
-        return statement_.get();
+    StatementPtr getStatement() const {
+        return statement_;
     }
 
     void dump(std::ostream &out, size_t n) override;
@@ -670,8 +671,8 @@ public:
 
     ~ReturnStatement() = default;
 
-    Expression *getExpr() const {
-        return expr_.get();
+    ExpressionPtr getExpr() const {
+        return expr_;
     }
 
     void dump(std::ostream &out, size_t n) override;
@@ -694,8 +695,8 @@ public:
         formals_.push_back(formal);
     }
 
-    FuncFParam *getFuncFormal(int idx) const {
-        return formals_[idx].get();
+    FuncFParamPtr getFuncFormal(size_t idx) const {
+        return formals_[idx];
     }
 
     size_t getFormalSize() const {

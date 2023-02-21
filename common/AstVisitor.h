@@ -8,6 +8,10 @@
 #include "Ast.h"
 
 class AstVisitor {
+public:
+
+    AstVisitor() = default;
+    virtual ~AstVisitor() = default;
 
     virtual void visit(const std::shared_ptr<CompUnit> &compunit) = 0;
     virtual void visit(const std::shared_ptr<Declare> &decl) = 0;

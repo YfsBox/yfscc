@@ -74,7 +74,7 @@ public:
 
         for (auto &entry : curr_scope) {
             if (entry.getName() == name) {
-                return &entry;
+                return const_cast<DATA*>(&entry);
             }
         }
 
