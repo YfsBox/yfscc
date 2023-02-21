@@ -180,7 +180,7 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
 
     for (size_t i = 0; i < decl_number; ++i) {
         auto decl = compunit->getDecl(i);
-        visit(DeclarePtr(decl));
+        visit(decl);
     }
 
     ident_systable_.exitScope();    // 退出全局作用域
@@ -356,7 +356,7 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
         ident_systable_.addIdent(new_symbol);
     }
     // 之后分析block部分的代码
-    visit(StatementPtr(def->getBlock()));
+    visit(def->getBlock());
     curr_func_scope_ = nullptr;
     ident_systable_.exitScope();
 
@@ -387,7 +387,7 @@ void SemanticCheck::visit(const std::shared_ptr<Expression> &expr) {
 }
 
 void SemanticCheck::visit(const std::shared_ptr<UnaryExpr> &expr) {
-    visit(ExpressionPtr(expr->getExpr()));
+    visit(expr->getExpr());
     expr->expr_type_ = expr->getExpr()->expr_type_;
 }
 
@@ -395,8 +395,8 @@ void SemanticCheck::visit(const std::shared_ptr<BinaryExpr> &expr) {
     auto left = expr->getLeftExpr();
     auto right = expr->getRightExpr();
 
-    visit(ExpressionPtr(left));
-    visit(ExpressionPtr(right));
+    visit(left);
+    visit(right);
 
     if (left->expr_type_ == right->expr_type_) {
         expr->expr_type_ = left->expr_type_;
@@ -414,7 +414,7 @@ void SemanticCheck::visit(const std::shared_ptr<BlockItems> &stmt) {
     for (size_t i = 0; i < item_size; ++i) {
         auto item = stmt->getBlockItem(i);
         if (item) {
-            visit(std::shared_ptr<BlockItem>(item));
+            visit(item);
         }
     }
     ident_systable_.exitScope();
@@ -423,14 +423,14 @@ void SemanticCheck::visit(const std::shared_ptr<BlockItems> &stmt) {
 void SemanticCheck::visit(const std::shared_ptr<BlockItem> &stmt) {
     auto item_stmt = stmt->getStmt();
     if (item_stmt) {
-        visit(StatementPtr(item_stmt));
+        visit(item_stmt);
     }
 }
 
 void SemanticCheck::visit(const std::shared_ptr<AssignStatement> &stmt) {
     // 首先求出左半部分
     auto left = stmt->getLeftExpr();
-    visit(ExpressionPtr(left));
+    visit(left);
     auto lval = std::dynamic_pointer_cast<LvalExpr>(left);
     std::string name = lval->getId()->getId();
     // 查找符号表,判断是否是const
@@ -440,24 +440,24 @@ void SemanticCheck::visit(const std::shared_ptr<AssignStatement> &stmt) {
     }
     // 然后求出右半部分的
     auto right = stmt->getRightExpr();
-    visit(ExpressionPtr(right));
+    visit(right);
 }
 
 void SemanticCheck::visit(const std::shared_ptr<IfElseStatement> &stmt) {
     auto cond_expr = stmt->getCond();
     if (cond_expr) {
-        visit(ExpressionPtr(cond_expr));
+        visit(cond_expr);
     }
     if (cond_expr->expr_type_ == BasicType::VOID_BTYPE) {
         appendError(stmt.get(), "#The condition in if-else can't be void type\n");
     }
     auto ifstmt = stmt->getIfStmt();
     if (ifstmt) {
-        visit(StatementPtr(ifstmt));
+        visit(ifstmt);
     }
     auto elsestmt = stmt->getElseStmt();
     if (elsestmt) {
-        visit(StatementPtr(elsestmt));
+        visit(elsestmt);
     }
 
 }
@@ -465,7 +465,7 @@ void SemanticCheck::visit(const std::shared_ptr<IfElseStatement> &stmt) {
 void SemanticCheck::visit(const std::shared_ptr<WhileStatement> &stmt) {
     auto cond_expr = stmt->getCond();
     if (cond_expr) {
-        visit(ExpressionPtr(cond_expr));
+        visit(cond_expr);
     }
 
     if (cond_expr->expr_type_ == BasicType::VOID_BTYPE) {
@@ -476,7 +476,7 @@ void SemanticCheck::visit(const std::shared_ptr<WhileStatement> &stmt) {
     if (blockstmt) {
         // 进入一层while的作用域
         curr_while_depth_++;
-        visit(StatementPtr(blockstmt));
+        visit(blockstmt);
         curr_while_depth_--;
     }
 
@@ -518,7 +518,7 @@ void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
     // 通过环境表获取到表项之后,需要检查参数是否是匹配的
     for (size_t i = 0; i < actual_size; ++i) {
         auto actual_expr = expr->getActual(i);
-        visit(ExpressionPtr(actual_expr));
+        visit(actual_expr);
     }
 
 }
@@ -540,7 +540,6 @@ void SemanticCheck::visit(const std::shared_ptr<ReturnStatement> &stmt) {
 }
 
 void SemanticCheck::visit(const std::shared_ptr<Number> &number) {
-    std::cout << "a number visit\n";
     number->expr_type_ = number->getBtype();
 }
 
