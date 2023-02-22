@@ -2,14 +2,24 @@
 // Created by 杨丰硕 on 2023/2/15.
 //
 #include <unordered_set>
+#include "../common/Utils.h"
 #include "SemanticCheck.h"
 
 SemanticCheck::SemanticCheck(std::ostream &out):
-AstVisitor(), curr_while_depth_(0), error_cnt(0), curr_func_scope_(nullptr) {}
+AstVisitor(), out_(out), curr_while_depth_(0), error_cnt(0), curr_func_scope_(nullptr) {}
+
+void SemanticCheck::dumpErrorMsg() const {
+    for (auto &msg : error_msgs_) {
+        std::cout << msg;
+    }
+}
 
 void SemanticCheck::addLibFunc() {
 
+}
 
+inline void SemanticCheck::dumpSymbolTable() const {
+    ident_systable_.dump(out_);
 }
 
 bool SemanticCheck::canCalculated(const std::shared_ptr<Expression> &init, double *value) {
@@ -29,7 +39,6 @@ bool SemanticCheck::canCalculated(const std::shared_ptr<Expression> &init, doubl
             return true;
         }
         case ExprType::BINARY_TYPE: {
-            std::cout << "BINARY_EXPR dynatic_cast\n";
             auto binary_expr = std::dynamic_pointer_cast<BinaryExpr>(init);
             double value_1, value_2;
             if (canCalculated(binary_expr->getLeftExpr(), &value_1)
@@ -93,7 +102,7 @@ bool SemanticCheck::canCalculated(const std::shared_ptr<Expression> &init, doubl
                         break;
                     }
                     case UnaryOpType::NEGATIVE_OPTYPE: {
-                        *value = ~static_cast<int32_t>(tmp_value);
+                        *value = -static_cast<int32_t>(tmp_value);
                         break;
                     }
                     case UnaryOpType::NOTOP_OPTYPE: {
@@ -111,7 +120,6 @@ bool SemanticCheck::canCalculated(const std::shared_ptr<Expression> &init, doubl
         case ExprType::LVAL_TYPE: {
             // 首先从环境表中查找该id对应的项
             auto lval_expr = std::dynamic_pointer_cast<LvalExpr>(init);
-            std::cout << "LVAL_TYPE dynatic_cast\n";
             std::string lval_name = lval_expr->getId()->getId();
             auto entry = ident_systable_.lookupFromAll(lval_name);
             if (entry) {    // 如果能够找到这一项
@@ -153,7 +161,7 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
             appendError(compunit.get(), "#Function Identifier Redination,the name is " + func_name + "\n");
         }
         name_set.insert(func_name);
-        func_map_.insert({func_name, func_def.get()});
+        func_map_.insert({func_name, func_def});
         if (checkIsValidMain(func_def.get())) {
             have_main = true;
         }
@@ -183,6 +191,11 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
         visit(decl);
     }
 
+    for (auto &[func_name, func_def] : func_map_) {
+        visit(func_def);
+    }
+
+    dumpSymbolTable();
     ident_systable_.exitScope();    // 退出全局作用域
 }
 
@@ -191,6 +204,7 @@ void SemanticCheck::visit(const std::shared_ptr<Declare> &decl) {
         if (def->getDefType() == DefType::CONSTDEF) {
             checkConstDefine(std::dynamic_pointer_cast<ConstDefine>(def), decl->type_);
         } else if (def->getDefType() == DefType::VARDEF) {
+            // std::cout << def->id_->getId() << " begin checkVarDefine\n";
             checkVarDefine(std::dynamic_pointer_cast<VarDefine>(def), decl->type_);
         }
     }
@@ -225,12 +239,12 @@ void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicT
         } else if (ident_systable_.isInGlobalScope()) {     // 如果是没有init表达式的全局变量,就将其初始化为0
             auto new_initexpr = (basic_type == BasicType::INT_BTYPE) ?
                     std::make_shared<Number>(static_cast<int32_t>(init_value)) : std::make_shared<Number>(static_cast<float>(init_value));
+            def->init_expr_ = new_initexpr;
         }
+        ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), false));
     } else {        // 对于数组类型的判断
-
-
+        checkArrayVarDefine(def, basic_type);
     }
-    ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), false));
 }
 
 void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, BasicType basic_type) {
@@ -256,11 +270,12 @@ void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, Ba
             }
         } else {     // 对于const类型的来说，必须要有init表达式进行初始化
             appendError(def.get(), "#The global const var must have a init expression\n");
+            return;
         }
+        ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), true));
     } else {
-
+        checkArrayVarDefine(def, basic_type);
     }
-    ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), true));
 
 }
 
@@ -323,7 +338,11 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
 
     std::unordered_set<std::string> formal_name_set;
     std::string func_def_name = def->id_->getId();
-    size_t formal_size = def->getFormals()->getFormalSize();
+
+    size_t formal_size = 0;
+    if (def->getFormals()) {
+        formal_size = def->getFormals()->getFormalSize();
+    }
 
     for (size_t i = 0; i < formal_size; ++i) {       // 函数形参
         auto formal = def->getFormals()->getFuncFormal(i);
@@ -358,6 +377,7 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
     // 之后分析block部分的代码
     visit(def->getBlock());
     curr_func_scope_ = nullptr;
+    dumpSymbolTable();
     ident_systable_.exitScope();
 
 }
@@ -417,6 +437,7 @@ void SemanticCheck::visit(const std::shared_ptr<BlockItems> &stmt) {
             visit(item);
         }
     }
+    dumpSymbolTable();
     ident_systable_.exitScope();
 }
 
@@ -506,11 +527,14 @@ void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
 
 
     // 首先检查参数的数量是否是匹配的
-    FuncDefine *func_def = find_func->second;
+    auto func_def = find_func->second;
     expr->expr_type_ = func_def->getReturnType();
 
     size_t actual_size = expr->getActualSize();
-    size_t formal_size = func_def->getFormals()->getFormalSize();
+    size_t formal_size = 0;
+    if (func_def->getFormals()) {
+        formal_size = func_def->getFormals()->getFormalSize();
+    }
     if (actual_size != formal_size) {
         appendError(expr.get(), "#The size of actuals not equal the size of formals\n");
         return;
@@ -608,6 +632,9 @@ void SemanticCheck::visit(const std::shared_ptr<Statement> &stmt) {
             return;
         case RETURN_STMTTYPE:
             visit(std::dynamic_pointer_cast<ReturnStatement>(stmt));
+            return;
+        case DECL_STMTTYPE:
+            visit(std::dynamic_pointer_cast<Declare>(stmt));
             return;
         default:
             return;

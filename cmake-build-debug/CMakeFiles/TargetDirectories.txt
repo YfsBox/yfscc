@@ -1,3 +1,9 @@
-/tmp/tmp.8JyW32gNF6/cmake-build-debug/CMakeFiles/rebuild_cache.dir
 /tmp/tmp.8JyW32gNF6/cmake-build-debug/CMakeFiles/edit_cache.dir
+/tmp/tmp.8JyW32gNF6/cmake-build-debug/CMakeFiles/test.dir
 /tmp/tmp.8JyW32gNF6/cmake-build-debug/CMakeFiles/yfscc.dir
+/tmp/tmp.8JyW32gNF6/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/tmp/tmp.8JyW32gNF6/cmake-build-debug/CMakeFiles/frontend.dir
+/tmp/tmp.8JyW32gNF6/cmake-build-debug/test/CMakeFiles/rebuild_cache.dir
+/tmp/tmp.8JyW32gNF6/cmake-build-debug/test/CMakeFiles/edit_cache.dir
+/tmp/tmp.8JyW32gNF6/cmake-build-debug/test/CMakeFiles/test.dir
+/tmp/tmp.8JyW32gNF6/cmake-build-debug/test/CMakeFiles/dumpast_test.dir

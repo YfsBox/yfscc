@@ -9,6 +9,7 @@
 #include <list>
 #include "Types.h"
 #include "Ast.h"
+#include "Utils.h"
 
 class SymbolEntry {
 public:
@@ -45,10 +46,32 @@ public:
         return cal_value_;
     }
 
+    void dump(std::ostream &out, size_t n) const {
+        id_->dump(out, n);
+        dumpPrefix(out, n);
+        out << "IS_CONST:";
+        if (is_const_) {
+            out << "TRUE\n";
+        } else {
+            out << "FALSE\n";
+        }
+        dumpPrefix(out, n);
+        out << "CAN_CALCULATED:";
+        if (can_calculated_) {
+            out << "TRUE\n";
+        } else {
+            out << "FALSE\n";
+        }
+        dumpPrefix(out, n);
+        out << "CAL_INIT_VALUE:" << cal_value_ << '\n';
+        dumpPrefix(out, n);
+        out << "BASIC_TYPE:" << basicType2Str(type_) << '\n';
+    }
+
 private:
     bool is_const_;
     bool can_calculated_;
-    double cal_value_;
+    double cal_value_;      // 只有当can_calculated有效时，cal_value才是有效的
     BasicType type_;
     Identifier *id_;
 };
@@ -102,6 +125,23 @@ public:
 
     bool isInGlobalScope() const {
         return scope_lists_.size() == 1;
+    }
+
+    void dump(std::ostream &out) const {
+        out << "#DUMP CURR SYMBOL TABLE:\n";
+        size_t curr_depth = 1;
+        // 倒序遍历
+        for (auto rit = scope_lists_.rbegin(); rit != scope_lists_.rend(); ++rit) {
+            dumpPrefix(out, curr_depth);
+            out << "{\n";
+            for (auto &data : *rit) {
+                data.dump(out, curr_depth + 1);
+                out << '\n';
+            }
+            dumpPrefix(out, curr_depth);
+            out << "}\n";
+            curr_depth++;
+        }
     }
 
 private:

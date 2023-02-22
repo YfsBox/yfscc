@@ -22,8 +22,9 @@ int main(int argc, char **argv) {
     auto checker = std::make_unique<SemanticCheck>(std::cout);
     checker->visit(root);
 
-    root->dump(std::cout, 0);
+    // root->dump(std::cout, 0);
 
+    checker->dumpErrorMsg();
     // yylex();
     return 0;
 }
