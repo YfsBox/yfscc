@@ -225,7 +225,7 @@ public:
 
     explicit Identifier(std::string *id): id_(*id) {}
 
-    Identifier(const std::string &id): id_(id) {}
+    explicit Identifier(const std::string &id): id_(id) {}
 
     std::string getId() const {
         return id_;

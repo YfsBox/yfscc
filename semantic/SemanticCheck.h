@@ -73,6 +73,8 @@ private:
 
     void addLibFunc();
 
+    std::shared_ptr<FuncDefine> createLibFuncDefine(BasicType btype, const std::string &funcname);
+
     void dumpSymbolTable() const;
 
     void checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicType basic_type);
@@ -88,6 +90,7 @@ private:
     std::vector<std::string> error_msgs_;
     // SymbolTable<FuncDefine> func_systable_;
     FuncDefineMap func_map_;
+    FuncDefineMap lib_func_map_;
     SymbolTable<SymbolEntry> ident_systable_;
 };
 

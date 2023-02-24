@@ -6,7 +6,9 @@
 #include "SemanticCheck.h"
 
 SemanticCheck::SemanticCheck(std::ostream &out):
-AstVisitor(), out_(out), curr_while_depth_(0), error_cnt(0), curr_func_scope_(nullptr) {}
+AstVisitor(), out_(out), curr_while_depth_(0), error_cnt(0), curr_func_scope_(nullptr) {
+    addLibFunc();
+}
 
 void SemanticCheck::dumpErrorMsg() const {
     for (auto &msg : error_msgs_) {
@@ -14,7 +16,48 @@ void SemanticCheck::dumpErrorMsg() const {
     }
 }
 
+std::shared_ptr<FuncDefine> SemanticCheck::createLibFuncDefine(BasicType btype, const std::string &funcname) {
+    return std::make_shared<FuncDefine>(btype,
+                                        std::make_shared<Identifier>(funcname),
+                                        std::make_shared<FuncFParams>(),
+                                        nullptr);
+}
+
 void SemanticCheck::addLibFunc() {
+
+    std::unordered_map<std::string, BasicType> libmap = {
+            {"getinit", BasicType::INT_BTYPE},
+            {"getfloat", BasicType::FLOAT_BTYPE},
+            {"getch", BasicType::INT_BTYPE},
+            {"getarray", BasicType::INT_BTYPE},
+            {"getfarray", BasicType::FLOAT_BTYPE},
+            {"putint", BasicType::VOID_BTYPE},
+            {"putfloat", BasicType::VOID_BTYPE},
+            {"putch", BasicType::VOID_BTYPE},
+            {"starttime", BasicType::VOID_BTYPE},
+            {"stoptime", BasicType::VOID_BTYPE},
+    };
+
+    for (auto &[func_name, func_btype]: libmap) {
+        auto func_def = createLibFuncDefine(func_btype, func_name);
+        lib_func_map_.insert({func_name, func_def});
+    }
+
+    // 对于其中一些有参数的处理，目前考虑用相同的对象，不知有没有问题
+    auto int_formal = std::make_shared<FuncFParam>(BasicType::INT_BTYPE, nullptr);
+
+    auto int_array_formal_ident = std::make_shared<Identifier>("");
+    int_array_formal_ident->addDimension(nullptr);      // 一个一维，表示的是int[]
+    auto int_array_formal = std::make_shared<FuncFParam>(BasicType::INT_BTYPE, int_array_formal_ident);
+    // 补充其中的参数
+    lib_func_map_["getarray"]->getFormals()->addFuncFormal(int_array_formal);
+
+    lib_func_map_["putint"]->getFormals()->addFuncFormal(int_formal);
+
+    lib_func_map_["putch"]->getFormals()->addFuncFormal(int_formal);
+
+    lib_func_map_["putarray"]->getFormals()->addFuncFormal(int_formal);
+    lib_func_map_["putarray"]->getFormals()->addFuncFormal(int_array_formal);
 
 }
 
@@ -154,6 +197,11 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
 
     ident_systable_.enterScope();       // 进入全局作用域
 
+    // 将标准库里的函数也加入map
+    for (auto &lib_func: lib_func_map_) {
+        name_set.insert(lib_func.first);
+    }
+    // 检查该文件中定义过的函数是否有重名的
     for (size_t i = 0; i < func_number; ++i) {
         auto func_def = compunit->getFuncDef(i);
         std::string func_name = func_def->id_->getId();
@@ -520,11 +568,17 @@ void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
     std::string func_name = expr->getFuncId()->getId();
     auto find_func = func_map_.find(func_name);
     if (find_func == func_map_.end()) {     // 如果该函数不存在
-        appendError(expr.get(), "#Call a function " + func_name + " not exist.\n");
+        // 如果从定义的函数中，找不到，就找一找库函数中有没有
+        auto find_libfunc = lib_func_map_.find(func_name);
+        if (find_libfunc == lib_func_map_.end()) {
+            appendError(expr.get(), "#Call a function " + func_name + " not exist.\n");
+            return;
+            // 表明lib函数中也没有
+        }
+        // 说明属于lib函数,需要作出lib函数的处理，不同于一般定义的函数
+
         return;
     }
-    // 检查是否是标准库中的函数，待补充
-
 
     // 首先检查参数的数量是否是匹配的
     auto func_def = find_func->second;
