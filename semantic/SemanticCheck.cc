@@ -2,11 +2,17 @@
 // Created by 杨丰硕 on 2023/2/15.
 //
 #include <unordered_set>
+#include <cassert>
 #include "../common/Utils.h"
 #include "SemanticCheck.h"
 
 SemanticCheck::SemanticCheck(std::ostream &out):
-AstVisitor(), out_(out), curr_while_depth_(0), error_cnt(0), curr_func_scope_(nullptr) {
+AstVisitor(),
+out_(out),
+curr_while_depth_(0),
+error_cnt(0),
+curr_func_scope_(nullptr),
+curr_decl_(nullptr){
     addLibFunc();
 }
 
@@ -248,6 +254,7 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
 }
 
 void SemanticCheck::visit(const std::shared_ptr<Declare> &decl) {
+    curr_decl_ = decl.get();
     for (auto &def : decl->defs_) {
         if (def->getDefType() == DefType::CONSTDEF) {
             checkConstDefine(std::dynamic_pointer_cast<ConstDefine>(def), decl->type_);
@@ -256,6 +263,7 @@ void SemanticCheck::visit(const std::shared_ptr<Declare> &decl) {
             checkVarDefine(std::dynamic_pointer_cast<VarDefine>(def), decl->type_);
         }
     }
+    curr_decl_ = nullptr;
 }
 
 void SemanticCheck::visit(const std::shared_ptr<ConstDeclare> &decl) {}
@@ -292,6 +300,7 @@ void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicT
         ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), false));
     } else {        // 对于数组类型的判断
         checkArrayVarDefine(def, basic_type);
+        visit(def->getInitExpr());
     }
 }
 
@@ -323,10 +332,11 @@ void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, Ba
         ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), true));
     } else {
         checkArrayVarDefine(def, basic_type);
+        visit(def->getInitExpr());
     }
 
 }
-
+// Define中分为Id和用来初始化的expr，这里主要分析的id
 bool SemanticCheck::checkArrayVarDefine(const std::shared_ptr<Define> &def, BasicType basic_type) {
     auto ident = def->getId();
     size_t dim_size = ident->getDimensionSize();
@@ -694,9 +704,50 @@ void SemanticCheck::visit(const std::shared_ptr<Statement> &stmt) {
             return;
     }
 }
+// 该函数主要去做一些关于编译期计算的转化
+bool SemanticCheck::checkArrayInitList(const std::shared_ptr<ArrayValue> &arrayval) {
+    assert(curr_decl_);
+    
+    if (arrayval->is_number_) {
+        assert(arrayval->value_);       // 不可以是空的
+        double value = 0;
+        bool can_cal = canCalculated(arrayval->value_, &value);
+
+        if (ident_systable_.isInGlobalScope() && !can_cal) {       // 如果处于全局作用域中
+            appendError(arrayval.get(), "#The array init list can't be calculated\n");
+            return false;
+        }
+
+        if (can_cal) {
+            if (curr_decl_->type_ == BasicType::INT_BTYPE) {
+                arrayval->value_ = std::make_shared<Number>(static_cast<int32_t>(value));
+            } else if (curr_decl_->type_ == BasicType::FLOAT_BTYPE) {
+                arrayval->value_ = std::make_shared<Number>(static_cast<float>(value));
+            } else {
+                appendError(arrayval.get(), "#The value in a array list can't be VOID_TYPE\n");
+                return false;
+            }
+        }
+    }
+
+    for (auto &array_val : arrayval->valueList_) {
+        if (!checkArrayInitList(array_val)) {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
+    checkArrayInitList(arrayval);
 
+    if (arrayval->is_number_) {
+        visit(arrayval->value_);
+    }
+    for (auto &array_val : arrayval->valueList_) {
+        visit(array_val);
+    }
 }
 
 // 千万不要从裸指针生成shared_ptr之后带入函数，这样容易造成意外地内存释放

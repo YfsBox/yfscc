@@ -52,6 +52,8 @@ private:
 
     bool checkIsValidMain(const FuncDefine *funcdef);
 
+    bool checkArrayInitList(const std::shared_ptr<ArrayValue> &arrayval);
+
     void appendError(AstNode *node, const std::string &msg) {
         node->is_error_ = true;
         error_msgs_.push_back(msg);
@@ -84,9 +86,16 @@ private:
     bool checkArrayVarDefine(const std::shared_ptr<Define> &def, BasicType basic_type);
 
     std::ostream &out_;
+
     size_t curr_while_depth_;        // 用来记录当前是否处于while之中
     size_t error_cnt;
+    /*
+    size_t curr_initlist_depth_;
+    size_t curr_initlist_cnt_;
+    size_t curr_initlist_fullcnt_;
+    */
     FuncDefine *curr_func_scope_;
+    Declare *curr_decl_;      // 用来追踪当前的array_decl,需要知道其声明类型
     std::vector<std::string> error_msgs_;
     // SymbolTable<FuncDefine> func_systable_;
     FuncDefineMap func_map_;
