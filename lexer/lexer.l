@@ -4,7 +4,7 @@
 
 #include <string>
 #include "../common/Ast.h"
-#include "../parser/parser.hpp"
+#include "../parser/Parser.hpp"
 
 int yycolumn = 1;
 

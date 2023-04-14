@@ -5,7 +5,26 @@ set(CMAKE_CXX_STANDARD 17)
 
 enable_testing()
 
+set(CXX_FLAGS
+        -g
+        -Wall
+        -std=c++17
+        -D_PTHREADS
+        -Wno-unused-parameter
+        -O3
+        )
+
+set(FRONTEND_SRC
+        parser/Parser.cpp
+        lexer/Lexer.cpp
+        semantic/SemanticCheck.cc
+        common/Utils.cc
+        common/Ast.cc
+)
+
+add_library(frontend ${FRONTEND_SRC})
+
 add_subdirectory(test)
 
-add_executable(yfscc main.cpp parser/parser.cpp lexer/lexer.cpp common/Utils.cc common/Ast.cc)
-target_link_libraries(yfscc fl)
+add_executable(yfscc main.cpp)
+target_link_libraries(yfscc fl frontend)

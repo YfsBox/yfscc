@@ -32,7 +32,7 @@ std::shared_ptr<FuncDefine> SemanticCheck::createLibFuncDefine(BasicType btype, 
 void SemanticCheck::addLibFunc() {
 
     std::unordered_map<std::string, BasicType> libmap = {
-            {"getinit", BasicType::INT_BTYPE},
+            {"getint", BasicType::INT_BTYPE},
             {"getfloat", BasicType::FLOAT_BTYPE},
             {"getch", BasicType::INT_BTYPE},
             {"getarray", BasicType::INT_BTYPE},
@@ -40,6 +40,7 @@ void SemanticCheck::addLibFunc() {
             {"putint", BasicType::VOID_BTYPE},
             {"putfloat", BasicType::VOID_BTYPE},
             {"putch", BasicType::VOID_BTYPE},
+            {"putarray", BasicType::VOID_BTYPE},
             {"starttime", BasicType::VOID_BTYPE},
             {"stoptime", BasicType::VOID_BTYPE},
     };
@@ -65,6 +66,11 @@ void SemanticCheck::addLibFunc() {
     lib_func_map_["putarray"]->getFormals()->addFuncFormal(int_formal);
     lib_func_map_["putarray"]->getFormals()->addFuncFormal(int_array_formal);
 
+}
+
+bool SemanticCheck::isRedefinedCurrScope(const std::string &id) {
+    auto find_entry = ident_systable_.lookupFromCurrScope(id);
+    return find_entry != nullptr;
 }
 
 inline void SemanticCheck::dumpSymbolTable() const {
@@ -141,7 +147,6 @@ bool SemanticCheck::canCalculated(const std::shared_ptr<Expression> &init, doubl
         }
         case ExprType::UNARY_TYPE: {
             auto unary_expr = std::dynamic_pointer_cast<UnaryExpr>(init);
-            std::cout << "UNARY_TYPE dynatic_cast\n";
             double tmp_value;
             if (canCalculated(unary_expr->getExpr(), &tmp_value)) {
                 auto unaryop_type = unary_expr->getOpType();
@@ -171,15 +176,17 @@ bool SemanticCheck::canCalculated(const std::shared_ptr<Expression> &init, doubl
             auto lval_expr = std::dynamic_pointer_cast<LvalExpr>(init);
             std::string lval_name = lval_expr->getId()->getId();
             auto entry = ident_systable_.lookupFromAll(lval_name);
-            if (entry) {    // 如果能够找到这一项
-                if (entry->canCalculated()) {
+            if (entry && entry->canCalculated()) {    // 如果能够找到这一项
+                if (ident_systable_.isInGlobalScope() || (!ident_systable_.isInGlobalScope() && entry->isConst())) {       // 如果当前是全局作用域，也就是全局变量
                     *value = entry->getCalValue();
                     return true;
                 }
-                appendError(lval_expr.get(), "#The lval expression can't have calculated value\n");
+                // appendError(lval_expr.get(), "#The lval expression " + lval_expr->getId()->getId() + " can't have calculated value\n");
                 return false;   // 对于左值无法编译期计算的情况
             }
-            appendError(lval_expr.get(), "#The lval expression's identifier not find in sysbol table\n");
+            if (!entry) {
+                appendError(lval_expr.get(), "#The lval expression's identifier not find in sysbol table\n");
+            }
             return false;
         }
         default:
@@ -249,28 +256,40 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
         visit(func_def);
     }
 
-    dumpSymbolTable();
+    // dumpSymbolTable();
     ident_systable_.exitScope();    // 退出全局作用域
 }
 
 void SemanticCheck::visit(const std::shared_ptr<Declare> &decl) {
     curr_decl_ = decl.get();
     for (auto &def : decl->defs_) {
+        std::string def_name = def->getId()->getId();
+        if (isRedefinedCurrScope(def_name)) {
+            std::string error_msg = "#The define" + def_name + "is redefined\n";
+            appendError(def.get(), error_msg);
+            continue;
+        }
         if (def->getDefType() == DefType::CONSTDEF) {
             checkConstDefine(std::dynamic_pointer_cast<ConstDefine>(def), decl->type_);
         } else if (def->getDefType() == DefType::VARDEF) {
-            // std::cout << def->id_->getId() << " begin checkVarDefine\n";
             checkVarDefine(std::dynamic_pointer_cast<VarDefine>(def), decl->type_);
         }
     }
     curr_decl_ = nullptr;
 }
 
-void SemanticCheck::visit(const std::shared_ptr<ConstDeclare> &decl) {}
+void SemanticCheck::visit(const std::shared_ptr<ConstDeclare> &decl) {
+    // 关于ConstDeclare部分的处理,在visit(decl) + checkConstDefine配合处理
+    // 所以无须直接实现ConstDeclare相关的实现
+}
 
-void SemanticCheck::visit(const std::shared_ptr<VarDeclare> &decl) {}
+void SemanticCheck::visit(const std::shared_ptr<VarDeclare> &decl) {
+    // 同上
+}
 
-void SemanticCheck::visit(const std::shared_ptr<ConstDefine> &def) {}
+void SemanticCheck::visit(const std::shared_ptr<ConstDefine> &def) {
+    // 同上
+}
 
 void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicType basic_type) {
     auto def_id = def->getId();
@@ -293,6 +312,7 @@ void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicT
                 def->init_expr_ = new_initexpr;
             }
         } else if (ident_systable_.isInGlobalScope()) {     // 如果是没有init表达式的全局变量,就将其初始化为0
+            cancal = true;
             auto new_initexpr = (basic_type == BasicType::INT_BTYPE) ?
                     std::make_shared<Number>(static_cast<int32_t>(init_value)) : std::make_shared<Number>(static_cast<float>(init_value));
             def->init_expr_ = new_initexpr;
@@ -300,7 +320,10 @@ void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicT
         ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), false));
     } else {        // 对于数组类型的判断
         checkArrayVarDefine(def, basic_type);
-        visit(def->getInitExpr());
+        auto init_expr = def->getInitExpr();
+        if (init_expr) {
+            visit(init_expr);
+        }
     }
 }
 
@@ -311,7 +334,7 @@ void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, Ba
     if (!def_id->getDimensionSize()) {      // 非数组
         auto init_expr = def->getInitExpr();
         if (init_expr) {
-            cancal = canCalculated(init_expr, &init_value);
+            cancal = canCalculated(init_expr, &init_value);     // canCalculated表明应该是可以被计算成常量的
             if (init_expr->expr_type_ == BasicType::VOID_BTYPE) {       // 不合法的类型
                 appendError(init_expr.get(), "#The init expression can't be void type\n");
                 return;
@@ -331,10 +354,10 @@ void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, Ba
         }
         ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), true));
     } else {
-        checkArrayVarDefine(def, basic_type);
+        checkArrayVarDefine(def, basic_type);       // 首先处理维度
         visit(def->getInitExpr());
-    }
 
+    }
 }
 // Define中分为Id和用来初始化的expr，这里主要分析的id
 bool SemanticCheck::checkArrayVarDefine(const std::shared_ptr<Define> &def, BasicType basic_type) {
@@ -352,6 +375,7 @@ bool SemanticCheck::checkArrayVarDefine(const std::shared_ptr<Define> &def, Basi
 
         if (dim_expr->expr_type_ != BasicType::INT_BTYPE) {
             appendError(def.get(), "#The Array define number not INT_TYPE\n");
+            // printf("the type is %d", dim_expr->expr_type_);
             return false;
         }
 
@@ -414,20 +438,17 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
         // 加入到符号表中,这些值都是不可以执行编译期计算的
         auto formal_ident = formal->getFormalId();
         size_t dim_size = formal_ident->getDimensionSize();
-        if (dim_size) {
-            for (size_t j = 0; j < dim_size; ++j) {
-                auto dim_expr = formal_ident->getDimensionExpr(j);
-                if (!dim_expr) {
-                    continue;
-                }
-                double dim_value = 0;
-                if (!canCalculated(dim_expr, &dim_value)) {     // 要求必须是可以编译期计算的
-                    appendError(def.get(), "#The Array Formal " + formal_name + " in Funcion " + func_def_name + " must has calculated dimension\n");
-                    return;
-                }
-                // 重新设置这其中的dimension表达式
-                formal_ident->setDimensionExpr(j, std::make_shared<Number>(static_cast<int32_t>(dim_value)));
+        for (size_t j = 0; j < dim_size; ++j) {
+            auto dim_expr = formal_ident->getDimensionExpr(j);
+            if (!dim_expr) {
+                continue;
             }
+            double dim_value = 0;
+            if (!canCalculated(dim_expr, &dim_value)) {     // 要求必须是可以编译期计算的
+                appendError(def.get(), "#The Array Formal " + formal_name + " in Funcion " + func_def_name + " must has calculated dimension\n");
+                return;
+            }
+           formal_ident->setDimensionExpr(j, std::make_shared<Number>(static_cast<int32_t>(dim_value)));
         }
         SymbolEntry new_symbol(formal->getBtype(), false, 0, formal->getFormalId().get(), false);
         ident_systable_.addIdent(new_symbol);
@@ -435,7 +456,7 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
     // 之后分析block部分的代码
     visit(def->getBlock());
     curr_func_scope_ = nullptr;
-    dumpSymbolTable();
+    // SymbolTable();
     ident_systable_.exitScope();
 
 }
@@ -495,7 +516,7 @@ void SemanticCheck::visit(const std::shared_ptr<BlockItems> &stmt) {
             visit(item);
         }
     }
-    dumpSymbolTable();
+    // dumpSymbolTable();
     ident_systable_.exitScope();
 }
 
@@ -586,13 +607,10 @@ void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
             // 表明lib函数中也没有
         }
         // 说明属于lib函数,需要作出lib函数的处理，不同于一般定义的函数
-
         return;
     }
-
     // 首先检查参数的数量是否是匹配的
     auto func_def = find_func->second;
-    expr->expr_type_ = func_def->getReturnType();
 
     size_t actual_size = expr->getActualSize();
     size_t formal_size = 0;
@@ -608,7 +626,7 @@ void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
         auto actual_expr = expr->getActual(i);
         visit(actual_expr);
     }
-
+    expr->expr_type_ = func_def->getReturnType();
 }
 
 void SemanticCheck::visit(const std::shared_ptr<ReturnStatement> &stmt) {
@@ -638,19 +656,13 @@ void SemanticCheck::visit(const std::shared_ptr<LvalExpr> &expr) {
     if (symbol_entry) { // 如果存在
         bool is_array = symbol_entry->isArray();
         size_t dimension_size = expr->getId()->getDimensionSize();
-        /*
-        if (is_array && expr->getId()->getDimensionSize() != dimension_size) {  // 如果时数组类型
+        /*if (symbol_entry->getId()->getDimensionSize() != dimension_size) {
+            printf("symbol: %s the symbol_entry size is %lu,and the dimension size is %lu\n",
+                   symbol_entry->getId()->getId().c_str(), symbol_entry->getId()->getDimensionSize(), dimension_size);
             appendError(expr.get(), "#The LvalExpr array size error\n");
-        } else if (!is_array && dimension_size > 0) {      // 单变量但是存在维度
-            appendError(expr.get(), "#The LvalExpr should't have dimension\n");
-        } else {    // 合法的情况
-            expr->expr_type_ = symbol_entry->getType();
+            return;
         }*/
         if (is_array) {
-            if (expr->getId()->getDimensionSize() != dimension_size) {
-                appendError(expr.get(), "#The LvalExpr array size error\n");
-                return;
-            }
             // 检查其数组的纬度数是否是可以计算的
             size_t array_size = expr->getId()->getDimensionSize();
             for (size_t i = 0; i < array_size; ++i) {
@@ -661,13 +673,8 @@ void SemanticCheck::visit(const std::shared_ptr<LvalExpr> &expr) {
                     expr->getId()->setDimensionExpr(i, std::make_shared<Number>(static_cast<int32_t>(dim_value)));
                 }
             }
-            expr->expr_type_ = symbol_entry->getType();
-
-        } else if (dimension_size > 0) {
-            appendError(expr.get(), "#The LvalExpr should't have dimension\n");
-            return;
         }
-
+        expr->expr_type_ = symbol_entry->getType();
     } else {
         appendError(expr.get(), "#The LvalExpr named " + ident->getId() + " not declared\n");
     }

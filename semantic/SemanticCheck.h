@@ -85,6 +85,8 @@ private:
 
     bool checkArrayVarDefine(const std::shared_ptr<Define> &def, BasicType basic_type);
 
+    bool isRedefinedCurrScope(const std::string &id);
+
     std::ostream &out_;
 
     size_t curr_while_depth_;        // 用来记录当前是否处于while之中
@@ -94,13 +96,13 @@ private:
     size_t curr_initlist_cnt_;
     size_t curr_initlist_fullcnt_;
     */
-    FuncDefine *curr_func_scope_;
+    FuncDefine *curr_func_scope_;       // 当前所处的函数
     Declare *curr_decl_;      // 用来追踪当前的array_decl,需要知道其声明类型
     std::vector<std::string> error_msgs_;
     // SymbolTable<FuncDefine> func_systable_;
     FuncDefineMap func_map_;
     FuncDefineMap lib_func_map_;
     SymbolTable<SymbolEntry> ident_systable_;
-};
+};  // 这其中的很多变量都表示在进行递归AST时，当前的一些状态
 
 #endif //YFSCC_SEMANTICCHECK_H
