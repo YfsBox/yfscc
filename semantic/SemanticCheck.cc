@@ -398,15 +398,9 @@ bool SemanticCheck::checkArrayVarDefine(const std::shared_ptr<Define> &def, Basi
         appendError(def.get(), "#The Const ArrayVal " + id_name + " not has a init expression\n");
         return false;
     }
-
     if (def->init_expr_) {
-        // 对于数组初始化list表达式进行的语义分析
         visit(def->init_expr_);
-        if (def->init_expr_->is_error_) {
-            return false;
-        }
     }
-
     ident_systable_.addIdent(SymbolEntry(basic_type, false, 0, ident.get(), def->getDefType() == DefType::CONSTDEF));
     return true;
 }
@@ -656,12 +650,7 @@ void SemanticCheck::visit(const std::shared_ptr<LvalExpr> &expr) {
     if (symbol_entry) { // 如果存在
         bool is_array = symbol_entry->isArray();
         size_t dimension_size = expr->getId()->getDimensionSize();
-        /*if (symbol_entry->getId()->getDimensionSize() != dimension_size) {
-            printf("symbol: %s the symbol_entry size is %lu,and the dimension size is %lu\n",
-                   symbol_entry->getId()->getId().c_str(), symbol_entry->getId()->getDimensionSize(), dimension_size);
-            appendError(expr.get(), "#The LvalExpr array size error\n");
-            return;
-        }*/
+
         if (is_array) {
             // 检查其数组的纬度数是否是可以计算的
             size_t array_size = expr->getId()->getDimensionSize();
@@ -722,6 +711,7 @@ bool SemanticCheck::checkArrayInitList(const std::shared_ptr<ArrayValue> &arrayv
 
         if (ident_systable_.isInGlobalScope() && !can_cal) {       // 如果处于全局作用域中
             appendError(arrayval.get(), "#The array init list can't be calculated\n");
+            // printf("")
             return false;
         }
 
@@ -747,6 +737,7 @@ bool SemanticCheck::checkArrayInitList(const std::shared_ptr<ArrayValue> &arrayv
 }
 
 void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
+    // printf("begin check array val\n");
     checkArrayInitList(arrayval);
 
     if (arrayval->is_number_) {
