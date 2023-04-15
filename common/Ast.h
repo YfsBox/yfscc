@@ -78,8 +78,8 @@ public:
     }
 
 private:
-    std::vector<DeclPtr> declares_;
-    std::vector<FuncDefinePtr> func_defs_;
+    std::vector<DeclPtr> declares_;         // 全局/const 声明
+    std::vector<FuncDefinePtr> func_defs_;  // 函数
 };
 
 class Statement: public AstNode {
@@ -95,7 +95,7 @@ public:
         return StatementType::DECL_STMTTYPE;
     }
     BasicType type_;
-    std::vector<DefinePtr> defs_;
+    std::vector<DefinePtr> defs_;       //
 };
 
 class Define: public AstNode {
@@ -249,8 +249,8 @@ public:
     }
 
 private:
-    std::string id_;
-    std::vector<ExpressionPtr> array_dimension_;
+    std::string id_;        // 该变量的name
+    std::vector<ExpressionPtr> array_dimension_;    // 为了支持数组,所以将数组的维度信息放到identifier里面
 };
 
 class Expression:public AstNode {
@@ -332,7 +332,7 @@ public:
     void dump(std::ostream &out, size_t n) override;
 
 private:
-    IdentifierPtr id_;
+    IdentifierPtr id_;      // 一个左值通常就是对一个Identifier的引用
 };
 
 class UnaryExpr : public Expression {
@@ -393,7 +393,7 @@ private:
     ExpressionPtr right_expr_;
 };
 
-class FuncFParam: public AstNode {
+class FuncFParam: public AstNode {      // formal
 public:
 
     FuncFParam(BasicType type, const IdentifierPtr &id):
@@ -412,11 +412,11 @@ public:
     void dump(std::ostream &out, size_t n) override;
 
 private:
-    BasicType type_;
-    IdentifierPtr id_;
+    BasicType type_;    // 类型
+    IdentifierPtr id_;      // id，因此判断一个id是否是数组类型的应该使用通过查看id中的dimension
 };
 
-class FuncRParams: public AstNode {
+class FuncRParams: public AstNode { // 表示一个由函数的实参序列
 public:
     using FuncRParamPtr = std::shared_ptr<FuncFParam>;
 
@@ -439,7 +439,7 @@ public:
     void dump(std::ostream &out, size_t n) override;
 
 private:
-    std::vector<ExpressionPtr> exprs_;
+    std::vector<ExpressionPtr> exprs_;  // 实参是Expression
 };
 
 class CallFuncExpr: public Expression {
@@ -473,8 +473,8 @@ public:
     void dump(std::ostream &out, size_t n) override;
 
 private:
-    IdentifierPtr func_id_;
-    FuncRParamsPtr actuals_;
+    IdentifierPtr func_id_;     // 一个func id
+    FuncRParamsPtr actuals_;        //
 };
 
 class AssignStatement: public Statement {
@@ -708,6 +708,7 @@ private:
     std::vector<FuncFParamPtr> formals_;
 };
 
+// 之所以使用FuncFParams
 
 
 

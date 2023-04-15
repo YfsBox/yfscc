@@ -7,12 +7,12 @@
 #include "SemanticCheck.h"
 
 SemanticCheck::SemanticCheck(std::ostream &out):
-AstVisitor(),
-out_(out),
-curr_while_depth_(0),
-error_cnt(0),
-curr_func_scope_(nullptr),
-curr_decl_(nullptr){
+    AstVisitor(),
+    out_(out),
+    curr_while_depth_(0),
+    error_cnt(0),
+    curr_func_scope_(nullptr),
+    curr_decl_(nullptr) {
     addLibFunc();
 }
 
@@ -75,6 +75,31 @@ bool SemanticCheck::isRedefinedCurrScope(const std::string &id) {
 
 inline void SemanticCheck::dumpSymbolTable() const {
     ident_systable_.dump(out_);
+}
+
+void SemanticCheck::initCurrArrayListInfo(const std::shared_ptr<Define> &def, BasicType btype) {
+    curr_array_list_info_.value_type_ = btype;
+    curr_array_list_info_.curr_depth_value_num_ = 0;
+    curr_array_list_info_.curr_list_depth_ = 0;
+    curr_array_list_info_.total_value_num_ = 0;
+    curr_array_list_info_.depth_need_size_map_.clear();
+    int32_t max_value = 1;
+    auto ident = def->getId();
+    auto dim_size = ident->getDimensionSize();
+    curr_array_list_info_.dim_size_ = dim_size;
+    curr_array_list_info_.depth_need_size_map_.insert({dim_size, 1});
+    for (size_t i = dim_size; i > 0; --i) {
+        auto dim = ident->getDimensionExpr(i - 1);
+        auto dim_number = std::dynamic_pointer_cast<Number>(dim);
+        if (!dim_number) {
+            appendError(def.get(), "#the dim number is not number in " + ident->getId());
+        }
+        max_value *= dim_number->getIntValue();
+        curr_array_list_info_.depth_need_size_map_[i - 1] = max_value;
+        // printf("insert {%lu, %d} to depth need size map\n", i - 1, max_value);
+    }
+    curr_array_list_info_.max_values_ = max_value;
+    // printf("the max values is %lu in curr array list\n", max_value);
 }
 
 bool SemanticCheck::canCalculated(const std::shared_ptr<Expression> &init, double *value) {
@@ -320,6 +345,7 @@ void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicT
         ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), false));
     } else {        // 对于数组类型的判断
         checkArrayVarDefine(def, basic_type);
+        initCurrArrayListInfo(def, basic_type);
         auto init_expr = def->getInitExpr();
         if (init_expr) {
             visit(init_expr);
@@ -355,8 +381,8 @@ void SemanticCheck::checkConstDefine(const std::shared_ptr<ConstDefine> &def, Ba
         ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), true));
     } else {
         checkArrayVarDefine(def, basic_type);       // 首先处理维度
+        initCurrArrayListInfo(def, basic_type);
         visit(def->getInitExpr());
-
     }
 }
 // Define中分为Id和用来初始化的expr，这里主要分析的id
@@ -398,9 +424,9 @@ bool SemanticCheck::checkArrayVarDefine(const std::shared_ptr<Define> &def, Basi
         appendError(def.get(), "#The Const ArrayVal " + id_name + " not has a init expression\n");
         return false;
     }
-    if (def->init_expr_) {
+    /*if (def->init_expr_) {
         visit(def->init_expr_);
-    }
+    }*/
     ident_systable_.addIdent(SymbolEntry(basic_type, false, 0, ident.get(), def->getDefType() == DefType::CONSTDEF));
     return true;
 }
@@ -510,7 +536,6 @@ void SemanticCheck::visit(const std::shared_ptr<BlockItems> &stmt) {
             visit(item);
         }
     }
-    // dumpSymbolTable();
     ident_systable_.exitScope();
 }
 
@@ -703,7 +728,6 @@ void SemanticCheck::visit(const std::shared_ptr<Statement> &stmt) {
 // 该函数主要去做一些关于编译期计算的转化
 bool SemanticCheck::checkArrayInitList(const std::shared_ptr<ArrayValue> &arrayval) {
     assert(curr_decl_);
-    
     if (arrayval->is_number_) {
         assert(arrayval->value_);       // 不可以是空的
         double value = 0;
@@ -711,7 +735,6 @@ bool SemanticCheck::checkArrayInitList(const std::shared_ptr<ArrayValue> &arrayv
 
         if (ident_systable_.isInGlobalScope() && !can_cal) {       // 如果处于全局作用域中
             appendError(arrayval.get(), "#The array init list can't be calculated\n");
-            // printf("")
             return false;
         }
 
@@ -728,7 +751,8 @@ bool SemanticCheck::checkArrayInitList(const std::shared_ptr<ArrayValue> &arrayv
     }
 
     for (auto &array_val : arrayval->valueList_) {
-        if (!checkArrayInitList(array_val)) {
+        bool check_ok = checkArrayInitList(array_val);
+        if (!check_ok) {
             return false;
         }
     }
@@ -736,15 +760,56 @@ bool SemanticCheck::checkArrayInitList(const std::shared_ptr<ArrayValue> &arrayv
     return true;
 }
 
-void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
-    // printf("begin check array val\n");
-    checkArrayInitList(arrayval);
+inline void SemanticCheck::enterDeeperArrayList() {
+    curr_array_list_info_.curr_list_depth_++;
+    curr_array_list_info_.curr_depth_value_num_ = 0;
+}
 
+inline void SemanticCheck::exitDeeperArrayList(int32_t old_depth_cnt) {
+    curr_array_list_info_.curr_list_depth_--;
+    curr_array_list_info_.curr_depth_value_num_ += old_depth_cnt;
+}
+
+void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
+    checkArrayInitList(arrayval);
+    /*if (curr_array_list_info_.dim_size_ < curr_array_list_info_.curr_list_depth_) {
+        return;
+    }*/
     if (arrayval->is_number_) {
         visit(arrayval->value_);
+        curr_array_list_info_.curr_depth_value_num_++;
+        curr_array_list_info_.total_value_num_++;
+        return;
     }
     for (auto &array_val : arrayval->valueList_) {
+        size_t old_depth_value_num = curr_array_list_info_.curr_depth_value_num_;
+        enterDeeperArrayList();
+        // printf("visit next dim list in depth %lu\n", curr_array_list_info_.curr_list_depth_);
         visit(array_val);
+        exitDeeperArrayList(old_depth_value_num);
+    }
+    int32_t miss_cnt = curr_array_list_info_.depth_need_size_map_[curr_array_list_info_.curr_list_depth_]
+            - curr_array_list_info_.curr_depth_value_num_;
+    miss_cnt = std::min(miss_cnt, curr_array_list_info_.max_values_ - curr_array_list_info_.total_value_num_);
+    /* printf("the miss cnt is %d in depth %lu, the curr depth value num is %d\n",
+           miss_cnt, curr_array_list_info_.curr_list_depth_, curr_array_list_info_.curr_depth_value_num_);*/
+    if (miss_cnt >= 0) {
+        for (size_t i = 0; i < miss_cnt; ++i) {
+            std::shared_ptr<Number> number_value;
+            if (curr_array_list_info_.value_type_ == FLOAT_BTYPE) {
+                float number = 0.0;
+                number_value = std::make_shared<Number>(number);
+            } else {
+                int32_t number = 0;
+                number_value = std::make_shared<Number>(number);
+            }
+            // printf("add Implicit node to array init list in depth %lu, the miss cnt is %lu\n", curr_array_list_info_.curr_list_depth_, miss_cnt);
+            arrayval->valueList_.emplace_back(std::make_shared<ArrayValue>(true, number_value));
+        }
+        curr_array_list_info_.curr_depth_value_num_ += miss_cnt;
+        curr_array_list_info_.total_value_num_ += miss_cnt;
+    } else {
+        appendError(arrayval.get(), "#the number in array value list is error\n");
     }
 }
 

@@ -9,6 +9,16 @@
 #include "../common/AstVisitor.h"
 #include "../common/SysbolTable.h"
 
+struct CurrArrayValueListInfo {
+    BasicType value_type_;
+    size_t dim_size_;
+    int32_t max_values_{0};
+    size_t curr_list_depth_{0};
+    int32_t curr_depth_value_num_{0};
+    int32_t total_value_num_{0};
+    std::unordered_map<size_t, int32_t> depth_need_size_map_;
+};
+
 class SemanticCheck: public AstVisitor {
 public:
     using FuncDefineMap = std::unordered_map<std::string, std::shared_ptr<FuncDefine>>;
@@ -87,15 +97,17 @@ private:
 
     bool isRedefinedCurrScope(const std::string &id);
 
+    void initCurrArrayListInfo(const std::shared_ptr<Define> &def, BasicType btype);
+
+    inline void enterDeeperArrayList();
+
+    inline void exitDeeperArrayList(int32_t old_depth_cnt);
+
     std::ostream &out_;
 
     size_t curr_while_depth_;        // 用来记录当前是否处于while之中
     size_t error_cnt;
-    /*
-    size_t curr_initlist_depth_;
-    size_t curr_initlist_cnt_;
-    size_t curr_initlist_fullcnt_;
-    */
+
     FuncDefine *curr_func_scope_;       // 当前所处的函数
     Declare *curr_decl_;      // 用来追踪当前的array_decl,需要知道其声明类型
     std::vector<std::string> error_msgs_;
@@ -103,6 +115,7 @@ private:
     FuncDefineMap func_map_;
     FuncDefineMap lib_func_map_;
     SymbolTable<SymbolEntry> ident_systable_;
+    CurrArrayValueListInfo curr_array_list_info_;
 };  // 这其中的很多变量都表示在进行递归AST时，当前的一些状态
 
 #endif //YFSCC_SEMANTICCHECK_H
