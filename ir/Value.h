@@ -12,8 +12,10 @@
 
 enum ValueType {
     InstructionValue,
+    BasicBlockValue,
+    FunctionValue,
+    ConstantValue,
 };
-
 
 class Value {
 public:
@@ -47,7 +49,7 @@ public:
         return user_map_.size();
     }
 
-private:
+protected:
     UserMap user_map_;
     std::string name_;
     ValueType type_;

@@ -12,7 +12,7 @@ class User: public Value {
 public:
     explicit User(ValueType type, const std::string &name = "", size_t num = 0): Value(type, name) , operand_num_(num) {}
 
-    ~User() = default;
+    virtual ~User() = default;
 
     size_t getOperandNum() const {
         return operand_num_;
@@ -38,7 +38,7 @@ public:
         operand_num_++;
     }
 
-private:
+protected:
     size_t operand_num_;
     std::vector<Value*> operands_;
 };
