@@ -575,6 +575,10 @@ public:
         return StatementType::EVAL_STMTTYPE;
     }
 
+    ExpressionPtr getExpr() const {
+        return expr_;
+    }
+
 private:
     ExpressionPtr expr_;
 };

@@ -103,6 +103,9 @@ void SemanticCheck::initCurrArrayListInfo(const std::shared_ptr<Define> &def, Ba
 }
 
 bool SemanticCheck::canCalculated(const std::shared_ptr<Expression> &init, double *value) {
+    if (!init) {
+        return false;
+    }
     visit(init);
     // 用于根据表达式的不同类型计算出value
     auto expr_type = init->getExprNodeType();
@@ -460,15 +463,18 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
         size_t dim_size = formal_ident->getDimensionSize();
         for (size_t j = 0; j < dim_size; ++j) {
             auto dim_expr = formal_ident->getDimensionExpr(j);
-            if (!dim_expr) {
-                continue;
-            }
-            double dim_value = 0;
-            if (!canCalculated(dim_expr, &dim_value)) {     // 要求必须是可以编译期计算的
-                appendError(def.get(), "#The Array Formal " + formal_name + " in Funcion " + func_def_name + " must has calculated dimension\n");
+            if (j == 0 && dim_expr) {     // formal中的第一维应该是空的
+                appendError(def.get(), "#The first dimension should be null\n");
                 return;
             }
-           formal_ident->setDimensionExpr(j, std::make_shared<Number>(static_cast<int32_t>(dim_value)));
+            double dim_value = 0;
+            if (j > 0 && !canCalculated(dim_expr, &dim_value)) {
+                appendError(def.get(), "#The dimension that not first should be caculated\n");
+                return;
+            }
+            if (j > 0) {
+                formal_ident->setDimensionExpr(j, std::make_shared<Number>(static_cast<int32_t>(dim_value)));
+            }
         }
         SymbolEntry new_symbol(formal->getBtype(), false, 0, formal->getFormalId().get(), false);
         ident_systable_.addIdent(new_symbol);
@@ -643,7 +649,28 @@ void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
     // 通过环境表获取到表项之后,需要检查参数是否是匹配的
     for (size_t i = 0; i < actual_size; ++i) {
         auto actual_expr = expr->getActual(i);
+        auto formal_expr = func_def->getFormals()->getFuncFormal(i);
         visit(actual_expr);
+        // 判断关于数组类型的参数，首先需要判断维度
+        auto lvel_expr = std::dynamic_pointer_cast<LvalExpr>(actual_expr);
+        if (lvel_expr) {    // 可以转换为左值
+            // 首先检查该lvel存不存在?
+            auto actual_symbol = ident_systable_.lookupFromAll(lvel_expr->getId()->getId());
+            if (!actual_symbol) {
+                appendError(expr.get(), "#The Call expr not has the lvel in actual\n");
+                continue;
+            }
+            if (lvel_expr->getId()->getDimensionSize() + formal_expr->getFormalId()->getDimensionSize()
+            != actual_symbol->getId()->getDimensionSize()) {
+                appendError(expr.get(), "#The Call expr's actual the array size is error\n");
+                continue;
+            }
+        }
+        // 还需要判断类型
+        if (actual_expr->expr_type_ == BasicType::VOID_BTYPE) {
+            appendError(expr.get(), "#The actual can't be void type\n");
+            continue;
+        }
     }
     expr->expr_type_ = func_def->getReturnType();
 }
@@ -721,6 +748,8 @@ void SemanticCheck::visit(const std::shared_ptr<Statement> &stmt) {
         case DECL_STMTTYPE:
             visit(std::dynamic_pointer_cast<Declare>(stmt));
             return;
+        case EVAL_STMTTYPE:
+            visit(std::dynamic_pointer_cast<EvalStatement>(stmt)->getExpr());
         default:
             return;
     }
@@ -782,7 +811,7 @@ void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
         return;
     }
     for (auto &array_val : arrayval->valueList_) {
-        size_t old_depth_value_num = curr_array_list_info_.curr_depth_value_num_;
+        int32_t old_depth_value_num = curr_array_list_info_.curr_depth_value_num_;
         enterDeeperArrayList();
         // printf("visit next dim list in depth %lu\n", curr_array_list_info_.curr_list_depth_);
         visit(array_val);
@@ -791,8 +820,8 @@ void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
     int32_t miss_cnt = curr_array_list_info_.depth_need_size_map_[curr_array_list_info_.curr_list_depth_]
             - curr_array_list_info_.curr_depth_value_num_;
     miss_cnt = std::min(miss_cnt, curr_array_list_info_.max_values_ - curr_array_list_info_.total_value_num_);
-    /* printf("the miss cnt is %d in depth %lu, the curr depth value num is %d\n",
-           miss_cnt, curr_array_list_info_.curr_list_depth_, curr_array_list_info_.curr_depth_value_num_);*/
+    printf("the miss cnt is %d in depth %lu, the curr depth value num is %d\n",
+           miss_cnt, curr_array_list_info_.curr_list_depth_, curr_array_list_info_.curr_depth_value_num_);
     if (miss_cnt >= 0) {
         for (size_t i = 0; i < miss_cnt; ++i) {
             std::shared_ptr<Number> number_value;
@@ -811,6 +840,7 @@ void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
     } else {
         appendError(arrayval.get(), "#the number in array value list is error\n");
     }
+    printf("visit the array init list ok\n");
 }
 
 // 千万不要从裸指针生成shared_ptr之后带入函数，这样容易造成意外地内存释放
