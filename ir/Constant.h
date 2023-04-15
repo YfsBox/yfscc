@@ -21,10 +21,6 @@ protected:
 class ConstantVar: public Constant {
 public:
 
-    static ConstantVar *CreateZeroIntConst();
-
-    static ConstantVar *CreateZeroFloatConst();
-
     ConstantVar(float val, const std::string &name = ""): Constant(name), is_float_(true), fval_(val) {}
 
     ConstantVar(int32_t val, const std::string &name = ""): Constant(name), is_float_(false), ival_(val) {}
@@ -53,7 +49,7 @@ private:
 
 class ConstantArray: public Constant {
 public:
-    explicit ConstantArray(bool isfloat, int dimention, const std::string &name):
+    explicit ConstantArray(bool isfloat, int dimention, const std::string &name = ""):
             Constant(name),
             is_float_(isfloat),
             dimension_size_(dimention) {

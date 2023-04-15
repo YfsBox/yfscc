@@ -15,6 +15,8 @@ enum ValueType {
     BasicBlockValue,
     FunctionValue,
     ConstantValue,
+    GlobalVariableValue,
+    ArgumentValue,
 };
 
 class Value {
