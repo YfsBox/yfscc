@@ -20,6 +20,13 @@ set(FRONTEND_SRC
         semantic/SemanticCheck.cc
         common/Utils.cc
         common/Ast.cc
+
+        ir/Argument.cc
+        ir/BasicBlock.cc
+        ir/Constant.cc
+        ir/Function.cc
+        ir/GlobalVariable.cc
+        ir/Instruction.cc
 )
 
 add_library(frontend ${FRONTEND_SRC})

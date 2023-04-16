@@ -21,18 +21,13 @@ public:
 
     using BasicBlockPtr = std::unique_ptr<BasicBlock>;
 
-    Function(Module *module, const std::string &name): Value(FunctionValue, name), parent_(module) {}
+    Function(Module *module, const std::string &name);
 
-    ~Function() = default;
+    ~Function();
 
-    void addArgument(bool is_float, const std::string &argument_name) {
-        int curr_idx = arguments_.size();
-        arguments_.push_back(std::make_unique<Argument>(curr_idx, is_float, this, argument_name));
-    }
+    void addArgument(bool is_float, const std::string &argument_name);
 
-    void addBasicBlock(BasicBlockPtr block) {
-        blocks_.push_back(std::move(block));
-    }
+    void addBasicBlock(BasicBlockPtr block);
 
     Argument *getArgument(int idx) const {
         return arguments_[idx].get();

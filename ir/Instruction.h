@@ -27,12 +27,9 @@ class BasicBlock;
 
 class Instruction: public User {
 public:
-    Instruction(InstructionType type, BasicBlock *block):
-        User(ValueType::InstructionValue),
-        inst_type_(type),
-        parent_(block) {}
+    Instruction(InstructionType type, BasicBlock *block);
 
-    ~Instruction() = default;
+    virtual ~Instruction();
 
     BasicBlock *getParent() const {
         return parent_;
@@ -49,9 +46,9 @@ protected:
 
 class BinaryOpInstruction: public Instruction {
 public:
-    BinaryOpInstruction(InstructionType type, BasicBlock *block, BinaryOpType optype):
-            Instruction(type, block),
-            optype_(optype){}
+    BinaryOpInstruction(InstructionType type, BasicBlock *block, BinaryOpType optype);
+
+    ~BinaryOpInstruction();
 
     BinaryOpType getOpType() const {
         return optype_;
@@ -62,9 +59,9 @@ private:
 
 class UnaryOpInstruction: public Instruction {
 public:
-    UnaryOpInstruction(InstructionType type, BasicBlock *block, UnaryOpType optype):
-            Instruction(type, block),
-            optype_(optype){}
+    UnaryOpInstruction(InstructionType type, BasicBlock *block, UnaryOpType optype);
+
+    ~UnaryOpInstruction();
 
     UnaryOpType getOptype() const {
         return optype_;

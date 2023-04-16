@@ -8,8 +8,8 @@
 #include <list>
 #include <memory>
 #include "Value.h"
+#include "Instruction.h"
 
-class Instruction;
 class Function;
 
 class BasicBlock: public Value {
@@ -17,9 +17,9 @@ public:
     using InstructionPtr = std::unique_ptr<Instruction>;
     using BlockList = std::list<BasicBlock *>;
 
-    explicit BasicBlock(Function *func);
+    BasicBlock(Function *func, const std::string &lebal);
 
-    ~BasicBlock() = default;
+    ~BasicBlock();
 
     size_t getInstructionSize() const {
         return instructions_.size();
@@ -33,11 +33,21 @@ public:
         return predecessor_blocks_;
     }
 
-    void addInstruction(Instruction *instruction);
+    void addInstruction(InstructionPtr instruction) {
+        instructions_.push_front(std::move(instruction));
+    }
 
-    void addSuccessorBlock(BasicBlock *block);
+    void addSuccessorBlock(BasicBlock *block) {
+        successor_blocks_.push_front(block);
+    }
 
-    void addPredecessorBlock(BasicBlock *block);
+    void addPredecessorBlock(BasicBlock *block) {
+        predecessor_blocks_.push_front(block);
+    }
+
+    Function *getFunction() const {
+        return owner_function_;
+    }
 
 private:
     Function *owner_function_;

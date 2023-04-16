@@ -11,10 +11,9 @@ class Function;
 
 class Argument: public Value {
 public:
-    Argument(int idx, bool is_float, Function *func, const std::string &name):
-    Value(ValueType::ArgumentValue, name), idx_(idx), is_float_(is_float), parent_(func) {}
+    Argument(int idx, bool is_float, Function *func, const std::string &name);
 
-    ~Argument() = default;
+    ~Argument();
 
     Function *getParent() const {
         return parent_;

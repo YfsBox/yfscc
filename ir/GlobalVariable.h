@@ -15,24 +15,15 @@ class GlobalVariable: public Value {
 public:
     using ConstantPtr = std::unique_ptr<Constant>;
 
-    GlobalVariable(bool is_const, const std::string &name):Value(ValueType::GlobalVariableValue, name), is_const_(is_const) {}
+    GlobalVariable(bool is_const, const std::string &name);
 
-    GlobalVariable(bool is_const, int32_t initval, const std::string &name):
-            Value(ValueType::GlobalVariableValue, name),
-            is_const_(is_const),
-            const_init_(std::make_unique<ConstantVar>(initval)) {}
+    GlobalVariable(bool is_const, int32_t initval, const std::string &name);
 
-    GlobalVariable(bool is_const, float initval, const std::string &name):
-            Value(ValueType::GlobalVariableValue, name),
-            is_const_(is_const),
-            const_init_(std::make_unique<ConstantVar>(initval)) {}
+    GlobalVariable(bool is_const, float initval, const std::string &name);
 
-    GlobalVariable(bool is_const, bool is_float, int dimension, const std::string &name):
-            Value(ValueType::GlobalVariableValue, name),
-            is_const_(is_const),
-            const_init_(std::make_unique<ConstantArray>(is_float, dimension)) {}
+    GlobalVariable(bool is_const, bool is_float, int dimension, const std::string &name);
 
-    ~GlobalVariable() = default;
+    ~GlobalVariable();
 
     Constant *getConstInit() const {
         return const_init_.get();

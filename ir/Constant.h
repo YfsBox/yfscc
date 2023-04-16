@@ -8,24 +8,25 @@
 #include <iostream>
 #include <cassert>
 #include <vector>
+#include <memory>
 #include "User.h"
 #include "../common/Types.h"
 
 class Constant: public User {
 public:
-    Constant(const std::string &name = ""): User(ConstantValue, name) {}
-    virtual ~Constant() = default;
+    Constant(const std::string &name = "");
+    virtual ~Constant();
 protected:
 };
 
 class ConstantVar: public Constant {
 public:
 
-    ConstantVar(float val, const std::string &name = ""): Constant(name), is_float_(true), fval_(val) {}
+    ConstantVar(float val, const std::string &name = "");
 
-    ConstantVar(int32_t val, const std::string &name = ""): Constant(name), is_float_(false), ival_(val) {}
+    ConstantVar(int32_t val, const std::string &name = "");
 
-    ~ConstantVar() = default;
+    ~ConstantVar();
 
     bool isFloat() const {
         return is_float_;
@@ -49,14 +50,11 @@ private:
 
 class ConstantArray: public Constant {
 public:
-    explicit ConstantArray(bool isfloat, int dimention, const std::string &name = ""):
-            Constant(name),
-            is_float_(isfloat),
-            dimension_size_(dimention) {
+    using ConstantVarPtr = std::unique_ptr<ConstantVar>;
 
-    }
+    ConstantArray(bool isfloat, int dimention, const std::string &name = "");
 
-    ~ConstantArray() = default;
+    ~ConstantArray();
 
     size_t getDimensionSize() const {
         return dimension_size_;
@@ -70,13 +68,13 @@ public:
 
     void addInitVar(int32_t initval) {
         if (!is_float_) {
-            init_var_list_.emplace_back(initval);
+            init_var_list_.emplace_back(std::make_unique<ConstantVar>(initval));
         }
     }
 
     void addInitVar(float initval) {
         if (is_float_) {
-            init_var_list_.emplace_back(initval);
+            init_var_list_.emplace_back(std::make_unique<ConstantVar>(initval));
         }
     }
 
@@ -84,7 +82,7 @@ private:
     bool is_float_;
     int dimension_size_;
     std::vector<size_t> dimension_number_;
-    std::vector<ConstantVar> init_var_list_;
+    std::vector<ConstantVarPtr> init_var_list_;
 };
 
 #endif //YFSCC_CONSTANT_H
