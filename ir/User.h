@@ -40,7 +40,7 @@ public:
 
 protected:
     size_t operand_num_;
-    std::vector<Value*> operands_;
+    std::vector<Value *> operands_;
 };
 
 #endif //YFSCC_USER_H
