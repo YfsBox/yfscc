@@ -147,9 +147,9 @@ private:
 
 class BranchInstruction: public Instruction {
 public:
-    BranchInstruction(BasicBlock *block, Value *cond, Value *true_label, Value *false_label, const std::string &name);
+    BranchInstruction(BasicBlock *block, Value *cond, Value *true_label, Value *false_label, const std::string &name = "");
 
-    BranchInstruction(BasicBlock *block, Value *label, const std::string &name);
+    BranchInstruction(BasicBlock *block, Value *label, const std::string &name = "");
 
     ~BranchInstruction();
 

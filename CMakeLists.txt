@@ -27,6 +27,7 @@ set(FRONTEND_SRC
         ir/Function.cc
         ir/GlobalVariable.cc
         ir/Instruction.cc
+        ir/IrFactory.cc
 )
 
 add_library(frontend ${FRONTEND_SRC})

@@ -18,6 +18,8 @@ public:
 
     IrFactory() = default;
 
+    ~IrFactory() = default;
+
     static ValuePtr createFConstantVar(float value);
 
     static ValuePtr createIConstantVar(int32_t value);
@@ -32,11 +34,11 @@ public:
     // static ValuePtr createIGlobalArray(const std::string &name, int dimension);
     static ValuePtr createBasicBlock(const std::string &name);
 
-    static ValuePtr createFloatFunction(const std::vector<std::string> &params);
+    static ValuePtr createFloatFunction(const std::vector<std::string> &params, const std::string &name);
 
-    static ValuePtr createIntFunction(const std::vector<std::string> &params);
+    static ValuePtr createIntFunction(const std::vector<std::string> &params, const std::string &name);
 
-    static ValuePtr createVoidFunction(const std::vector<std::string> &params);
+    static ValuePtr createVoidFunction(const std::vector<std::string> &params, const std::string &name);
 
     static ValuePtr createAddInstruction(Value *left, Value *right);
 
@@ -107,10 +109,7 @@ public:
     static ValuePtr createF2ICastInstruction(Value *value);
 
 private:
-
-    IrContext *context_;
-
-    int ssa_no_{-1};
+    static IrContext *context_;
 };
 
 #endif //YFSCC_IRFACTORY_H
