@@ -33,6 +33,10 @@ public:
         return predecessor_blocks_;
     }
 
+    BlockList &getTerminals() {
+        return terminals_;
+    }
+
     void addInstruction(InstructionPtr instruction) {
         instructions_.push_front(std::move(instruction));
     }
@@ -43,6 +47,10 @@ public:
 
     void addPredecessorBlock(BasicBlock *block) {
         predecessor_blocks_.push_front(block);
+    }
+
+    void addTerminal(BasicBlock *block) {
+        terminals_.push_front(block);
     }
 
     Function *getFunction() const {
@@ -57,6 +65,8 @@ private:
     BlockList successor_blocks_;
 
     BlockList predecessor_blocks_;
+
+    BlockList terminals_;
 };
 
 #endif //YFSCC_BASICBLOCK_H

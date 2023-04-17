@@ -8,6 +8,8 @@
 #include "User.h"
 #include "../common/Types.h"
 
+class Function;
+
 enum InstructionType {
     RetType,
     BrType,
@@ -21,6 +23,10 @@ enum InstructionType {
     AllocaType,
     LoadType,
     StoreType,
+    CallType,
+    SetCondType,
+    PhiType,
+    CastType,
 };
 
 class BasicBlock;
@@ -119,6 +125,171 @@ private:
     bool is_array_;
     size_t value_size_;
     BasicType value_type_;
+};
+
+class RetInstruction: public Instruction {
+public:
+    RetInstruction(BasicBlock *block, const std::string &name);
+
+    RetInstruction(BasicBlock *block, const std::string &name, Value *value);
+
+    ~RetInstruction();
+
+    Value *getRetValue() const {
+        return getOperand(0);
+    }
+
+    bool isRetVoid() const {
+        return getOperandNum() == 0;
+    }
+private:
+};
+
+class BranchInstruction: public Instruction {
+public:
+    BranchInstruction(BasicBlock *block, Value *cond, Value *true_label, Value *false_label, const std::string &name);
+
+    BranchInstruction(BasicBlock *block, Value *label, const std::string &name);
+
+    ~BranchInstruction();
+
+    bool isCondBranch() const {
+        return is_cond_;
+    }
+
+    Value *getCond() const {
+        if (!is_cond_) {
+            return nullptr;
+        }
+        return getOperand(0);
+    }
+
+    Value *getTrueLabel() const {
+        if (!is_cond_) {
+            return nullptr;
+        }
+        return getOperand(1);
+    }
+
+    Value *getFalseLabel() const {
+        if (!is_cond_) {
+            return nullptr;
+        }
+        return getOperand(2);
+    }
+
+    Value *getLabel() const {
+        if (is_cond_) {
+            return nullptr;
+        }
+        return getOperand(0);
+    }
+
+private:
+    bool is_cond_;
+};
+
+class CallInstruction: public Instruction {
+public:
+    CallInstruction(BasicBlock *block, Function *function, std::vector<Value *> actuals, const std::string &name);
+
+    ~CallInstruction();
+
+    size_t getActualSize() const {
+        return getOperandNum();
+    }
+
+    Function *getFunction() const {
+        return function_;
+    }
+
+    Value *getActual(int idx) const {
+        return getOperand(idx);
+    }
+private:
+    Function *function_;
+};
+
+class SetCondInstruction: public Instruction {
+public:
+    enum CmpCondType {
+        SetEQ,
+        SetNE,
+        SetLE,
+        SetGE,
+        SetLT,
+        SetGT,
+    };
+
+    SetCondInstruction(BasicBlock *block, CmpCondType cmptype, bool is_float, Value *left, Value *right, const std::string &name);
+
+    ~SetCondInstruction();
+
+    bool isFloatCmp() const {
+        return is_float_;
+    }
+
+    CmpCondType getCmpType() const {
+        return cmp_cond_type_;
+    }
+
+    Value *getLeft() const {
+        return getOperand(0);
+    }
+
+    Value *getRight() const {
+        return getOperand(1);
+    }
+
+private:
+    bool is_float_;
+    CmpCondType cmp_cond_type_;
+};
+
+class PhiInstruction: public Instruction {
+public:
+    using ValueBlockPair = std::pair<Value *, BasicBlock *>;
+
+    PhiInstruction(BasicBlock *block, std::vector<Value *> values, std::vector<BasicBlock *> bbs, const std::string &name);
+
+    ~PhiInstruction();
+
+    ValueBlockPair getValueBlock(int idx) const;
+
+    Value *getValue(int idx) const {
+        return getOperand(idx);
+    }
+
+    BasicBlock *getBasicBlock(int idx) const;
+
+    size_t getSize() const {
+        return getOperandNum() / 2;
+    }
+
+private:
+};
+
+
+class CastInstruction: public Instruction {
+public:
+    CastInstruction(BasicBlock *block, bool is_i2f, Value *value, const std::string &name);
+
+    ~CastInstruction();
+
+    bool isI2F() const {
+        return is_i2f_;
+    }
+
+    bool isF2I() const {
+        return !is_i2f_;
+    }
+
+    Value *getValue() const {
+        return getOperand(0);
+    }
+
+private:
+    bool is_i2f_;
 };
 
 #endif //YFSCC_INSTRUCTION_H
