@@ -4,7 +4,7 @@
 #include "Function.h"
 #include "BasicBlock.h"
 
-Function::Function(Module *module, const std::string &name): Value(FunctionValue, name), parent_(module) {}
+Function::Function(BasicType ret_type, Module *module, const std::string &name): Value(FunctionValue, name), ret_type_(ret_type), parent_(module) {}
 
 Function::~Function() = default;
 

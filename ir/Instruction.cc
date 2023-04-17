@@ -132,7 +132,7 @@ CastInstruction::CastInstruction(BasicBlock *block, bool is_i2f, Value *value, c
 
 CastInstruction::~CastInstruction() = default;
 
-PhiInstruction::PhiInstruction(BasicBlock *block, std::vector<Value *> values, std::vector<BasicBlock *> bbs,
+PhiInstruction::PhiInstruction(BasicBlock *block,const std::vector<Value *> &values,const std::vector<BasicBlock *> &bbs,
                                const std::string &name):
         Instruction(InstructionType::PhiType, block, name){
     assert(values.size() == bbs.size());

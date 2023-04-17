@@ -11,6 +11,7 @@
 #include <list>
 #include "Value.h"
 #include "Argument.h"
+#include "../common/Types.h"
 
 class Module;
 class BasicBlock;
@@ -21,7 +22,7 @@ public:
 
     using BasicBlockPtr = std::unique_ptr<BasicBlock>;
 
-    Function(Module *module, const std::string &name);
+    Function(BasicType ret_type, Module *module, const std::string &name);
 
     ~Function();
 
@@ -37,8 +38,13 @@ public:
         return parent_;
     }
 
+    BasicType getRetType() const {
+        return ret_type_;
+    }
+
 private:
     Module *parent_;
+    BasicType ret_type_;
     std::vector<ArgumentPtr> arguments_;
     std::list<BasicBlockPtr> blocks_;
 };

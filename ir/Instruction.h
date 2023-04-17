@@ -250,7 +250,7 @@ class PhiInstruction: public Instruction {
 public:
     using ValueBlockPair = std::pair<Value *, BasicBlock *>;
 
-    PhiInstruction(BasicBlock *block, std::vector<Value *> values, std::vector<BasicBlock *> bbs, const std::string &name);
+    PhiInstruction(BasicBlock *block,const std::vector<Value *> &values,const std::vector<BasicBlock *> &bbs, const std::string &name);
 
     ~PhiInstruction();
 
