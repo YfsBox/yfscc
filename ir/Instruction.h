@@ -129,9 +129,9 @@ private:
 
 class RetInstruction: public Instruction {
 public:
-    RetInstruction(BasicBlock *block, const std::string &name);
+    RetInstruction(BasicBlock *block, const std::string &name = "");
 
-    RetInstruction(BasicBlock *block, const std::string &name, Value *value);
+    RetInstruction(BasicBlock *block, Value *value, BasicType btype,  const std::string &name = "");
 
     ~RetInstruction();
 
@@ -143,6 +143,7 @@ public:
         return getOperandNum() == 0;
     }
 private:
+    BasicType ret_type_;
 };
 
 class BranchInstruction: public Instruction {

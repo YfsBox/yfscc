@@ -87,12 +87,14 @@ CallInstruction::~CallInstruction() = default;
 
 
 RetInstruction::RetInstruction(BasicBlock *block, const std::string &name):
-        Instruction(InstructionType::RetType, block, name){
+        Instruction(InstructionType::RetType, block, name),
+        ret_type_(BasicType::VOID_BTYPE){
 
 }
 
-RetInstruction::RetInstruction(BasicBlock *block, const std::string &name, Value *value):
-        Instruction(InstructionType::RetType, block, name){
+RetInstruction::RetInstruction(BasicBlock *block, Value *value, BasicType btype, const std::string &name):
+        Instruction(InstructionType::RetType, block, name),
+        ret_type_(btype){
     addOperand(value);
 }
 

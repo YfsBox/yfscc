@@ -54,23 +54,31 @@ public:
 
     static ValuePtr createXorInstruction(Value *left, Value *right);
 
+    static ValuePtr createFAllocaInstruction(const std::string &name);
+
     static ValuePtr createFAllocaInstruction();
+
+    static ValuePtr createIAllocaInstruction(const std::string &name);
 
     static ValuePtr createIAllocaInstruction();
 
-    static ValuePtr createIArrayAllocaInstruction(size_t array_size);
+    static ValuePtr createIArrayAllocaInstruction(size_t array_size, const std::string &name);
 
-    static ValuePtr createFArrayAllocaInstruction(size_t array_size);
+    static ValuePtr createFArrayAllocaInstruction(size_t array_size, const std::string &name);
 
     static ValuePtr createILoadInstruction(Value *ptr);
 
     static ValuePtr createFLoadInstruction(Value *ptr);
 
-    static ValuePtr createStoreInstruction(Value *value, Value *ptr);
+    static ValuePtr createFStoreInstruction(Value *value, Value *ptr);
+
+    static ValuePtr createIStoreInstruction(Value *value, Value *ptr);
 
     static ValuePtr createVoidRetInstruction();
 
-    static ValuePtr createRetInstruction(Value *value);
+    static ValuePtr createIRetInstruction(Value *value);
+
+    static ValuePtr createFRetInstruction(Value *value);
 
     static ValuePtr createBrInstruction(Value *label);
 
