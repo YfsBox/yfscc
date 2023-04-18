@@ -162,3 +162,11 @@ BasicBlock *PhiInstruction::getBasicBlock(int idx) const {
     return dynamic_cast<BasicBlock*> (value);
 }
 
+GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *ptr, Value *offset, const std::string &name):
+        Instruction(InstructionType::GEPType, block, name),
+        type_(btype){
+    addOperand(ptr);
+    addOperand(offset);
+}
+
+GEPInstruction::~GEPInstruction() = default;

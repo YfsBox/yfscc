@@ -27,6 +27,7 @@ enum InstructionType {
     SetCondType,
     PhiType,
     CastType,
+    GEPType,
 };
 
 class BasicBlock;
@@ -291,6 +292,28 @@ public:
 
 private:
     bool is_i2f_;
+};
+
+class GEPInstruction: public Instruction {
+public:
+    GEPInstruction(BasicBlock *block, BasicType btype, Value *ptr, Value *offset, const std::string &name = "");
+
+    ~GEPInstruction();
+
+    Value *getPtr() const {
+        return getOperand(0);
+    }
+
+    Value *getOffset() const {
+        return getOperand(1);
+    }
+
+    BasicType getType() const {
+        return type_;
+    }
+
+private:
+    BasicType type_;
 };
 
 #endif //YFSCC_INSTRUCTION_H

@@ -116,6 +116,10 @@ public:
 
     static ValuePtr createF2ICastInstruction(Value *value);
 
+    static ValuePtr createFGEPInstruction(Value *ptr, Value *offset);
+
+    static ValuePtr createIGEPInstruction(Value *ptr, Value *offset);
+
 private:
     static IrContext *context_;
 };

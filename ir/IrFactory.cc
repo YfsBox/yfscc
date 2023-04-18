@@ -246,4 +246,13 @@ IrFactory::ValuePtr IrFactory::createFRetInstruction(Value *value) {
     return std::make_unique<RetInstruction>(context_->curr_bb_, value, BasicType::FLOAT_BTYPE);
 }
 
+IrFactory::ValuePtr IrFactory::createFGEPInstruction(Value *ptr, Value *offset) {
+    context_->ssa_no_++;
+    return std::make_unique<GEPInstruction>(context_->curr_bb_, BasicType::FLOAT_BTYPE, ptr, offset, std::to_string(context_->ssa_no_));
+}
+
+IrFactory::ValuePtr IrFactory::createIGEPInstruction(Value *ptr, Value *offset) {
+    context_->ssa_no_++;
+    return std::make_unique<GEPInstruction>(context_->curr_bb_, BasicType::INT_BTYPE, ptr, offset, std::to_string(context_->ssa_no_));
+}
 
