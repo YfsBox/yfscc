@@ -37,8 +37,8 @@ public:
         return terminals_;
     }
 
-    void addInstruction(InstructionPtr instruction) {
-        instructions_.push_front(std::move(instruction));
+    void addInstruction(Value *instruction) {
+        instructions_.push_front(std::unique_ptr<Instruction>(dynamic_cast<Instruction *>(instruction)));
     }
 
     void addSuccessorBlock(BasicBlock *block) {

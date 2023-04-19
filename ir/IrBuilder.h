@@ -11,6 +11,7 @@
 class Module;
 class Function;
 class BasicBlock;
+class Value;
 
 struct IrContext {
 
@@ -142,6 +143,7 @@ private:
 
     Declare *curr_decl_;
 
+    Value *curr_value_;
 };
 
 

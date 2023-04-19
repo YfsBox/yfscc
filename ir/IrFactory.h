@@ -14,7 +14,7 @@ class IrContext;
 
 class IrFactory {
 public:
-    using ValuePtr = std::unique_ptr<Value>;
+    using ValuePtr = Value *;
 
     IrFactory() = default;
 

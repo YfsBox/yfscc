@@ -4,15 +4,18 @@
 #include <cassert>
 #include <memory>
 #include "../common/Ast.h"
+#include "BasicBlock.h"
 #include "Module.h"
 #include "GlobalVariable.h"
+#include "Instruction.h"
 #include "IrBuilder.h"
 #include "IrFactory.h"
 
 IrBuilder::IrBuilder():
     module_(std::make_unique<Module>()),
     context_(std::make_unique<IrContext>(module_.get())),
-    curr_decl_(nullptr){
+    curr_decl_(nullptr),
+    curr_value_(nullptr){
 
 }
 
@@ -52,7 +55,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             std::unique_ptr<GlobalVariable> new_global = nullptr;
 
             auto init_value = std::dynamic_pointer_cast<Number>(def->getInitExpr());
-            std::unique_ptr<Value> new_value;
+            Value *new_value = nullptr;
             assert(init_value);
 
             if (def_basic_type == BasicType::INT_BTYPE) {
@@ -60,11 +63,46 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             } else if (def_basic_type == BasicType::FLOAT_BTYPE) {
                 new_value = IrFactory::createConstFGlobalVar(init_value->getFloatValue(), var_name);
             }
-            new_global = std::unique_ptr<GlobalVariable> (dynamic_cast<GlobalVariable *>(new_value.release()));
+            new_global = std::unique_ptr<GlobalVariable> (dynamic_cast<GlobalVariable *>(new_value));
             module_->addGlobalVariable(std::move(new_global));          // 加入到module的集合中
         } else {
-
-
+            // alloca
+            Value *alloca_inst_value = nullptr;
+            if (def_basic_type == BasicType::INT_BTYPE) {
+                alloca_inst_value = IrFactory::createIAllocaInstruction(var_name);
+            } else {
+                alloca_inst_value = IrFactory::createFAllocaInstruction(var_name);
+            }
+            // visit求出初始值,const的局部变量一定存在不可能为null
+            visit(def->init_expr_);
+            // 如果类型不一样,就需要进行转化
+            BasicType init_expr_type = def->init_expr_->expr_type_;
+            Value *cast_inst_value = nullptr;
+            Value *init_value = curr_value_;
+            if (init_expr_type == BasicType::INT_BTYPE && def_basic_type == BasicType::FLOAT_BTYPE) {
+                cast_inst_value = IrFactory::createI2FCastInstruction(curr_value_);
+            } else if (init_expr_type == BasicType::FLOAT_BTYPE && def_basic_type == BasicType::INT_BTYPE) {
+                cast_inst_value = IrFactory::createF2ICastInstruction(curr_value_);
+            }
+            if (cast_inst_value) {
+                init_value = cast_inst_value;
+            }
+            // store
+            Value *store_inst_value = nullptr;
+            if (def_basic_type == BasicType::INT_BTYPE) {
+                store_inst_value = IrFactory::createIStoreInstruction(init_value, alloca_inst_value);
+            } else {
+                store_inst_value = IrFactory::createFStoreInstruction(init_value, alloca_inst_value);
+            }
+            // 最后将指令加入到当前的basic block
+            context_->curr_bb_->addInstruction(alloca_inst_value);
+            if (cast_inst_value) {
+                context_->curr_bb_->addInstruction(cast_inst_value);
+            }
+            context_->curr_bb_->addInstruction(store_inst_value);
+            // 不要忘了将变量加入符号表
+            IrSymbolEntry new_entry(true, def_basic_type, var_name);
+            var_symbol_table_.addIdent(new_entry);
         }
 
     }
@@ -85,7 +123,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             std::unique_ptr<GlobalVariable> new_global = nullptr;
 
             auto init_value = std::dynamic_pointer_cast<Number>(def->getInitExpr());
-            std::unique_ptr<Value> new_value;
+            Value *new_value = nullptr;
             assert(init_value);
 
             if (def_basic_type == BasicType::INT_BTYPE) {
@@ -93,11 +131,50 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             } else if (def_basic_type == BasicType::FLOAT_BTYPE) {
                 new_value = IrFactory::createFGlobalVar(var_name, init_value->getFloatValue());
             }
-            new_global = std::unique_ptr<GlobalVariable> (dynamic_cast<GlobalVariable *>(new_value.release()));
+            new_global = std::unique_ptr<GlobalVariable> (dynamic_cast<GlobalVariable *>(new_value));
             module_->addGlobalVariable(std::move(new_global));          // 加入到module的集合中
 
         } else {
+            Value *alloca_inst_value = nullptr;
+            if (def_basic_type == BasicType::INT_BTYPE) {
+                alloca_inst_value = IrFactory::createIAllocaInstruction(var_name);
+            } else {
+                alloca_inst_value = IrFactory::createFAllocaInstruction(var_name);
+            }       // 所返回的东西视为一个地址
 
+            if (def->hasInitExpr()) {
+                visit(def->init_expr_);
+
+                BasicType init_expr_type = def->init_expr_->expr_type_;
+                Value *cast_inst_value = nullptr;
+                Value *init_value = curr_value_;
+                if (init_expr_type == BasicType::INT_BTYPE && def_basic_type == BasicType::FLOAT_BTYPE) {
+                    cast_inst_value = IrFactory::createI2FCastInstruction(curr_value_);
+                } else if (init_expr_type == BasicType::FLOAT_BTYPE && def_basic_type == BasicType::INT_BTYPE) {
+                    cast_inst_value = IrFactory::createF2ICastInstruction(curr_value_);
+                }
+                if (cast_inst_value) {
+                    init_value = cast_inst_value;
+                }
+
+                Value *store_inst_value = nullptr;
+                if (def_basic_type == BasicType::INT_BTYPE) {
+                    store_inst_value = IrFactory::createIStoreInstruction(init_value, alloca_inst_value);
+                } else {
+                    store_inst_value = IrFactory::createFStoreInstruction(init_value, alloca_inst_value);
+                }
+                // 最后将指令加入到当前的basic block
+                context_->curr_bb_->addInstruction(alloca_inst_value);
+                if (cast_inst_value) {
+                    context_->curr_bb_->addInstruction(cast_inst_value);
+                }
+                context_->curr_bb_->addInstruction(store_inst_value);
+                // 不要忘了将变量加入符号表
+            } else {
+                context_->curr_bb_->addInstruction(alloca_inst_value);
+            }
+            IrSymbolEntry new_entry(true, def_basic_type, var_name);
+            var_symbol_table_.addIdent(new_entry);
         }
 
     }
