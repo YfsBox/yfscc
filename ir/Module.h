@@ -20,8 +20,18 @@ public:
     explicit Module() = default;
 
     ~Module() = default;
+
+    void addGlobalVariable(GlobalVariablePtr var) {
+        global_variables_.emplace_back(std::move(var));
+    }
+
+    void addFunction(FunctionPtr func) {
+        functions_.emplace_back(std::move(func));
+    }
+
 private:
     std::vector<GlobalVariablePtr> global_variables_;
+
     std::vector<FunctionPtr> functions_;
 };
 

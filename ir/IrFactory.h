@@ -120,6 +120,10 @@ public:
 
     static ValuePtr createIGEPInstruction(Value *ptr, Value *offset);
 
+    static ValuePtr createConstIGlobalVar(int32_t initval, const std::string &name);
+
+    static ValuePtr createConstFGlobalVar(float initval, const std::string &name);
+
 private:
     static IrContext *context_;
 };

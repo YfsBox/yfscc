@@ -256,3 +256,11 @@ IrFactory::ValuePtr IrFactory::createIGEPInstruction(Value *ptr, Value *offset) 
     return std::make_unique<GEPInstruction>(context_->curr_bb_, BasicType::INT_BTYPE, ptr, offset, std::to_string(context_->ssa_no_));
 }
 
+IrFactory::ValuePtr IrFactory::createConstIGlobalVar(int32_t initval, const std::string &name) {
+    return std::make_unique<GlobalVariable>(true, initval, name);
+}
+
+IrFactory::ValuePtr IrFactory::createConstFGlobalVar(float initval, const std::string &name) {
+    return std::make_unique<GlobalVariable>(true, initval, name);
+}
+
