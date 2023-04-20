@@ -38,11 +38,11 @@ public:
     // static ValuePtr createIGlobalArray(const std::string &name, int dimension);
     static ValuePtr createBasicBlock(const std::string &name);
 
-    static ValuePtr createFloatFunction(const std::vector<std::string> &params, const std::string &name);
+    static ValuePtr createFloatFunction(const std::string &name);
 
-    static ValuePtr createIntFunction(const std::vector<std::string> &params, const std::string &name);
+    static ValuePtr createIntFunction(const std::string &name);
 
-    static ValuePtr createVoidFunction(const std::vector<std::string> &params, const std::string &name);
+    static ValuePtr createVoidFunction(const std::string &name);
 
     static ValuePtr createAddInstruction(Value *left, Value *right);
 

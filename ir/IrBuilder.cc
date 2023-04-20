@@ -229,19 +229,25 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
             arguments.push_back(IrFactory::createArrayArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, nullptr, dimension, formal_name));
         }
     }
+    for (auto &param_name : param_names) {
+        printf("param name : %s in func %s\n", param_name.c_str(), function_name.c_str());
+    }
+
     // 创建这个function(Value)
     if (ret_type == BasicType::INT_BTYPE) {
-        function_value = IrFactory::createIntFunction(param_names, function_name);
+        function_value = IrFactory::createIntFunction(function_name);
     } else if (ret_type == BasicType::FLOAT_BTYPE) {
-        function_value = IrFactory::createFloatFunction(param_names, function_name);
+        function_value = IrFactory::createFloatFunction(function_name);
     } else {
-        function_value = IrFactory::createVoidFunction(param_names, function_name);
+        function_value = IrFactory::createVoidFunction(function_name);
     }
     // 将其中的argument加入到function之中
     auto function = dynamic_cast<Function *>(function_value);
     context_->curr_function_ = function;
+    printf("the argument size is %lu before add\n", function->getArgumentSize());
     for (const auto argument: arguments) {
         function->addArgument(std::unique_ptr<Argument>(dynamic_cast<Argument *>(argument)));
+        printf("add %s to function %s, after that the size is %lu\n", argument->getName().c_str(), function->getName().c_str(), function->getArgumentSize());
     }
     // 进入新的一层符号表,并将参数加入到符号表
     var_symbol_table_.enterScope();

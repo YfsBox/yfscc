@@ -49,28 +49,16 @@ IrFactory::ValuePtr IrFactory::createFGlobalVar(const std::string &name, float i
     return new GlobalVariable(false, initval, name);
 }
 
-IrFactory::ValuePtr IrFactory::createFloatFunction(const std::vector<std::string> &params, const std::string &name) {
-    auto func = new Function(BasicType::FLOAT_BTYPE, context_->curr_module_, name);
-    for (auto &param : params) {
-        func->addArgument(BasicType::FLOAT_BTYPE, param);
-    }
-    return func;
+IrFactory::ValuePtr IrFactory::createFloatFunction(const std::string &name) {
+    return new Function(BasicType::FLOAT_BTYPE, context_->curr_module_, name);
 }
 
-IrFactory::ValuePtr IrFactory::createIntFunction(const std::vector<std::string> &params, const std::string &name) {
-    auto func = new Function(BasicType::INT_BTYPE, context_->curr_module_, name);
-    for (auto &param : params) {
-        func->addArgument(BasicType::INT_BTYPE, param);
-    }
-    return func;
+IrFactory::ValuePtr IrFactory::createIntFunction(const std::string &name) {
+    return new Function(BasicType::INT_BTYPE, context_->curr_module_, name);
 }
 
-IrFactory::ValuePtr IrFactory::createVoidFunction(const std::vector<std::string> &params, const std::string &name) {
-    auto func = new Function(BasicType::VOID_BTYPE, context_->curr_module_, name);
-    for (auto &param : params) {
-        func->addArgument(BasicType::VOID_BTYPE, param);
-    }
-    return func;
+IrFactory::ValuePtr IrFactory::createVoidFunction(const std::string &name) {
+    return new Function(BasicType::VOID_BTYPE, context_->curr_module_, name);
 }
 
 IrFactory::ValuePtr IrFactory::createAddInstruction(Value *left, Value *right) {
