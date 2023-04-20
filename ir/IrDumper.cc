@@ -5,6 +5,8 @@
 #include "GlobalVariable.h"
 #include "IrDumper.h"
 #include "Function.h"
+#include "BasicBlock.h"
+#include "Instruction.h"
 
 IrDumper::IrDumper(std::ostream &out):
     out_(out){
@@ -34,8 +36,44 @@ void IrDumper::dump(GlobalVariable *global) {
 }
 
 void IrDumper::dump(Function *function) {
-
-
+    std::string ret_type;
+    switch (function->getRetType()) {
+        case BasicType::INT_BTYPE:
+            ret_type = "int";
+            break;
+        case BasicType::FLOAT_BTYPE:
+            ret_type = "float";
+            break;
+        case BasicType::VOID_BTYPE:
+            ret_type = "void";
+            break;
+    }
+    out_ << "define " << ret_type << " @" << function->getName() << "(";
+    auto argument_size = function->getArgumentSize();
+    for (int i = 0; i < argument_size; ++i) {
+        auto arg = function->getArgument(i);
+        std::string type_str = arg->isFloat() ? "float" : "int32";
+        out_ << type_str;
+        // 一维数组
+        auto dimension_size = arg->getArraySize();
+        for (int j = 0; j < dimension_size; j++) {
+            if (j == 0) {
+                out_ << "[]";
+            } else {
+                out_ << "[" << arg->getDimensionByIdx(j) << "]";
+            }
+        }
+        out_ << " %" << arg->getName();
+        if (i != argument_size - 1) {
+            out_ << ", ";
+        }
+    }
+    out_ << ") {\n";
+    auto &blocks = function->getBlocks();
+    for (const auto &block: blocks) {
+        dump(block.get());
+    }
+    out_ << "}\n";
 }
 
 void IrDumper::dump(Constant *constant) {
@@ -50,6 +88,64 @@ void IrDumper::dump(Constant *constant) {
         } else {
             out_ << "float " << const_value->getFValue();
         }
+    }
+}
+
+void IrDumper::dump(Instruction *inst) {
+    out_ << "   ";
+    switch (inst->getInstType()) {
+        case StoreType:
+            dump(dynamic_cast<StoreInstruction *>(inst));
+            return;
+        case AllocaType:
+            dump(dynamic_cast<AllocaInstruction *>(inst));
+            return;
+        case LoadType:
+            dump(dynamic_cast<LoadInstruction *>(inst));
+            return;
+    }
+    if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
+        dump(binary_inst);
+    }
+    if (auto unary_inst = dynamic_cast<UnaryOpInstruction *>(inst); unary_inst) {
+        dump(unary_inst);
+    }
+
+}
+
+void IrDumper::dump(BinaryOpInstruction *binst) {
+
+}
+
+void IrDumper::dump(UnaryOpInstruction *uinst) {
+
+}
+
+void IrDumper::dump(StoreInstruction *inst) {
+    std::string basic_type = inst->getValueType() == BasicType::INT_BTYPE ? "i32" : "float";
+    out_ << "store %" << inst->getValue()->getName() << ", *%" << inst->getPtr()->getName();
+    out_ << '\n';
+}
+
+void IrDumper::dump(LoadInstruction *inst) {
+
+}
+
+void IrDumper::dump(AllocaInstruction *inst) {
+    out_ << "%" << inst->getName() << " = alloca ";
+    if (inst->getValueType() == BasicType::INT_BTYPE) {
+        out_ << "i32";
+    } else {
+        out_ << "float";
+    }
+    out_ << '\n';
+}
+
+void IrDumper::dump(BasicBlock *block) {
+    out_ << block->getName() << ":\n";
+    auto &inst_list = block->getInstructionList();
+    for (const auto &inst : inst_list) {
+        dump(inst.get());
     }
 }
 

@@ -17,7 +17,7 @@ void Function::addArgument(bool is_float, const std::string &argument_name) {
 }
 
 void Function::addBasicBlock(BasicBlockPtr block) {
-    blocks_.push_front(std::move(block));
+    blocks_.push_back(std::move(block));
 }
 
 void Function::dump() const {

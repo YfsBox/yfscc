@@ -10,6 +10,13 @@
 class Module;
 class GlobalVariable;
 class Function;
+class Instruction;
+class BinaryOpInstruction;
+class UnaryOpInstruction;
+class StoreInstruction;
+class LoadInstruction;
+class AllocaInstruction;
+class BasicBlock;
 
 class IrDumper {
 public:
@@ -25,6 +32,19 @@ public:
 
     void dump(Constant *constant);
 
+    void dump(Instruction *inst);
+
+    void dump(BinaryOpInstruction *binst);
+
+    void dump(UnaryOpInstruction *uinst);
+
+    void dump(StoreInstruction *inst);
+
+    void dump(LoadInstruction *inst);
+
+    void dump(AllocaInstruction *inst);
+
+    void dump(BasicBlock *block);
 
 private:
     std::ostream &out_;

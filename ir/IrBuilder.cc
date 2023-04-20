@@ -199,7 +199,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     std::vector<Value *> arguments;
 
     auto formals = def->getFormals();
-    size_t formal_size = formals->getFormalSize();
+    size_t formal_size = formals != nullptr ? formals->getFormalSize() : 0;
     param_names.reserve(formal_size);
     param_types.reserve(formal_size);
     param_dimensions.reserve(formal_size);

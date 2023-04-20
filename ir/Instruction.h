@@ -81,9 +81,13 @@ public:
 
     ~StoreInstruction();
 
-    Value *getValue() const;
+    Value *getValue() const {
+        return getOperand(0);
+    }
 
-    Value *getPtr() const;
+    Value *getPtr() const {
+        return getOperand(1);
+    }
 private:
 };
 

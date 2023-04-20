@@ -36,6 +36,10 @@ public:
         return arguments_[idx].get();
     }
 
+    size_t getArgumentSize() const {
+        return arguments_.size();
+    }
+
     Module *getParent() const {
         return parent_;
     }
@@ -45,6 +49,10 @@ public:
     }
 
     void dump() const;
+
+    std::list<BasicBlockPtr> &getBlocks() {
+        return blocks_;
+    }
 
 private:
     Module *parent_;

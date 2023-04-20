@@ -38,7 +38,7 @@ public:
     }
 
     void addInstruction(Value *instruction) {
-        instructions_.push_front(std::unique_ptr<Instruction>(dynamic_cast<Instruction *>(instruction)));
+        instructions_.push_back(std::unique_ptr<Instruction>(dynamic_cast<Instruction *>(instruction)));
     }
 
     void addSuccessorBlock(BasicBlock *block) {
@@ -55,6 +55,10 @@ public:
 
     Function *getFunction() const {
         return owner_function_;
+    }
+
+    std::list<InstructionPtr> &getInstructionList() {
+        return instructions_;
     }
 
 private:
