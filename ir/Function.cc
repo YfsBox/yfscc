@@ -8,9 +8,12 @@ Function::Function(BasicType ret_type, Module *module, const std::string &name):
 
 Function::~Function() = default;
 
+void Function::addArgument(ArgumentPtr argument) {
+    arguments_.emplace_back(std::move(argument));
+}
+
 void Function::addArgument(bool is_float, const std::string &argument_name) {
-    int curr_idx = arguments_.size();
-    arguments_.push_back(std::make_unique<Argument>(curr_idx, is_float, this, argument_name));
+    arguments_.push_back(std::make_unique<Argument>(is_float, this, argument_name));
 }
 
 void Function::addBasicBlock(BasicBlockPtr block) {

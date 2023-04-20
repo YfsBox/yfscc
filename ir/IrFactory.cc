@@ -15,6 +15,16 @@ void IrFactory::InitContext(IrContext *context) {
     context_ = context;
 }
 
+IrFactory::ValuePtr IrFactory::createArgument(bool is_float, Function *function, const std::string &name) {
+    return new Argument(is_float, function, name);
+}
+
+IrFactory::ValuePtr IrFactory::createArrayArgument(bool is_float, Function *function, const std::vector<int32_t> &dimension,
+                                                   const std::string &name) {
+    return new Argument(is_float, dimension, function, name);
+}
+
+
 IrFactory::ValuePtr IrFactory::createFConstantVar(float value) {
     return new ConstantVar(value);
 }

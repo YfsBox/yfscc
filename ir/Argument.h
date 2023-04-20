@@ -5,13 +5,16 @@
 #ifndef YFSCC_ARGUMENT_H
 #define YFSCC_ARGUMENT_H
 
+#include <vector>
 #include "Value.h"
 
 class Function;
 
 class Argument: public Value {
 public:
-    Argument(int idx, bool is_float, Function *func, const std::string &name);
+    Argument(bool is_float, Function *func, const std::string &name);
+
+    Argument(bool is_float, const std::vector<int32_t> &dimension, Function *func, const std::string &name);
 
     ~Argument();
 
@@ -23,14 +26,22 @@ public:
         return is_float_;
     }
 
-    int getIdx() const {
-        return idx_;
+    bool isArray() const {
+        return !dimensions_.empty();
+    }
+
+    size_t getArraySize() const {
+        return dimensions_.size();
+    }
+
+    int32_t getDimensionByIdx(int idx) const {
+        return dimensions_[idx];
     }
 
 private:
-    int idx_;
     bool is_float_;      // 参数类型
     Function *parent_;
+    std::vector<int32_t> dimensions_;
 };
 
 #endif //YFSCC_ARGUMENT_H

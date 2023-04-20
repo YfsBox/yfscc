@@ -3,11 +3,20 @@
 //
 #include "Argument.h"
 
-Argument::Argument(int idx, bool is_float, Function *func, const std::string &name):
+Argument::Argument(bool is_float, Function *func, const std::string &name):
     Value(ValueType::ArgumentValue, name),
-    idx_(idx),
     is_float_(is_float),
     parent_(func) {}
+
+Argument::Argument(bool is_float, const std::vector<int32_t> &dimension, Function *func,
+                   const std::string &name):
+        Value(ValueType::ArgumentValue, name),
+        is_float_(is_float),
+        parent_(func),
+        dimensions_(dimension){
+
+}
+
 
 Argument::~Argument() = default;
 

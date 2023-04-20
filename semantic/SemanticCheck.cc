@@ -820,8 +820,8 @@ void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
     int32_t miss_cnt = curr_array_list_info_.depth_need_size_map_[curr_array_list_info_.curr_list_depth_]
             - curr_array_list_info_.curr_depth_value_num_;
     miss_cnt = std::min(miss_cnt, curr_array_list_info_.max_values_ - curr_array_list_info_.total_value_num_);
-    printf("the miss cnt is %d in depth %lu, the curr depth value num is %d\n",
-           miss_cnt, curr_array_list_info_.curr_list_depth_, curr_array_list_info_.curr_depth_value_num_);
+    // printf("the miss cnt is %d in depth %lu, the curr depth value num is %d\n",
+           // miss_cnt, curr_array_list_info_.curr_list_depth_, curr_array_list_info_.curr_depth_value_num_);
     if (miss_cnt >= 0) {
         for (size_t i = 0; i < miss_cnt; ++i) {
             std::shared_ptr<Number> number_value;
@@ -840,7 +840,7 @@ void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
     } else {
         appendError(arrayval.get(), "#the number in array value list is error\n");
     }
-    printf("visit the array init list ok\n");
+    // printf("visit the array init list ok\n");
 }
 
 // 千万不要从裸指针生成shared_ptr之后带入函数，这样容易造成意外地内存释放

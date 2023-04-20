@@ -115,7 +115,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
     // 首先考虑是否是数组的情况
     BasicType def_basic_type = curr_decl_->type_;
     std::string var_name = def->getId()->getId();
-    if (def->getId()->getDimensionSize()) {
+    if (def->getId()->getDimensionSize()) {     // 数组类型的
 
     } else {        // 不是数组
 
@@ -189,7 +189,100 @@ void IrBuilder::visit(const std::shared_ptr<BlockItem> &stmt) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
+    Value *function_value = nullptr;
+    BasicType ret_type = def->getReturnType();
+    std::string function_name = def->getId()->getId();
 
+    std::vector<std::string> param_names;
+    std::vector<BasicType> param_types;
+    std::vector<std::vector<int32_t>> param_dimensions;
+    std::vector<Value *> arguments;
+
+    auto formals = def->getFormals();
+    size_t formal_size = formals->getFormalSize();
+    param_names.reserve(formal_size);
+    param_types.reserve(formal_size);
+    param_dimensions.reserve(formal_size);
+    arguments.reserve(formal_size);
+
+    for (size_t i = 0; i < formal_size; ++i) {          // 根据Ast中的Formal解析出Argument
+        auto formal = formals->getFuncFormal(i);
+        std::string formal_name = formal->getFormalId()->getId();
+        param_names.emplace_back(formal_name);
+        param_types.emplace_back(formal->getBtype());
+        std::vector<int32_t> dimension;
+        auto formal_id = formal->getFormalId();
+        auto dimension_size = formal_id->getDimensionSize();
+        for (size_t j = 0; j < dimension_size; ++j) {
+            if (j == 0) {
+                dimension.emplace_back(0);
+            } else {
+                auto dimension_number = std::dynamic_pointer_cast<Number> (formal_id->getDimensionExpr(j));
+                assert(dimension_number);
+                dimension.emplace_back(dimension_number->getIntValue());
+            }
+        }
+        param_dimensions.emplace_back(dimension);
+        if (dimension.empty()) {        // 目前的function首先设置为nullptr
+            arguments.push_back(IrFactory::createArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, nullptr, formal_name));
+        } else {
+            arguments.push_back(IrFactory::createArrayArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, nullptr, dimension, formal_name));
+        }
+    }
+    // 创建这个function(Value)
+    if (ret_type == BasicType::INT_BTYPE) {
+        function_value = IrFactory::createIntFunction(param_names, function_name);
+    } else if (ret_type == BasicType::FLOAT_BTYPE) {
+        function_value = IrFactory::createFloatFunction(param_names, function_name);
+    } else {
+        function_value = IrFactory::createVoidFunction(param_names, function_name);
+    }
+    // 将其中的argument加入到function之中
+    auto function = dynamic_cast<Function *>(function_value);
+    context_->curr_function_ = function;
+    for (const auto argument: arguments) {
+        function->addArgument(std::unique_ptr<Argument>(dynamic_cast<Argument *>(argument)));
+    }
+    // 进入新的一层符号表,并将参数加入到符号表
+    var_symbol_table_.enterScope();
+    for (int i = 0; i < formal_size; ++i) {
+        if (param_dimensions.empty()) {
+            IrSymbolEntry new_entry(false, param_types[i], param_names[i]);
+            var_symbol_table_.addIdent(new_entry);
+        } else {
+            IrSymbolEntry new_entry(false, param_types[i], param_dimensions[i],param_names[i]);
+            var_symbol_table_.addIdent(new_entry);
+        }
+    }
+    // 在一个函数开始的地方,应该有新的basic block
+    module_->addFunction(std::unique_ptr<Function>(function));
+    auto new_bb_value = IrFactory::createBasicBlock(function_name);       // 暂时lebal作为函数名
+    auto new_bb = dynamic_cast<BasicBlock *>(new_bb_value);
+    context_->curr_bb_ = new_bb;        // 设置为当前的新的basic block
+    function->addBasicBlock(std::unique_ptr<BasicBlock>(new_bb));
+    // 还需要给参数中对应的变量分配空间????
+    for (int i = 0; i < formal_size; ++i) {
+        auto dimension_size = param_dimensions[i].size();
+        Value *alloca_ptr = nullptr;
+        Value *store_inst_value = nullptr;
+        if (dimension_size == 0) {      // 普通变量
+            alloca_ptr = param_types[i] == BasicType::INT_BTYPE ?
+                    IrFactory::createIAllocaInstruction() : IrFactory::createFAllocaInstruction();
+            store_inst_value = param_types[i] == BasicType::INT_BTYPE ?
+                    IrFactory::createIStoreInstruction(function->getArgument(i), alloca_ptr)
+                    : IrFactory::createFStoreInstruction(function->getArgument(i), alloca_ptr);
+        } else if (dimension_size == 1) {   // 一维数组
+
+        } else {    // 多维数组
+
+        }
+        new_bb->addInstruction(alloca_ptr);
+        new_bb->addInstruction(store_inst_value);
+    }
+    // 处理函数体
+    visit(def->getBlock());
+    // 退出
+    var_symbol_table_.exitScope();
 }
 
 void IrBuilder::visit(const std::shared_ptr<Statement> &stmt) {
@@ -223,14 +316,14 @@ void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
 void IrBuilder::visit(const std::shared_ptr<CompUnit> &compunit) {
     var_symbol_table_.enterScope();
 
-    int decl_size = compunit->getDeclNumber();
+    size_t decl_size = compunit->getDeclNumber();
     for (int i = 0; i < decl_size; ++i) {       // 其实内部有多个define,
         // 具体应该等到define在做分析
         auto decl = compunit->getDecl(i);
         visit(std::dynamic_pointer_cast<Declare>(decl));
     }
 
-    int func_size = compunit->getFuncDefNumber();
+    size_t func_size = compunit->getFuncDefNumber();
     for (int i = 0; i < func_size; ++i) {
         auto func_def = compunit->getFuncDef(i);
         visit(std::dynamic_pointer_cast<FuncDefine>(func_def));
@@ -239,9 +332,7 @@ void IrBuilder::visit(const std::shared_ptr<CompUnit> &compunit) {
     var_symbol_table_.exitScope();
 }
 
-void IrBuilder::visit(const std::shared_ptr<ConstDeclare> &decl) {
-    return;
-}
+void IrBuilder::visit(const std::shared_ptr<ConstDeclare> &decl) {}
 
 void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
 
@@ -275,3 +366,6 @@ void IrBuilder::dump() const {
     dumper_->dump(module_.get());
 }
 
+void IrBuilder::setCurrValue(Value *value) {
+    curr_value_ = value;
+}

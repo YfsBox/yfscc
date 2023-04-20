@@ -26,6 +26,8 @@ public:
 
     ~Function();
 
+    void addArgument(ArgumentPtr argument);
+
     void addArgument(bool is_float, const std::string &argument_name);
 
     void addBasicBlock(BasicBlockPtr block);

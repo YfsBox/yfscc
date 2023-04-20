@@ -42,7 +42,7 @@ public:
             name_(name) {
     }
 
-    IrSymbolEntry(bool is_const, BasicType basic_type, std::vector<int> &array_size, const std::string &name):
+    IrSymbolEntry(bool is_const, BasicType basic_type, std::vector<int32_t> &array_size, const std::string &name):
             is_const_(is_const),
             basic_type_(basic_type),
             name_(name),
@@ -76,7 +76,7 @@ private:
     bool is_const_;
     BasicType basic_type_;
     std::string name_;
-    std::vector<int> array_dimension_;
+    std::vector<int32_t> array_dimension_;
 };
 
 
@@ -134,12 +134,16 @@ public:
 
     void dump() const;
 
+    void setCurrValue(Value *value);
+
 private:
     std::unique_ptr<Module> module_;
 
     std::unique_ptr<IrContext> context_;
 
     std::unique_ptr<IrDumper> dumper_;
+
+    std::unordered_map<std::string, Function *> function_map_;
 
     SymbolTable<IrSymbolEntry> var_symbol_table_;
 
