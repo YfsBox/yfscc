@@ -13,6 +13,8 @@ class Function;
 
 class Module {
 public:
+    friend class IrDumper;
+
     using GlobalVariablePtr = std::unique_ptr<GlobalVariable>;
 
     using FunctionPtr = std::unique_ptr<Function>;

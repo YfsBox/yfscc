@@ -1,6 +1,7 @@
 #include <iostream>
 #include "common/Ast.h"
 #include "common/Utils.h"
+#include "ir/IrBuilder.h"
 #include "semantic/SemanticCheck.h"
 
 extern int yyparse();
@@ -25,6 +26,11 @@ int main(int argc, char **argv) {
     root->dump(std::cout, 0);
 
     checker->dumpErrorMsg();
+
+    IrBuilder irbuilder(std::cout);
+    irbuilder.visit(root);
+    irbuilder.dump();
+
     // yylex();
     return 0;
 }

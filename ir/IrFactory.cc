@@ -9,6 +9,12 @@
 #include "Instruction.h"
 #include "GlobalVariable.h"
 
+IrContext *IrFactory::context_ = nullptr;
+
+void IrFactory::InitContext(IrContext *context) {
+    context_ = context;
+}
+
 IrFactory::ValuePtr IrFactory::createFConstantVar(float value) {
     return new ConstantVar(value);
 }

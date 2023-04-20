@@ -21,6 +21,7 @@ set(FRONTEND_SRC
         common/Utils.cc
         common/Ast.cc
 
+        ir/Module.cc
         ir/Argument.cc
         ir/BasicBlock.cc
         ir/Constant.cc
@@ -28,6 +29,8 @@ set(FRONTEND_SRC
         ir/GlobalVariable.cc
         ir/Instruction.cc
         ir/IrFactory.cc
+        ir/IrBuilder.cc
+        ir/IrDumper.cc
 )
 
 add_library(frontend ${FRONTEND_SRC})

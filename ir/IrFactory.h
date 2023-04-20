@@ -124,6 +124,8 @@ public:
 
     static ValuePtr createConstFGlobalVar(float initval, const std::string &name);
 
+    static void InitContext(IrContext *context);
+
 private:
     static IrContext *context_;
 };

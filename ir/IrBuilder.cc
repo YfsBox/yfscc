@@ -5,18 +5,21 @@
 #include <memory>
 #include "../common/Ast.h"
 #include "BasicBlock.h"
+#include "Function.h"
 #include "Module.h"
 #include "GlobalVariable.h"
 #include "Instruction.h"
 #include "IrBuilder.h"
 #include "IrFactory.h"
+#include "IrDumper.h"
 
-IrBuilder::IrBuilder():
+IrBuilder::IrBuilder(std::ostream &out):
     module_(std::make_unique<Module>()),
     context_(std::make_unique<IrContext>(module_.get())),
+    dumper_(std::make_unique<IrDumper>(out)),
     curr_decl_(nullptr),
     curr_value_(nullptr){
-
+    IrFactory::InitContext(context_.get());
 }
 
 IrBuilder::~IrBuilder() = default;
@@ -78,7 +81,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             // 如果类型不一样,就需要进行转化
             BasicType init_expr_type = def->init_expr_->expr_type_;
             Value *cast_inst_value = nullptr;
-            Value *init_value = curr_value_;
+            Value *init_value = curr_value_;        // 该结果也正是从visit中的所求出的value
             if (init_expr_type == BasicType::INT_BTYPE && def_basic_type == BasicType::FLOAT_BTYPE) {
                 cast_inst_value = IrFactory::createI2FCastInstruction(curr_value_);
             } else if (init_expr_type == BasicType::FLOAT_BTYPE && def_basic_type == BasicType::INT_BTYPE) {
@@ -266,5 +269,9 @@ void IrBuilder::visit(const std::shared_ptr<ReturnStatement> &stmt) {
 
 void IrBuilder::visit(const std::shared_ptr<ContinueStatement> &stmt) {
 
+}
+
+void IrBuilder::dump() const {
+    dumper_->dump(module_.get());
 }
 

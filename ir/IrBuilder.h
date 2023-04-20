@@ -12,6 +12,7 @@ class Module;
 class Function;
 class BasicBlock;
 class Value;
+class IrDumper;
 
 struct IrContext {
 
@@ -28,12 +29,10 @@ struct IrContext {
 
     BasicBlock *curr_bb_;
 
-    void ResetSSA();
+    void ResetSSA() {
+        ssa_no_ = -1;
+    }
 };
-
-void IrContext::ResetSSA() {
-    ssa_no_ = -1;
-}
 
 class IrSymbolEntry {
 public:
@@ -83,7 +82,7 @@ private:
 
 class IrBuilder: public AstVisitor {
 public:
-    explicit IrBuilder();
+    explicit IrBuilder(std::ostream &out);
 
     ~IrBuilder();
 
@@ -133,11 +132,14 @@ public:
 
     void visit(const std::shared_ptr<ArrayValue> &arrayval) override;
 
+    void dump() const;
 
 private:
     std::unique_ptr<Module> module_;
 
     std::unique_ptr<IrContext> context_;
+
+    std::unique_ptr<IrDumper> dumper_;
 
     SymbolTable<IrSymbolEntry> var_symbol_table_;
 

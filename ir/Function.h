@@ -42,6 +42,8 @@ public:
         return ret_type_;
     }
 
+    void dump() const;
+
 private:
     Module *parent_;
     BasicType ret_type_;

@@ -3,23 +3,29 @@
 //
 #include "Constant.h"
 
-Constant::Constant(const std::string &name):
-User(ConstantValue, name) {}
+Constant::Constant(bool isfloat, const std::string &name):
+    User(ConstantValue, name),
+    is_float_(isfloat){
+
+}
 
 Constant::~Constant() = default;
 
+BasicType Constant::getBasicType() const {
+    return is_float_ ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE;
+}
+
 ConstantVar::ConstantVar(float val, const std::string &name):
-        Constant(name), is_float_(true), fval_(val) {}
+        Constant(true, name), fval_(val) {}
 
 
 ConstantVar::ConstantVar(int32_t val, const std::string &name):
-        Constant(name), is_float_(false), ival_(val) {}
+        Constant(false, name), ival_(val) {}
 
 ConstantVar::~ConstantVar() = default;
 
 ConstantArray::ConstantArray(bool isfloat, int dimention, const std::string &name):
-        Constant(name),
-        is_float_(isfloat),
+        Constant(isfloat, name),
         dimension_size_(dimention) {
     dimension_number_.resize(dimension_size_);
     init_var_list_.resize(dimension_size_);

@@ -30,5 +30,3 @@ GlobalVariable::GlobalVariable(bool is_const, bool is_float, int dimension, cons
 }
 
 GlobalVariable::~GlobalVariable() = default;
-
-

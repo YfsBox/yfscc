@@ -14,9 +14,11 @@
 
 class Constant: public User {
 public:
-    Constant(const std::string &name = "");
+    Constant(bool isfloat, const std::string &name = "");
     virtual ~Constant();
+    BasicType getBasicType() const;
 protected:
+    bool is_float_;
 };
 
 class ConstantVar: public Constant {
@@ -41,7 +43,6 @@ public:
     }
 
 private:
-    bool is_float_;
     union {
         int32_t ival_;
         float fval_;
@@ -79,7 +80,6 @@ public:
     }
 
 private:
-    bool is_float_;
     int dimension_size_;
     std::vector<size_t> dimension_number_;
     std::vector<ConstantVarPtr> init_var_list_;

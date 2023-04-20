@@ -13,6 +13,7 @@ class Constant;
 
 class GlobalVariable: public Value {
 public:
+
     using ConstantPtr = std::unique_ptr<Constant>;
 
     GlobalVariable(bool is_const, const std::string &name);
@@ -25,12 +26,17 @@ public:
 
     ~GlobalVariable();
 
+
     Constant *getConstInit() const {
         return const_init_.get();
     }
 
     bool isConst() const {
         return is_const_;
+    }
+
+    BasicType getBasicType() const {
+        return const_init_->getBasicType();
     }
 
 private:
