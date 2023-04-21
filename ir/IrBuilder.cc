@@ -24,6 +24,11 @@ IrBuilder::IrBuilder(std::ostream &out):
 
 IrBuilder::~IrBuilder() = default;
 
+void IrBuilder::addValueCast(Value *left, Value *right) {
+
+
+}
+
 void IrBuilder::visit(const std::shared_ptr<Declare> &decl) {
     curr_decl_ = decl.get();
     for (auto &def : decl->defs_) {
@@ -41,7 +46,11 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<Number> &number) {
-
+    if (number->getBtype() == BasicType::INT_BTYPE) {
+        curr_value_ = IrFactory::createIConstantVar(number->getIntValue());
+    } else {
+        curr_value_ = IrFactory::createFConstantVar(number->getFloatValue());
+    }
 }
 
 void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
@@ -83,9 +92,9 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             Value *cast_inst_value = nullptr;
             Value *init_value = curr_value_;        // 该结果也正是从visit中的所求出的value
             if (init_expr_type == BasicType::INT_BTYPE && def_basic_type == BasicType::FLOAT_BTYPE) {
-                cast_inst_value = IrFactory::createI2FCastInstruction(curr_value_);
+                cast_inst_value = IrFactory::createI2FCastInstruction(init_value);
             } else if (init_expr_type == BasicType::FLOAT_BTYPE && def_basic_type == BasicType::INT_BTYPE) {
-                cast_inst_value = IrFactory::createF2ICastInstruction(curr_value_);
+                cast_inst_value = IrFactory::createF2ICastInstruction(init_value);
             }
             if (cast_inst_value) {
                 init_value = cast_inst_value;
@@ -300,7 +309,120 @@ void IrBuilder::visit(const std::shared_ptr<UnaryExpr> &expr) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
+    Value *left = nullptr, *right = nullptr;
+    BasicType left_type, right_type, this_type;
+    GlobalVariable *left_to_global = nullptr, *right_to_global = nullptr;
+    ConstantVar *left_to_const = nullptr, *right_to_const = nullptr;
+    auto op_type = expr->getOpType();
+    if (op_type != BinaryOpType::AND_OPTYPE && op_type != BinaryOpType::OR_OPTYPE) {
+        visit(expr->getLeftExpr());     // 处理左边
+        left = curr_value_;
+        left_type = expr->getLeftExpr()->expr_type_;
+        if (curr_value_->isPtr()) {
+            left_to_global = dynamic_cast<GlobalVariable *>(curr_value_);
+            if (left_to_global && left_to_global->isConst()) {
+                left_to_const = dynamic_cast<ConstantVar *>(left_to_global->getConstInit());
+                if (left_type == BasicType::INT_BTYPE) {
+                    left = IrFactory::createIConstantVar(left_to_const->getIValue());
+                } else {
+                    left = IrFactory::createFConstantVar(left_to_const->getFValue());
+                }
+            } else {
+                left = left_type == BasicType::INT_BTYPE ? IrFactory::createILoadInstruction(curr_value_) :
+                        IrFactory::createFLoadInstruction(curr_value_);
+            }
+        }
+        visit(expr->getRightExpr());        // 处理右边
+        right = curr_value_;
+        right_type = expr->getRightExpr()->expr_type_;
+        if (curr_value_->isPtr()) {
+            right_to_global = dynamic_cast<GlobalVariable *>(curr_value_);
+            if (right_to_global && right_to_global->isConst()) {
+                right_to_const = dynamic_cast<ConstantVar *>(right_to_global->getConstInit());
+                if (right_type == BasicType::INT_BTYPE) {
+                    right = IrFactory::createIConstantVar(right_to_const->getIValue());
+                } else {
+                    right = IrFactory::createFConstantVar(right_to_const->getFValue());
+                }
+            } else {
+                right = right_type == BasicType::INT_BTYPE ? IrFactory::createILoadInstruction(curr_value_) :
+                       IrFactory::createFLoadInstruction(curr_value_);
+            }
+        }
+        // 类型转换
+        if (left_type != right_type) {
+            if (left_type == BasicType::INT_BTYPE) {
+                left = IrFactory::createI2FCastInstruction(left);
+            } else {
+                right = IrFactory::createI2FCastInstruction(right);
+            }
+            this_type = BasicType::FLOAT_BTYPE;
+        } else {
+            this_type = left_type;
+        }
+    }
 
+    Value *binaryop_inst = nullptr;
+    switch (expr->getOpType()) {
+        case BinaryOpType::ADD_OPTYPE:
+            binaryop_inst = IrFactory::createAddInstruction(left, right, this_type);
+            break;
+        case BinaryOpType::SUB_OPTYPE:
+            binaryop_inst = IrFactory::createSubInstruction(left, right, this_type);
+            break;
+        case BinaryOpType::DIV_OPTYPE:
+            binaryop_inst = IrFactory::createDivInstruction(left, right, this_type);
+            break;
+        case BinaryOpType::MUL_OPTYPE:
+            binaryop_inst = IrFactory::createMulInstruction(left, right, this_type);
+            break;
+        case BinaryOpType::MOD_OPTYPE:
+            binaryop_inst = IrFactory::createModInstruction(left, right, this_type);
+            break;
+        case BinaryOpType::EQ_OPTYPE:
+            if (this_type == BasicType::INT_BTYPE) {
+                binaryop_inst = IrFactory::createEqICmpInstruction(left, right);
+            } else {
+                binaryop_inst = IrFactory::createEqFCmpInstruction(left, right);
+            }
+        case BinaryOpType::NEQ_OPTYPE:
+            if (this_type == BasicType::INT_BTYPE) {
+                binaryop_inst = IrFactory::createNeICmpInstruction(left, right);
+            } else {
+                binaryop_inst = IrFactory::createNeFCmpInstruction(left, right);
+            }
+        case BinaryOpType::GTE_OPTYPE:
+            if (this_type == BasicType::INT_BTYPE) {
+                binaryop_inst = IrFactory::createGeICmpInstruction(left, right);
+            } else {
+                binaryop_inst = IrFactory::createGeFCmpInstruction(left, right);
+            }
+            break;
+        case BinaryOpType::GT_OPTYPE:
+            if (this_type == BasicType::INT_BTYPE) {
+                binaryop_inst = IrFactory::createGtICmpInstruction(left, right);
+            } else {
+                binaryop_inst = IrFactory::createGtFCmpInstruction(left, right);
+            }
+            break;
+        case BinaryOpType::LTE_OPTYPE:
+            if (this_type == BasicType::INT_BTYPE) {
+                binaryop_inst = IrFactory::createLeICmpInstruction(left, right);
+            } else {
+                binaryop_inst = IrFactory::createLeFCmpInstruction(left, right);
+            }
+            break;
+        case BinaryOpType::LT_OPTYPE:
+            if (this_type == BasicType::INT_BTYPE) {
+                binaryop_inst = IrFactory::createLtICmpInstruction(left, right);
+            } else {
+                binaryop_inst = IrFactory::createLtFCmpInstruction(left, right);
+            }
+            break;
+    }
+    // 还有and和or,这是比较复杂的
+    context_->curr_bb_->addInstruction(binaryop_inst);
+    curr_value_ = binaryop_inst;
 }
 
 void IrBuilder::visit(const std::shared_ptr<BlockItems> &stmt) {
@@ -308,7 +430,25 @@ void IrBuilder::visit(const std::shared_ptr<BlockItems> &stmt) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<Expression> &expr) {
-
+    auto expr_type = expr->getExprNodeType();
+    switch (expr_type) {
+        case ExprType::BINARY_TYPE:
+            visit(std::dynamic_pointer_cast<BinaryExpr>(expr));
+            break;
+        case ExprType::UNARY_TYPE:
+            visit(std::dynamic_pointer_cast<UnaryExpr>(expr));
+            break;
+        case ExprType::LVAL_TYPE:
+            visit(std::dynamic_pointer_cast<LvalExpr>(expr));
+            break;
+        case ExprType::NUMBER_TYPE:
+            visit(std::dynamic_pointer_cast<Number>(expr));
+            break;
+        case ExprType::ARRAYVALUE_TYPE:
+            break;
+        case ExprType::CALLFUNC_TYPE:
+            break;
+    }
 }
 
 void IrBuilder::visit(const std::shared_ptr<VarDeclare> &decl) {

@@ -16,6 +16,7 @@ enum InstructionType {
     AddType,
     SubType,
     MulType,
+    ModType,
     DivType,
     AndType,
     OrType,
@@ -34,7 +35,7 @@ class BasicBlock;
 
 class Instruction: public User {
 public:
-    Instruction(InstructionType type, BasicBlock *block, const std::string &name = "");
+    Instruction(InstructionType type, BasicType basic_type, bool isptr, BasicBlock *block, const std::string &name = "");
 
     virtual ~Instruction();
 
@@ -46,14 +47,19 @@ public:
         return inst_type_;
     }
 
+    BasicType getBasicType() const {
+        return basic_type_;
+    }
+
 protected:
+    BasicType basic_type_;
     InstructionType inst_type_;
     BasicBlock *parent_;
 };
 
 class BinaryOpInstruction: public Instruction {
 public:
-    BinaryOpInstruction(InstructionType type, BasicBlock *block, Value *left, Value *right, const std::string &name = "");
+    BinaryOpInstruction(InstructionType type, BasicType basic_type, BasicBlock *block, Value *left, Value *right, const std::string &name = "");
 
     ~BinaryOpInstruction();
 
@@ -66,7 +72,7 @@ private:
 
 class UnaryOpInstruction: public Instruction {
 public:
-    UnaryOpInstruction(InstructionType type, BasicBlock *block, Value *value, const std::string &name = "");
+    UnaryOpInstruction(InstructionType type, BasicType basic_type, BasicBlock *block, Value *value, const std::string &name = "");
 
     ~UnaryOpInstruction();
 
@@ -77,7 +83,7 @@ private:
 
 class StoreInstruction: public Instruction {
 public:
-    StoreInstruction(BasicBlock *block, Value *value, Value *ptr, const std::string &name = "");
+    StoreInstruction(BasicBlock *block, BasicType basic_type, Value *value, Value *ptr, const std::string &name = "");
 
     ~StoreInstruction();
 
@@ -93,7 +99,7 @@ private:
 
 class LoadInstruction: public Instruction {
 public:
-    LoadInstruction(BasicBlock *block, Value *ptr, BasicType type, const std::string &name = "");
+    LoadInstruction(BasicBlock *block, BasicType basic_type, Value *ptr, BasicType type, const std::string &name = "");
 
     ~LoadInstruction();
 
@@ -122,21 +128,16 @@ public:
         return 4 * value_size_;
     }
 
-    BasicType getValueType() const {
-        return value_type_;
-    }
-
 private:
     bool is_array_;
     size_t value_size_;
-    BasicType value_type_;
 };
 
 class RetInstruction: public Instruction {
 public:
     RetInstruction(BasicBlock *block, const std::string &name = "");
 
-    RetInstruction(BasicBlock *block, Value *value, BasicType btype,  const std::string &name = "");
+    RetInstruction(BasicBlock *block, BasicType basic_type, Value *value, const std::string &name = "");
 
     ~RetInstruction();
 
@@ -144,11 +145,15 @@ public:
         return getOperand(0);
     }
 
+    BasicType getRetType() const {
+        return getBasicType();
+    }
+
     bool isRetVoid() const {
         return getOperandNum() == 0;
     }
 private:
-    BasicType ret_type_;
+
 };
 
 class BranchInstruction: public Instruction {
@@ -256,7 +261,7 @@ class PhiInstruction: public Instruction {
 public:
     using ValueBlockPair = std::pair<Value *, BasicBlock *>;
 
-    PhiInstruction(BasicBlock *block,const std::vector<Value *> &values,const std::vector<BasicBlock *> &bbs, const std::string &name);
+    PhiInstruction(BasicBlock *block, BasicType basic_type , const std::vector<Value *> &values,const std::vector<BasicBlock *> &bbs, const std::string &name);
 
     ~PhiInstruction();
 
@@ -312,12 +317,7 @@ public:
         return getOperand(1);
     }
 
-    BasicType getType() const {
-        return type_;
-    }
-
 private:
-    BasicType type_;
 };
 
 #endif //YFSCC_INSTRUCTION_H

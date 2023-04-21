@@ -4,7 +4,7 @@
 #include "BasicBlock.h"
 
 BasicBlock::BasicBlock(Function *func, const std::string &lebal):
-Value(ValueType::BasicBlockValue, lebal), owner_function_(func) {}
+    Value(ValueType::BasicBlockValue, false, lebal), owner_function_(func) {}
 
 BasicBlock::~BasicBlock() = default;
 

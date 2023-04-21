@@ -137,6 +137,8 @@ public:
     void setCurrValue(Value *value);
 
 private:
+    void addValueCast(Value *left, Value *right);
+
     std::unique_ptr<Module> module_;
 
     std::unique_ptr<IrContext> context_;

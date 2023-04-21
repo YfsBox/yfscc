@@ -44,19 +44,21 @@ public:
 
     static ValuePtr createVoidFunction(const std::string &name);
 
-    static ValuePtr createAddInstruction(Value *left, Value *right);
+    static ValuePtr createAddInstruction(Value *left, Value *right, BasicType btype);
 
-    static ValuePtr createSubInstruction(Value *left, Value *right);
+    static ValuePtr createSubInstruction(Value *left, Value *right, BasicType btype);
 
-    static ValuePtr createMulInstruction(Value *left, Value *right);
+    static ValuePtr createMulInstruction(Value *left, Value *right, BasicType btype);
 
-    static ValuePtr createDivInstruction(Value *left, Value *right);
+    static ValuePtr createDivInstruction(Value *left, Value *right, BasicType btype);
 
-    static ValuePtr createAndInstruction(Value *left, Value *right);
+    static ValuePtr createAndInstruction(Value *left, Value *right, BasicType btype);
 
-    static ValuePtr createOrInstruction(Value *left, Value *right);
+    static ValuePtr createOrInstruction(Value *left, Value *right, BasicType btype);
 
-    static ValuePtr createXorInstruction(Value *left, Value *right);
+    static ValuePtr createXorInstruction(Value *left, Value *right, BasicType btype);
+
+    static ValuePtr createModInstruction(Value *left, Value *right, BasicType btype);
 
     static ValuePtr createFAllocaInstruction(const std::string &name);
 
@@ -114,7 +116,7 @@ public:
 
     static ValuePtr createGtFCmpInstruction(Value *left, Value *right);
 
-    static ValuePtr createPhiInstruction(const std::vector<Value *> &values, const std::vector<BasicBlock *> &bbs);
+    static ValuePtr createPhiInstruction(BasicType basic_type, const std::vector<Value *> &values, const std::vector<BasicBlock *> &bbs);
 
     static ValuePtr createI2FCastInstruction(Value *value);
 

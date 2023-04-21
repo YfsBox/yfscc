@@ -23,7 +23,7 @@ class Value {
 public:
     using UserMap = std::unordered_map<User *, Use>;
 
-    Value(ValueType vtype, const std::string &name = ""): name_(name), type_(vtype) {}
+    Value(ValueType vtype, bool isptr, const std::string &name = ""): name_(name), type_(vtype), is_ptr_(isptr) {}
 
     virtual ~Value() = default;
 
@@ -51,7 +51,12 @@ public:
         return user_map_.size();
     }
 
+    bool isPtr() const {
+        return is_ptr_;
+    }
+
 protected:
+    bool is_ptr_;
     UserMap user_map_;
     std::string name_;
     ValueType type_;

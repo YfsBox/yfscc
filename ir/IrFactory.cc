@@ -61,29 +61,35 @@ IrFactory::ValuePtr IrFactory::createVoidFunction(const std::string &name) {
     return new Function(BasicType::VOID_BTYPE, context_->curr_module_, name);
 }
 
-IrFactory::ValuePtr IrFactory::createAddInstruction(Value *left, Value *right) {
+IrFactory::ValuePtr IrFactory::createAddInstruction(Value *left, Value *right, BasicType btype) {
     context_->ssa_no_++;
-    return new BinaryOpInstruction(InstructionType::AddType, context_->curr_bb_,
+    return new BinaryOpInstruction(InstructionType::AddType,btype, context_->curr_bb_,
                                                  left, right, std::to_string(context_->ssa_no_));
 
 }
 
-IrFactory::ValuePtr IrFactory::createSubInstruction(Value *left, Value *right) {
+IrFactory::ValuePtr IrFactory::createSubInstruction(Value *left, Value *right, BasicType btype) {
     context_->ssa_no_++;
-    return new BinaryOpInstruction(InstructionType::SubType, context_->curr_bb_,
+    return new BinaryOpInstruction(InstructionType::SubType, btype, context_->curr_bb_,
                                                  left, right, std::to_string(context_->ssa_no_));
 }
 
-IrFactory::ValuePtr IrFactory::createMulInstruction(Value *left, Value *right) {
+IrFactory::ValuePtr IrFactory::createMulInstruction(Value *left, Value *right, BasicType btype) {
     context_->ssa_no_++;
-    return new BinaryOpInstruction(InstructionType::MulType, context_->curr_bb_,
+    return new BinaryOpInstruction(InstructionType::MulType, btype, context_->curr_bb_,
                                                  left, right, std::to_string(context_->ssa_no_));
 }
 
-IrFactory::ValuePtr IrFactory::createAndInstruction(Value *left, Value *right) {
+IrFactory::ValuePtr IrFactory::createAndInstruction(Value *left, Value *right, BasicType btype) {
     context_->ssa_no_++;
-    return new BinaryOpInstruction(InstructionType::AndType, context_->curr_bb_,
+    return new BinaryOpInstruction(InstructionType::AndType, btype, context_->curr_bb_,
                                                  left, right, std::to_string(context_->ssa_no_));
+}
+
+IrFactory::ValuePtr IrFactory::createModInstruction(Value *left, Value *right, BasicType btype) {
+    context_->ssa_no_++;
+    return new BinaryOpInstruction(InstructionType::ModType, btype, context_->curr_bb_,
+                                   left, right, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createBasicBlock(const std::string &name) {
@@ -103,9 +109,9 @@ IrFactory::ValuePtr IrFactory::createCondBrInstruction(Value *cond, Value *truel
     return new BranchInstruction(context_->curr_bb_, cond, truelabel, falselabel);
 }
 
-IrFactory::ValuePtr IrFactory::createDivInstruction(Value *left, Value *right) {
+IrFactory::ValuePtr IrFactory::createDivInstruction(Value *left, Value *right, BasicType btype) {
     context_->ssa_no_++;
-    return new BinaryOpInstruction(InstructionType::DivType, context_->curr_bb_, left, right, std::to_string(context_->ssa_no_));
+    return new BinaryOpInstruction(InstructionType::DivType, btype, context_->curr_bb_, left, right, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createEqFCmpInstruction(Value *left, Value *right) {
@@ -168,10 +174,10 @@ IrFactory::ValuePtr IrFactory::createGtFCmpInstruction(Value *left, Value *right
     return new SetCondInstruction (context_->curr_bb_, SetCondInstruction::CmpCondType::SetGT, true, left, right, std::to_string(context_->ssa_no_));
 }
 
-IrFactory::ValuePtr IrFactory::createPhiInstruction(const std::vector<Value *> &values,
+IrFactory::ValuePtr IrFactory::createPhiInstruction(BasicType basic_type, const std::vector<Value *> &values,
                                                     const std::vector<BasicBlock *> &bbs) {
     context_->ssa_no_++;
-    return new PhiInstruction (context_->curr_bb_, values, bbs, std::to_string(context_->ssa_no_));
+    return new PhiInstruction (context_->curr_bb_, basic_type, values, bbs, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createI2FCastInstruction(Value *value) {
@@ -184,14 +190,14 @@ IrFactory::ValuePtr IrFactory::createF2ICastInstruction(Value *value) {
     return new CastInstruction (context_->curr_bb_, false, value, std::to_string(context_->ssa_no_));
 }
 
-IrFactory::ValuePtr IrFactory::createOrInstruction(Value *left, Value *right) {
+IrFactory::ValuePtr IrFactory::createOrInstruction(Value *left, Value *right, BasicType btype) {
     context_->ssa_no_++;
-    return new BinaryOpInstruction (InstructionType::OrType, context_->curr_bb_, left, right, std::to_string(context_->ssa_no_));
+    return new BinaryOpInstruction (InstructionType::OrType, btype, context_->curr_bb_, left, right, std::to_string(context_->ssa_no_));
 }
 
-IrFactory::ValuePtr IrFactory::createXorInstruction(Value *left, Value *right) {
+IrFactory::ValuePtr IrFactory::createXorInstruction(Value *left, Value *right, BasicType btype) {
     context_->ssa_no_++;
-    return new BinaryOpInstruction (InstructionType::XorType, context_->curr_bb_, left, right, std::to_string(context_->ssa_no_));
+    return new BinaryOpInstruction (InstructionType::XorType, btype, context_->curr_bb_, left, right, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createFAllocaInstruction(const std::string &name) {      // 返回的都是指针
@@ -222,20 +228,20 @@ IrFactory::ValuePtr IrFactory::createFArrayAllocaInstruction(size_t array_size, 
 
 IrFactory::ValuePtr IrFactory::createILoadInstruction(Value *ptr) {
     context_->ssa_no_++;
-    return new LoadInstruction (context_->curr_bb_, ptr, BasicType::INT_BTYPE, std::to_string(context_->ssa_no_));
+    return new LoadInstruction (context_->curr_bb_, BasicType::INT_BTYPE, ptr, BasicType::INT_BTYPE, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createFLoadInstruction(Value *ptr) {
     context_->ssa_no_++;
-    return new LoadInstruction (context_->curr_bb_, ptr, BasicType::FLOAT_BTYPE, std::to_string(context_->ssa_no_));
+    return new LoadInstruction (context_->curr_bb_, BasicType::FLOAT_BTYPE, ptr, BasicType::FLOAT_BTYPE, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createIStoreInstruction(Value *value, Value *ptr) {
-    return new StoreInstruction (context_->curr_bb_, value, ptr);
+    return new StoreInstruction (context_->curr_bb_, BasicType::INT_BTYPE, value, ptr);
 }
 
 IrFactory::ValuePtr IrFactory::createFStoreInstruction(Value *value, Value *ptr) {
-    return new StoreInstruction (context_->curr_bb_, value, ptr);
+    return new StoreInstruction (context_->curr_bb_, BasicType::FLOAT_BTYPE, value, ptr);
 }
 
 IrFactory::ValuePtr IrFactory::createVoidRetInstruction() {
@@ -243,11 +249,11 @@ IrFactory::ValuePtr IrFactory::createVoidRetInstruction() {
 }
 
 IrFactory::ValuePtr IrFactory::createIRetInstruction(Value *value) {
-    return new RetInstruction (context_->curr_bb_, value, BasicType::INT_BTYPE);
+    return new RetInstruction (context_->curr_bb_, BasicType::INT_BTYPE, value);
 }
 
 IrFactory::ValuePtr IrFactory::createFRetInstruction(Value *value) {
-    return new RetInstruction (context_->curr_bb_, value, BasicType::FLOAT_BTYPE);
+    return new RetInstruction (context_->curr_bb_, BasicType::FLOAT_BTYPE, value);
 }
 
 IrFactory::ValuePtr IrFactory::createFGEPInstruction(Value *ptr, Value *offset) {
