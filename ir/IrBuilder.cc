@@ -301,7 +301,37 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<Statement> &stmt) {
-
+    auto stmt_type = stmt->getStmtType();
+    switch (stmt_type) {
+        case ASSIGN_STMTTYPE:
+            visit(std::dynamic_pointer_cast<AssignStatement>(stmt));
+            return;
+        case BLOCKITEMS_STMTTYPE:
+            visit(std::dynamic_pointer_cast<BlockItems>(stmt));
+            return;
+        case IFELSE_STMTTYPE:
+            visit(std::dynamic_pointer_cast<IfElseStatement>(stmt));
+            return;
+        case WHILE_STMTTYPE:
+            visit(std::dynamic_pointer_cast<WhileStatement>(stmt));
+            return;
+        case BREAK_STMTTYPE:
+            visit(std::dynamic_pointer_cast<BreakStatement>(stmt));
+            return;
+        case CONTINUE_STMTTYPE:
+            visit(std::dynamic_pointer_cast<ContinueStatement>(stmt));
+            return;
+        case RETURN_STMTTYPE:
+            visit(std::dynamic_pointer_cast<ReturnStatement>(stmt));
+            return;
+        case DECL_STMTTYPE:
+            visit(std::dynamic_pointer_cast<Declare>(stmt));
+            return;
+        case EVAL_STMTTYPE:
+            visit(std::dynamic_pointer_cast<EvalStatement>(stmt)->getExpr());
+        default:
+            return;
+    }
 }
 
 void IrBuilder::visit(const std::shared_ptr<UnaryExpr> &expr) {
@@ -426,7 +456,11 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<BlockItems> &stmt) {
-
+    auto blocks_size = stmt->getItemSize();
+    for (int i = 0; i < blocks_size; ++i) {
+        auto block = stmt->getBlockItem(i);
+        visit(block->getStmt());
+    }
 }
 
 void IrBuilder::visit(const std::shared_ptr<Expression> &expr) {

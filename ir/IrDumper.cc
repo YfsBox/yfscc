@@ -123,7 +123,17 @@ void IrDumper::dump(UnaryOpInstruction *uinst) {
 
 void IrDumper::dump(StoreInstruction *inst) {
     std::string basic_type = inst->getValueType() == BasicType::INT_BTYPE ? "i32" : "float";
-    out_ << "store %" << inst->getValue()->getName() << ", *%" << inst->getPtr()->getName();
+    std::string value_name = "%" + inst->getValue()->getName();
+    if (value_name == "%") {
+        auto const_var = dynamic_cast<ConstantVar *> (static_cast<Value *>(inst->getValue()));
+        if (!const_var->isFloat()) {
+            value_name = std::to_string(const_var->getIValue());
+        } else {
+            value_name = std::to_string(const_var->getFValue());
+        }
+    }
+
+    out_ << "store " << basic_type << " " << value_name << ", *%" << inst->getPtr()->getName();
     out_ << '\n';
 }
 
