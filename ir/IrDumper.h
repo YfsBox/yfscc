@@ -17,6 +17,7 @@ class StoreInstruction;
 class LoadInstruction;
 class AllocaInstruction;
 class BasicBlock;
+class RetInstruction;
 
 class IrDumper {
 public:
@@ -43,6 +44,8 @@ public:
     void dump(LoadInstruction *inst);
 
     void dump(AllocaInstruction *inst);
+
+    void dump(RetInstruction *inst);
 
     void dump(BasicBlock *block);
 

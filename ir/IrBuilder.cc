@@ -608,7 +608,31 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<ReturnStatement> &stmt) {
-
+    auto return_value = stmt->getExpr();
+    if (return_value) {
+        visit(return_value);
+        Value *ret_value = curr_value_;
+        if (ret_value->isPtr()) {       // 需要多一个load语句
+            auto load_inst_value = return_value->expr_type_ == BasicType::INT_BTYPE ?
+                    IrFactory::createILoadInstruction(ret_value) : IrFactory::createFLoadInstruction(ret_value);
+            addInstruction(load_inst_value);
+            ret_value = load_inst_value;
+        }
+        // 可能因为类型不一致而需要类型转换
+        BasicType curr_func_ret_type = context_->curr_function_->getRetType();
+        if (curr_func_ret_type != return_value->expr_type_) {
+            auto cast_inst = curr_func_ret_type == BasicType::INT_BTYPE ?
+                    IrFactory::createF2ICastInstruction(ret_value) : IrFactory::createI2FCastInstruction(ret_value);
+            addInstruction(cast_inst);
+            ret_value = cast_inst;
+        }
+        auto ret_inst = curr_func_ret_type == BasicType::INT_BTYPE ?
+                IrFactory::createIRetInstruction(ret_value) : IrFactory::createFRetInstruction(ret_value);
+        setCurrValue(ret_value);
+        addInstruction(ret_inst);
+    } else {
+        addInstruction(IrFactory::createVoidRetInstruction());
+    }
 }
 
 void IrBuilder::visit(const std::shared_ptr<ContinueStatement> &stmt) {

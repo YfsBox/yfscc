@@ -147,6 +147,9 @@ void IrDumper::dump(Instruction *inst) {
         case LoadType:
             dump(dynamic_cast<LoadInstruction *>(inst));
             return;
+        case RetType:
+            dump(dynamic_cast<RetInstruction *>(inst));
+            return;
     }
     if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
         dump(binary_inst);
@@ -190,6 +193,14 @@ void IrDumper::dump(AllocaInstruction *inst) {
         out_ << "i32";
     } else {
         out_ << "float";
+    }
+    out_ << '\n';
+}
+
+void IrDumper::dump(RetInstruction *inst) {
+    out_ << "return ";
+    if (!inst->isRetVoid()) {
+        out_ << dumpValue(inst->getRetValue());
     }
     out_ << '\n';
 }
