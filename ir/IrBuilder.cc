@@ -45,8 +45,16 @@ void IrBuilder::visit(const std::shared_ptr<Declare> &decl) {
     curr_decl_ = nullptr;
 }
 
-void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {
+void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有可能是取地址,
+    auto lval_ident = expr->getId();
+    if (lval_ident->getDimensionSize()) {       // 对于数组类型的处理
 
+    } else {
+        auto find_entry = var_symbol_table_.lookupFromAll(lval_ident->getId());
+        Value *entry_value = find_entry->getValue();
+        assert(find_entry);
+        setCurrValue(entry_value);      // 这个时候得到的既有可能是指针,也有可能就是值
+    }
 }
 
 void IrBuilder::visit(const std::shared_ptr<Number> &number) {
@@ -65,9 +73,6 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
     } else {
         if (var_symbol_table_.isInGlobalScope()) {
 
-            IrSymbolEntry new_entry(true, def_basic_type, var_name);
-            var_symbol_table_.addIdent(new_entry);
-
             std::unique_ptr<GlobalVariable> new_global = nullptr;
 
             auto init_value = std::dynamic_pointer_cast<Number>(def->getInitExpr());
@@ -81,6 +86,9 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             }
             new_global = std::unique_ptr<GlobalVariable> (dynamic_cast<GlobalVariable *>(new_value));
             module_->addGlobalVariable(std::move(new_global));          // 加入到module的集合中
+
+            IrSymbolEntry new_entry(true, def_basic_type, new_value);
+            var_symbol_table_.addIdent(new_entry);
         } else {
             // alloca
             Value *alloca_inst_value = nullptr;
@@ -118,7 +126,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             // context_->curr_bb_->addInstruction(store_inst_value);
             addInstruction(store_inst_value);
             // 不要忘了将变量加入符号表
-            IrSymbolEntry new_entry(true, def_basic_type, var_name);
+            IrSymbolEntry new_entry(true, def_basic_type, alloca_inst_value);
             var_symbol_table_.addIdent(new_entry);
         }
 
@@ -134,9 +142,6 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
     } else {        // 不是数组
 
         if (var_symbol_table_.isInGlobalScope()) {      // 是否处于全局作用域
-            IrSymbolEntry new_entry(false, def_basic_type, var_name);
-            var_symbol_table_.addIdent(new_entry);
-
             std::unique_ptr<GlobalVariable> new_global = nullptr;
 
             auto init_value = std::dynamic_pointer_cast<Number>(def->getInitExpr());
@@ -151,6 +156,8 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             new_global = std::unique_ptr<GlobalVariable> (dynamic_cast<GlobalVariable *>(new_value));
             module_->addGlobalVariable(std::move(new_global));          // 加入到module的集合中
 
+            IrSymbolEntry new_entry(false, def_basic_type, new_value);
+            var_symbol_table_.addIdent(new_entry);
         } else {
             Value *alloca_inst_value = nullptr;
             if (def_basic_type == BasicType::INT_BTYPE) {
@@ -190,7 +197,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             } else {
                 addInstruction(alloca_inst_value);
             }
-            IrSymbolEntry new_entry(true, def_basic_type, var_name);
+            IrSymbolEntry new_entry(true, def_basic_type, alloca_inst_value);
             var_symbol_table_.addIdent(new_entry);
         }
 
@@ -259,20 +266,15 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     auto function = dynamic_cast<Function *>(function_value);
     context_->curr_function_ = function;
     printf("the argument size is %lu before add\n", function->getArgumentSize());
-    for (const auto argument: arguments) {
-        function->addArgument(std::unique_ptr<Argument>(dynamic_cast<Argument *>(argument)));
-        printf("add %s to function %s, after that the size is %lu\n", argument->getName().c_str(), function->getName().c_str(), function->getArgumentSize());
-    }
     // 进入新的一层符号表,并将参数加入到符号表
     var_symbol_table_.enterScope();
-    for (int i = 0; i < formal_size; ++i) {
-        if (param_dimensions.empty()) {
-            IrSymbolEntry new_entry(false, param_types[i], param_names[i]);
-            var_symbol_table_.addIdent(new_entry);
-        } else {
-            IrSymbolEntry new_entry(false, param_types[i], param_dimensions[i],param_names[i]);
-            var_symbol_table_.addIdent(new_entry);
-        }
+    for (const auto argument: arguments) {
+        auto to_arg = dynamic_cast<Argument *>(argument);
+        function->addArgument(std::unique_ptr<Argument>(to_arg));
+        IrSymbolEntry new_entry(false, to_arg->isFloat() ?
+                    BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE,to_arg);
+        var_symbol_table_.addIdent(new_entry);
+        printf("add %s to function %s, after that the size is %lu\n", argument->getName().c_str(), function->getName().c_str(), function->getArgumentSize());
     }
     // 在一个函数开始的地方,应该有新的basic block
     module_->addFunction(std::unique_ptr<Function>(function));
@@ -573,7 +575,32 @@ void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<AssignStatement> &stmt) {
+    // 首先得出来左边的,左边的值应该是指针的形式
+    BasicType left_type, right_type;
+    visit(stmt->getLeftExpr());
+    left_type = stmt->getLeftExpr()->expr_type_;
+    Value *ptr = curr_value_;
+    assert(ptr && ptr->isPtr());
 
+    visit(stmt->getRightExpr());
+    right_type = stmt->getRightExpr()->expr_type_;
+    Value *right_value = curr_value_;
+    if (right_value->isPtr()) {
+        auto load_inst = right_type == BasicType::INT_BTYPE ?
+                IrFactory::createILoadInstruction(right_value) : IrFactory::createFLoadInstruction(right_value);
+        addInstruction(load_inst);
+        right_value = load_inst;
+    }
+    if (left_type != right_type) {
+        right_value = left_type == BasicType::INT_BTYPE ?
+                IrFactory::createF2ICastInstruction(right_value) : IrFactory::createI2FCastInstruction(right_value);
+        addInstruction(right_value);
+    }
+    setCurrValue(ptr);
+    Value *store_inst = left_type == BasicType::INT_BTYPE ?
+            IrFactory::createIStoreInstruction(right_value, ptr) : IrFactory::createFStoreInstruction(right_value, ptr);
+    addInstruction(store_inst);
+    // 然后得出来右边的
 }
 
 void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {

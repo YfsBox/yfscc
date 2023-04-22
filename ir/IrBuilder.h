@@ -5,6 +5,7 @@
 #ifndef YFSCC_IRBUILDER_H
 #define YFSCC_IRBUILDER_H
 
+#include "Value.h"
 #include "../common/SysbolTable.h"
 #include "../common/AstVisitor.h"
 
@@ -36,16 +37,16 @@ struct IrContext {
 
 class IrSymbolEntry {
 public:
-    IrSymbolEntry(bool is_const, BasicType basic_type, const std::string &name):
+    IrSymbolEntry(bool is_const, BasicType basic_type, Value *value):
             is_const_(is_const),
             basic_type_(basic_type),
-            name_(name) {
+            value_(value) {
     }
 
-    IrSymbolEntry(bool is_const, BasicType basic_type, std::vector<int32_t> &array_size, const std::string &name):
+    IrSymbolEntry(bool is_const, BasicType basic_type, std::vector<int32_t> &array_size, Value *value, const std::string &name):
             is_const_(is_const),
             basic_type_(basic_type),
-            name_(name),
+            value_(value),
             array_dimension_(std::move(array_size)) {
 
     }
@@ -60,10 +61,6 @@ public:
         return array_dimension_;
     }
 
-    std::string getName() const {
-        return name_;
-    }
-
     BasicType getBasicType() const {
         return basic_type_;
     }
@@ -72,11 +69,19 @@ public:
         return !array_dimension_.empty();
     }
 
+    std::string getName() const {
+        return value_->getName();
+    }
+
+    Value *getValue() const {
+        return value_;
+    }
+
 private:
     bool is_const_;
     BasicType basic_type_;
-    std::string name_;
     std::vector<int32_t> array_dimension_;
+    Value *value_;
 };
 
 

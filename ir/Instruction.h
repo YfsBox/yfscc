@@ -31,6 +31,12 @@ enum InstructionType {
     GEPType,
     NegType,
     NotType,
+    CmpLType,
+    CmpLeType,
+    CmpGType,
+    CmpGeType,
+    CmpEqType,
+    CmpNEqType,
 };
 
 class BasicBlock;

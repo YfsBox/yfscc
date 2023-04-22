@@ -56,6 +56,10 @@ LoadInstruction::LoadInstruction(BasicBlock *block, BasicType basic_type, Value 
 
 LoadInstruction::~LoadInstruction() = default;
 
+Value *LoadInstruction::getPtr() const {
+    return getOperand(0);
+}
+
 AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, const std::string &name):
         Instruction(InstructionType::AllocaType, type, true, block, name),
         is_array_(false),

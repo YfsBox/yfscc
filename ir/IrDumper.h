@@ -47,6 +47,13 @@ public:
     void dump(BasicBlock *block);
 
 private:
+
+    std::string getBasicType(Instruction *inst) const;
+
+    std::string dumpValue(Value *value) const;
+
+    std::string getOptype(Instruction *inst) const;
+
     std::ostream &out_;
 };
 
