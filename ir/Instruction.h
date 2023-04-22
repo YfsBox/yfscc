@@ -29,6 +29,8 @@ enum InstructionType {
     PhiType,
     CastType,
     GEPType,
+    NegType,
+    NotType,
 };
 
 class BasicBlock;

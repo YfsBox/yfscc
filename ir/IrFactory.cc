@@ -274,3 +274,23 @@ IrFactory::ValuePtr IrFactory::createConstFGlobalVar(float initval, const std::s
     return new GlobalVariable(true, initval, name);
 }
 
+IrFactory::ValuePtr IrFactory::createINotInstruction(Value *value) {
+    context_->ssa_no_++;
+    return new UnaryOpInstruction(NotType, BasicType::INT_BTYPE, context_->curr_bb_, value);
+}
+
+IrFactory::ValuePtr IrFactory::createFNotInstruction(Value *value) {
+    context_->ssa_no_++;
+    return new UnaryOpInstruction(NotType, BasicType::FLOAT_BTYPE, context_->curr_bb_, value);
+}
+
+IrFactory::ValuePtr IrFactory::createINegInstruction(Value *value) {
+    context_->ssa_no_++;
+    return new UnaryOpInstruction(NegType, BasicType::INT_BTYPE, context_->curr_bb_, value);
+}
+
+IrFactory::ValuePtr IrFactory::createFNegInstruction(Value *value) {
+    context_->ssa_no_++;
+    return new UnaryOpInstruction(NegType, BasicType::FLOAT_BTYPE, context_->curr_bb_, value);
+}
+

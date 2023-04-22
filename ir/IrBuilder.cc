@@ -29,6 +29,10 @@ void IrBuilder::addValueCast(Value *left, Value *right) {
 
 }
 
+void IrBuilder::addInstruction(Value *inst) {
+    context_->curr_bb_->addInstruction(inst);
+}
+
 void IrBuilder::visit(const std::shared_ptr<Declare> &decl) {
     curr_decl_ = decl.get();
     for (auto &def : decl->defs_) {
@@ -47,9 +51,9 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {
 
 void IrBuilder::visit(const std::shared_ptr<Number> &number) {
     if (number->getBtype() == BasicType::INT_BTYPE) {
-        curr_value_ = IrFactory::createIConstantVar(number->getIntValue());
+        setCurrValue(IrFactory::createIConstantVar(number->getIntValue()));
     } else {
-        curr_value_ = IrFactory::createFConstantVar(number->getFloatValue());
+        setCurrValue(IrFactory::createFConstantVar(number->getFloatValue()));
     }
 }
 
@@ -107,11 +111,12 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
                 store_inst_value = IrFactory::createFStoreInstruction(init_value, alloca_inst_value);
             }
             // 最后将指令加入到当前的basic block
-            context_->curr_bb_->addInstruction(alloca_inst_value);
+            addInstruction(alloca_inst_value);
             if (cast_inst_value) {
-                context_->curr_bb_->addInstruction(cast_inst_value);
+                addInstruction(cast_inst_value);
             }
-            context_->curr_bb_->addInstruction(store_inst_value);
+            // context_->curr_bb_->addInstruction(store_inst_value);
+            addInstruction(store_inst_value);
             // 不要忘了将变量加入符号表
             IrSymbolEntry new_entry(true, def_basic_type, var_name);
             var_symbol_table_.addIdent(new_entry);
@@ -176,14 +181,14 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
                     store_inst_value = IrFactory::createFStoreInstruction(init_value, alloca_inst_value);
                 }
                 // 最后将指令加入到当前的basic block
-                context_->curr_bb_->addInstruction(alloca_inst_value);
+                addInstruction(alloca_inst_value);
                 if (cast_inst_value) {
-                    context_->curr_bb_->addInstruction(cast_inst_value);
+                    addInstruction(cast_inst_value);
                 }
-                context_->curr_bb_->addInstruction(store_inst_value);
+                addInstruction(store_inst_value);
                 // 不要忘了将变量加入符号表
             } else {
-                context_->curr_bb_->addInstruction(alloca_inst_value);
+                addInstruction(alloca_inst_value);
             }
             IrSymbolEntry new_entry(true, def_basic_type, var_name);
             var_symbol_table_.addIdent(new_entry);
@@ -335,7 +340,44 @@ void IrBuilder::visit(const std::shared_ptr<Statement> &stmt) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<UnaryExpr> &expr) {
-
+    Value *value = nullptr;
+    GlobalVariable *to_global = nullptr;
+    ConstantVar *to_const = nullptr;
+    BasicType basic_type = expr->expr_type_;
+    visit(expr->getExpr());
+    value = curr_value_;
+    if (value->isPtr()) {
+        to_global = dynamic_cast<GlobalVariable *>(value);
+        if (to_global && to_global->isConst()) {
+            to_const = dynamic_cast<ConstantVar *>(value);
+            value = basic_type == BasicType::INT_BTYPE ?
+                    IrFactory::createIConstantVar(to_const->getIValue()) : IrFactory::createFConstantVar(to_const->getFValue());
+        } else {
+            value = basic_type == BasicType::INT_BTYPE ?
+                    IrFactory::createILoadInstruction(value) : IrFactory::createFLoadInstruction(value);
+            addInstruction(value);
+        }
+    }
+    auto optype = expr->getOpType();
+    Value *unary_inst = nullptr;
+    switch (optype) {
+        case UnaryOpType::NEGATIVE_OPTYPE:
+            unary_inst = basic_type == BasicType::INT_BTYPE ?
+                    IrFactory::createINegInstruction(value) : IrFactory::createFNegInstruction(value);
+            break;
+        case UnaryOpType::NOTOP_OPTYPE:
+            unary_inst = basic_type == BasicType::INT_BTYPE ?
+                    IrFactory::createINotInstruction(value) : IrFactory::createFNotInstruction(value);
+            break;
+        case UnaryOpType::POSITIVE_OPTYPE:
+            break;
+    }
+    if (unary_inst) {
+        addInstruction(unary_inst);
+        setCurrValue(unary_inst);
+    } else {
+        setCurrValue(value);
+    }
 }
 
 void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
@@ -360,6 +402,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             } else {
                 left = left_type == BasicType::INT_BTYPE ? IrFactory::createILoadInstruction(curr_value_) :
                         IrFactory::createFLoadInstruction(curr_value_);
+                addInstruction(left);
             }
         }
         visit(expr->getRightExpr());        // 处理右边
@@ -377,14 +420,17 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             } else {
                 right = right_type == BasicType::INT_BTYPE ? IrFactory::createILoadInstruction(curr_value_) :
                        IrFactory::createFLoadInstruction(curr_value_);
+                addInstruction(right);
             }
         }
         // 类型转换
         if (left_type != right_type) {
             if (left_type == BasicType::INT_BTYPE) {
                 left = IrFactory::createI2FCastInstruction(left);
+                addInstruction(left);
             } else {
                 right = IrFactory::createI2FCastInstruction(right);
+                addInstruction(right);
             }
             this_type = BasicType::FLOAT_BTYPE;
         } else {
@@ -450,9 +496,9 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             }
             break;
     }
-    // 还有and和or,这是比较复杂的
-    context_->curr_bb_->addInstruction(binaryop_inst);
-    curr_value_ = binaryop_inst;
+    // TODO还有and和or,这是比较复杂的
+    addInstruction(binaryop_inst);
+    setCurrValue(binaryop_inst);
 }
 
 void IrBuilder::visit(const std::shared_ptr<BlockItems> &stmt) {

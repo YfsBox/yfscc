@@ -130,6 +130,14 @@ public:
 
     static ValuePtr createConstFGlobalVar(float initval, const std::string &name);
 
+    static ValuePtr createINotInstruction(Value *value);
+
+    static ValuePtr createFNotInstruction(Value *value);
+
+    static ValuePtr createINegInstruction(Value *value);
+
+    static ValuePtr createFNegInstruction(Value *value);
+
     static void InitContext(IrContext *context);
 
 private:

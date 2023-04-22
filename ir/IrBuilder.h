@@ -134,10 +134,12 @@ public:
 
     void dump() const;
 
-    void setCurrValue(Value *value);
-
 private:
     void addValueCast(Value *left, Value *right);
+
+    void setCurrValue(Value *value);
+
+    void addInstruction(Value *inst);
 
     std::unique_ptr<Module> module_;
 
