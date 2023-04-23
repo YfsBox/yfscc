@@ -33,12 +33,12 @@ IrFactory::ValuePtr IrFactory::createIConstantVar(int32_t value) {
     return new ConstantVar(value);
 }
 
-IrFactory::ValuePtr IrFactory::createFConstantArray(int dimension) {
-    return nullptr;
+IrFactory::ValuePtr IrFactory::createFConstantArray(const std::vector<int32_t> &dimensions, const std::string &name) {
+    return new ConstantArray(true, dimensions, name);
 }
 
-IrFactory::ValuePtr IrFactory::createIConstantArray(int dimension) {
-    return nullptr;
+IrFactory::ValuePtr IrFactory::createIConstantArray(const std::vector<int32_t> &dimensions, const std::string &name) {
+    return new ConstantArray(false, dimensions, name);
 }
 
 IrFactory::ValuePtr IrFactory::createIGlobalVar(const std::string &name, int32_t initval) {

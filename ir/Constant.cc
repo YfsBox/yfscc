@@ -24,12 +24,28 @@ ConstantVar::ConstantVar(int32_t val, const std::string &name):
 
 ConstantVar::~ConstantVar() = default;
 
-ConstantArray::ConstantArray(bool isfloat, int dimention, const std::string &name):
+ConstantArray::ConstantArray(bool isfloat, const std::vector<int32_t> &dimensions, const std::string &name):
         Constant(isfloat, name),
-        dimension_size_(dimention) {
-    dimension_number_.resize(dimension_size_);
-    init_var_list_.resize(dimension_size_);
+        dimension_number_(dimensions) {
+    auto dimension_size = dimensions.size();
+    dimension_size_number_.resize(dimension_size);
+    size_t total_size = 1;
+
+    for (auto dimension: dimension_number_) {
+        total_size *= dimension;
+    }
+
+    for (int i = 0; i < dimension_size; ++i) {
+        dimension_size_number_[i] = total_size / dimension_number_[i];
+    }
 }
 
 ConstantArray::~ConstantArray() = default;
 
+void ConstantArray::setInitValue(int32_t idx, float value) {
+    init_value_map_.insert(std::make_pair(idx, std::make_unique<ConstantVar>(value)));
+}
+
+void ConstantArray::setInitValue(int32_t idx, int32_t value) {
+    init_value_map_.insert(std::make_pair(idx, std::make_unique<ConstantVar>(value)));
+}

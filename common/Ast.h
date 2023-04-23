@@ -304,6 +304,7 @@ public:
 
     ArrayValue(bool is_number, const ExpressionPtr &value = nullptr)
     :is_number_(is_number), value_(value), array_idx_(-1) {}
+
     void addArrayValue(const ArrayValuePtr &array_value) {
         valueList_.push_back(array_value);
     }

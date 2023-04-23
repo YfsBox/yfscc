@@ -9,6 +9,7 @@
 #include <cassert>
 #include <vector>
 #include <memory>
+#include <map>
 #include "User.h"
 #include "../common/Types.h"
 
@@ -53,36 +54,24 @@ class ConstantArray: public Constant {
 public:
     using ConstantVarPtr = std::unique_ptr<ConstantVar>;
 
-    ConstantArray(bool isfloat, int dimention, const std::string &name = "");
+    using InitInterval = std::pair<int32_t, int32_t>;
+
+    ConstantArray(bool isfloat, const std::vector<int32_t>& dimensions, const std::string &name = "");
 
     ~ConstantArray();
 
-    size_t getDimensionSize() const {
-        return dimension_size_;
-    }
+    void setInitValue(int32_t idx, int32_t value);
 
-    void setDimensionNumber(int idx, size_t size) {
-        if (idx < dimension_size_) {
-            dimension_number_[idx] = size;
-        }
-    }
+    void setInitValue(int32_t idx, float value);
 
-    void addInitVar(int32_t initval) {
-        if (!is_float_) {
-            init_var_list_.emplace_back(std::make_unique<ConstantVar>(initval));
-        }
-    }
-
-    void addInitVar(float initval) {
-        if (is_float_) {
-            init_var_list_.emplace_back(std::make_unique<ConstantVar>(initval));
-        }
+    size_t getDimensionSize(int idx) const {
+        return dimension_size_number_[idx];
     }
 
 private:
-    int dimension_size_;
-    std::vector<size_t> dimension_number_;
-    std::vector<ConstantVarPtr> init_var_list_;
+    std::vector<int32_t> dimension_number_;
+    std::vector<size_t> dimension_size_number_;
+    std::map<int32_t, ConstantVarPtr> init_value_map_;
 };
 
 #endif //YFSCC_CONSTANT_H

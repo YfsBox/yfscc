@@ -28,9 +28,9 @@ public:
 
     static ValuePtr createIConstantVar(int32_t value);
 
-    static ValuePtr createFConstantArray(int dimension);
+    static ValuePtr createFConstantArray(const std::vector<int32_t> &dimensions, const std::string &name);
 
-    static ValuePtr createIConstantArray(int dimension);
+    static ValuePtr createIConstantArray(const std::vector<int32_t> &dimensions, const std::string &name);
 
     static ValuePtr createIGlobalVar(const std::string &name, int32_t initval);
 

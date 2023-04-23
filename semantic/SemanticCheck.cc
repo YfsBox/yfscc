@@ -358,6 +358,10 @@ void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicT
         auto init_expr = def->getInitExpr();
         if (init_expr) {
             visit(init_expr);
+        } else if (ident_systable_.isInGlobalScope()) {
+            auto new_init_expr = std::make_shared<ArrayValue>(false);
+            new_init_expr->addInitInterval(0, curr_array_list_info_.max_values_);
+            def->init_expr_ = new_init_expr;
         }
     }
 }

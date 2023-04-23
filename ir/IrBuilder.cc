@@ -138,7 +138,12 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
     BasicType def_basic_type = curr_decl_->type_;
     std::string var_name = def->getId()->getId();
     if (def->getId()->getDimensionSize()) {     // 数组类型的
+        if (var_symbol_table_.isInGlobalScope()) {
 
+        } else {
+
+
+        }
     } else {        // 不是数组
 
         if (var_symbol_table_.isInGlobalScope()) {      // 是否处于全局作用域
