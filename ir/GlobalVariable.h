@@ -22,7 +22,7 @@ public:
 
     GlobalVariable(bool is_const, float initval, const std::string &name);
 
-    GlobalVariable(bool is_const, bool is_float, int dimension, const std::string &name);
+    GlobalVariable(bool is_const, bool is_float, Value *const_array, const std::string &name);
 
     ~GlobalVariable();
 

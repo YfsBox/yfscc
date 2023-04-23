@@ -8,7 +8,7 @@
 #include <memory>
 #include <algorithm>
 #include <string>
-#include <bitset>
+#include <map>
 #include "Types.h"
 
 class AstNode;
@@ -339,6 +339,26 @@ public:
 
     int32_t getArrayIdx() const {
         return array_idx_;
+    }
+
+    void getIndexValueMap(std::map<int32_t, int32_t> &kvmap) const {
+        if (is_number_) {
+            kvmap.insert({array_idx_, std::dynamic_pointer_cast<Number>(value_)->getIntValue()});
+            return;
+        }
+        for (auto &array_value : valueList_) {
+            array_value->getIndexValueMap(kvmap);
+        }
+    }
+
+    void getIndexValueMap(std::map<int32_t, float> &kvmap) const {
+        if (is_number_) {
+            kvmap.insert({array_idx_, std::dynamic_pointer_cast<Number>(value_)->getFloatValue()});
+            return;
+        }
+        for (auto &array_value: valueList_) {
+            array_value->getIndexValueMap(kvmap);
+        }
     }
 
 public:

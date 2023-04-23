@@ -49,6 +49,14 @@ IrFactory::ValuePtr IrFactory::createFGlobalVar(const std::string &name, float i
     return new GlobalVariable(false, initval, name);
 }
 
+IrFactory::ValuePtr IrFactory::createIGlobalArray(bool is_const, Value *constarray, const std::string &name) {
+    return new GlobalVariable(is_const, false, constarray, name);
+}
+
+IrFactory::ValuePtr IrFactory::createFGlobalArray(bool is_const, Value *constarray, const std::string &name) {
+    return new GlobalVariable(is_const, true, constarray, name);
+}
+
 IrFactory::ValuePtr IrFactory::createFloatFunction(const std::string &name) {
     return new Function(BasicType::FLOAT_BTYPE, context_->curr_module_, name);
 }

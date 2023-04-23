@@ -35,6 +35,10 @@ public:
     static ValuePtr createIGlobalVar(const std::string &name, int32_t initval);
 
     static ValuePtr createFGlobalVar(const std::string &name, float initval);
+
+    static ValuePtr createIGlobalArray(bool is_const, Value *constarray, const std::string &name);
+
+    static ValuePtr createFGlobalArray(bool is_const, Value *constarray, const std::string &name);
     // static ValuePtr createIGlobalArray(const std::string &name, int dimension);
     static ValuePtr createBasicBlock(const std::string &name);
 

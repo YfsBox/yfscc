@@ -65,11 +65,48 @@ void IrBuilder::visit(const std::shared_ptr<Number> &number) {
     }
 }
 
+void IrBuilder::setGlobalArrayInitValue(const std::shared_ptr<ArrayValue> &array_init_value,
+                                        ConstantArray *const_array) {
+    if (curr_decl_->type_ == BasicType::INT_BTYPE) {
+        std::map<int32_t, int32_t> init_values;
+        array_init_value->getIndexValueMap(init_values);
+        for (auto &[idx, initvalue]: init_values) {
+            const_array->setInitValue(idx, initvalue);
+        }
+    } else {
+        std::map<int32_t, float> init_values;
+        array_init_value->getIndexValueMap(init_values);
+        for (auto &[idx, initvalue]: init_values) {
+            const_array->setInitValue(idx, initvalue);
+        }
+    }
+}
+
 void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
     BasicType def_basic_type = curr_decl_->type_;
     std::string var_name = def->getId()->getId();
     if (def->getId()->getDimensionSize()) {
+        if (var_symbol_table_.isInGlobalScope()) {
+            std::vector<int32_t> dimension_number;
+            getDimensionNumber(def, dimension_number);
+            auto new_const_array = curr_decl_->type_ == BasicType::FLOAT_BTYPE
+                                   ? IrFactory::createFConstantArray(dimension_number, var_name) :
+                                   IrFactory::createIConstantArray(dimension_number, var_name);
+            auto new_global_array = curr_decl_->type_ == BasicType::FLOAT_BTYPE
+                                    ? IrFactory::createFGlobalArray(true, new_const_array, var_name) :
+                                    IrFactory::createIConstantArray(dimension_number, var_name);
+            auto globalvar_ptr = std::unique_ptr<GlobalVariable>(dynamic_cast<GlobalVariable *>(new_global_array));
+            // 设置init value
+            auto array_init_value_expr = std::dynamic_pointer_cast<ArrayValue>(def->getInitExpr());
+            auto const_array = dynamic_cast<ConstantArray *>(new_const_array);
+            assert(array_init_value_expr);
+            assert(const_array);
+            setGlobalArrayInitValue(array_init_value_expr, const_array);
+            context_->curr_module_->addGlobalVariable(std::move(globalvar_ptr));
+        } else {
 
+
+        }
     } else {
         if (var_symbol_table_.isInGlobalScope()) {
 
@@ -133,19 +170,44 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
     }
 }
 
+void IrBuilder::getDimensionNumber(const std::shared_ptr<Define> &def, std::vector<int32_t> &dimension_number) {
+    auto dimension_size = def->getId()->getDimensionSize();
+    dimension_number.resize(dimension_size);
+    for (int i = 0; i < dimension_size; ++i) {
+        auto number =
+                std::dynamic_pointer_cast<Number>(def->getId()->getDimensionExpr(i));
+        assert(number);
+        dimension_number[i] = number->getIntValue();
+    }
+}
+
 void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
     // 首先考虑是否是数组的情况
     BasicType def_basic_type = curr_decl_->type_;
     std::string var_name = def->getId()->getId();
     if (def->getId()->getDimensionSize()) {     // 数组类型的
         if (var_symbol_table_.isInGlobalScope()) {
-
+            std::vector<int32_t> dimension_number;
+            getDimensionNumber(def, dimension_number);
+            auto new_const_array = curr_decl_->type_ == BasicType::FLOAT_BTYPE
+                    ? IrFactory::createFConstantArray(dimension_number, var_name) :
+                    IrFactory::createIConstantArray(dimension_number, var_name);
+            auto new_global_array = curr_decl_->type_ == BasicType::FLOAT_BTYPE
+                    ? IrFactory::createFGlobalArray(false, new_const_array, var_name) :
+                    IrFactory::createIConstantArray(dimension_number, var_name);
+            auto globalvar_ptr = std::unique_ptr<GlobalVariable>(dynamic_cast<GlobalVariable *>(new_global_array));
+            // 设置init value
+            auto array_init_value_expr = std::dynamic_pointer_cast<ArrayValue>(def->getInitExpr());
+            auto const_array = dynamic_cast<ConstantArray *>(new_const_array);
+            assert(array_init_value_expr);
+            assert(const_array);
+            setGlobalArrayInitValue(array_init_value_expr, const_array);
+            context_->curr_module_->addGlobalVariable(std::move(globalvar_ptr));
         } else {
 
 
         }
     } else {        // 不是数组
-
         if (var_symbol_table_.isInGlobalScope()) {      // 是否处于全局作用域
             std::unique_ptr<GlobalVariable> new_global = nullptr;
 

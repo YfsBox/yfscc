@@ -12,6 +12,7 @@
 class Module;
 class Function;
 class BasicBlock;
+class ConstantArray;
 class Value;
 class IrDumper;
 
@@ -145,6 +146,10 @@ private:
     void setCurrValue(Value *value);
 
     void addInstruction(Value *inst);
+
+    void getDimensionNumber(const std::shared_ptr<Define> &def, std::vector<int32_t> &dimension_number);
+
+    void setGlobalArrayInitValue(const std::shared_ptr<ArrayValue> &array_init_value, ConstantArray *const_array);
 
     std::unique_ptr<Module> module_;
 
