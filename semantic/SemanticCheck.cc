@@ -41,6 +41,7 @@ void SemanticCheck::addLibFunc() {
             {"putfloat", BasicType::VOID_BTYPE},
             {"putch", BasicType::VOID_BTYPE},
             {"putarray", BasicType::VOID_BTYPE},
+            {"putfarray", BasicType::VOID_BTYPE},
             {"starttime", BasicType::VOID_BTYPE},
             {"stoptime", BasicType::VOID_BTYPE},
     };
@@ -99,6 +100,11 @@ void SemanticCheck::initCurrArrayListInfo(const std::shared_ptr<Define> &def, Ba
         // printf("insert {%lu, %d} to depth need size map\n", i - 1, max_value);
     }
     curr_array_list_info_.max_values_ = max_value;
+    if (def->init_expr_) {
+        auto init_array_list = std::dynamic_pointer_cast<ArrayValue>(def->init_expr_);
+        assert(init_array_list);
+        curr_array_list_info_.curr_top_array_initlist_ = init_array_list;
+    }
     // printf("the max values is %lu in curr array list\n", max_value);
 }
 
@@ -757,7 +763,7 @@ void SemanticCheck::visit(const std::shared_ptr<Statement> &stmt) {
 // 该函数主要去做一些关于编译期计算的转化
 bool SemanticCheck::checkArrayInitList(const std::shared_ptr<ArrayValue> &arrayval) {
     assert(curr_decl_);
-    if (arrayval->is_number_) {
+    if (arrayval->isNumber()) {
         assert(arrayval->value_);       // 不可以是空的
         double value = 0;
         bool can_cal = canCalculated(arrayval->value_, &value);
@@ -804,8 +810,9 @@ void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
     /*if (curr_array_list_info_.dim_size_ < curr_array_list_info_.curr_list_depth_) {
         return;
     }*/
-    if (arrayval->is_number_) {
+    if (arrayval->isNumber()) {
         visit(arrayval->value_);
+        arrayval->setArrayIdx(curr_array_list_info_.total_value_num_);
         curr_array_list_info_.curr_depth_value_num_++;
         curr_array_list_info_.total_value_num_++;
         return;
@@ -823,6 +830,8 @@ void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
     // printf("the miss cnt is %d in depth %lu, the curr depth value num is %d\n",
            // miss_cnt, curr_array_list_info_.curr_list_depth_, curr_array_list_info_.curr_depth_value_num_);
     if (miss_cnt >= 0) {
+        /*printf("init number in array list from %d to %d\n",
+               curr_array_list_info_.total_value_num_, curr_array_list_info_.total_value_num_ + miss_cnt);
         for (size_t i = 0; i < miss_cnt; ++i) {
             std::shared_ptr<Number> number_value;
             if (curr_array_list_info_.value_type_ == FLOAT_BTYPE) {
@@ -834,7 +843,9 @@ void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
             }
             // printf("add Implicit node to array init list in depth %lu, the miss cnt is %lu\n", curr_array_list_info_.curr_list_depth_, miss_cnt);
             arrayval->valueList_.emplace_back(std::make_shared<ArrayValue>(true, number_value));
-        }
+        }*/
+        curr_array_list_info_.curr_top_array_initlist_->addInitInterval(curr_array_list_info_.total_value_num_,
+                                  curr_array_list_info_.total_value_num_ + miss_cnt);
         curr_array_list_info_.curr_depth_value_num_ += miss_cnt;
         curr_array_list_info_.total_value_num_ += miss_cnt;
     } else {

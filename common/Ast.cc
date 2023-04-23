@@ -95,12 +95,20 @@ void ArrayValue::dump(std::ostream &out, size_t n) {
     dumpPrefix(out, n + 1);
     out << "IS_NUMBER: ";
     if (is_number_) {
-        out << "TRUE\n";
+        out << "TRUE(" << getArrayIdx() << ")\n";
         value_->dump(out, n + 1);
     } else {
         out << "FALSE\n";
         for (auto & arrayval : valueList_) {
             arrayval->dump(out, n + 1);
+        }
+    }
+    if (!zero_init_intervals_.empty()) {
+        dumpPrefix(out, n + 1);
+        out << "INIT ZERO INTERVALS:" << '\n';
+        for (auto &[left, right]: zero_init_intervals_) {
+            dumpPrefix(out, n + 2);
+            out << "[" << left << "," << right << ")\n";
         }
     }
 }

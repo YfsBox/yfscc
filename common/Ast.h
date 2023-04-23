@@ -8,6 +8,7 @@
 #include <memory>
 #include <algorithm>
 #include <string>
+#include <bitset>
 #include "Types.h"
 
 class AstNode;
@@ -299,8 +300,10 @@ private:
 
 class ArrayValue: public Expression {
 public:
+    using InitInterval = std::pair<int32_t, int32_t>;
+
     ArrayValue(bool is_number, const ExpressionPtr &value = nullptr)
-    :is_number_(is_number), value_(value) {}
+    :is_number_(is_number), value_(value), array_idx_(-1) {}
     void addArrayValue(const ArrayValuePtr &array_value) {
         valueList_.push_back(array_value);
     }
@@ -310,10 +313,39 @@ public:
     }
 
     void dump(std::ostream &out, size_t n) override;
+
+    void addInitInterval(int32_t left, int32_t right) {
+        if (left < right) {
+            zero_init_intervals_.emplace_back(std::pair<int32_t, int32_t>(left, right));
+        }
+    }
+
+    InitInterval getInterval(int idx) const {
+        return zero_init_intervals_[idx];
+    }
+
+    size_t getInitIntervalSize() const {
+        return zero_init_intervals_.size();
+    }
+
+    bool isNumber() const {
+        return is_number_;
+    }
+
+    void setArrayIdx(int32_t idx) {
+        array_idx_ = idx;
+    }
+
+    int32_t getArrayIdx() const {
+        return array_idx_;
+    }
+
 public:
     bool is_number_;
+    int32_t array_idx_;
     ExpressionPtr value_;
     std::vector<ArrayValuePtr> valueList_;
+    std::vector<InitInterval> zero_init_intervals_;
 };
 
 class LvalExpr: public Expression {        // 包不包括数组？？

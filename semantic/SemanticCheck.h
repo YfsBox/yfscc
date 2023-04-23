@@ -17,6 +17,7 @@ struct CurrArrayValueListInfo {
     int32_t curr_depth_value_num_{0};
     int32_t total_value_num_{0};
     std::unordered_map<size_t, int32_t> depth_need_size_map_;
+    ArrayValuePtr curr_top_array_initlist_;
 };
 
 class SemanticCheck: public AstVisitor {
