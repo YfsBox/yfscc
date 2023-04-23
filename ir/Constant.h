@@ -54,7 +54,7 @@ class ConstantArray: public Constant {
 public:
     using ConstantVarPtr = std::unique_ptr<ConstantVar>;
 
-    using InitInterval = std::pair<int32_t, int32_t>;
+    using InitValueMap = std::map<int32_t, ConstantVarPtr>;
 
     ConstantArray(bool isfloat, const std::vector<int32_t>& dimensions, const std::string &name = "");
 
@@ -64,14 +64,18 @@ public:
 
     void setInitValue(int32_t idx, float value);
 
-    size_t getDimensionSize(int idx) const {
-        return dimension_size_number_[idx];
+    const InitValueMap &getInitValueMap() const {
+        return init_value_map_;
+    }
+
+    size_t getArrayLen() const {
+        return dimension_size_number_[0] * dimension_number_[0];
     }
 
 private:
     std::vector<int32_t> dimension_number_;
     std::vector<size_t> dimension_size_number_;
-    std::map<int32_t, ConstantVarPtr> init_value_map_;
+    InitValueMap init_value_map_;
 };
 
 #endif //YFSCC_CONSTANT_H

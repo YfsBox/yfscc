@@ -6,6 +6,7 @@
 #include "IrDumper.h"
 #include "Function.h"
 #include "BasicBlock.h"
+#include "Constant.h"
 #include "Instruction.h"
 
 IrDumper::IrDumper(std::ostream &out):
@@ -17,6 +18,10 @@ IrDumper::~IrDumper() = default;
 
 std::string IrDumper::getBasicType(Instruction *inst) const {
     return inst->getBasicType() == BasicType::INT_BTYPE ? "i32" : "float";
+}
+
+std::string IrDumper::getBasicType(BasicType basic_type) const {
+    return basic_type == BasicType::INT_BTYPE ? "i32" : "float";
 }
 
 std::string IrDumper::dumpValue(Value *value) const {
@@ -69,6 +74,7 @@ void IrDumper::dump(Module *module) {
 }
 
 void IrDumper::dump(GlobalVariable *global) {
+    assert(global);
     out_ << "@" << global->getName() << " = ";
     if (global->isConst()) {
         out_ << "constant ";
@@ -121,11 +127,36 @@ void IrDumper::dump(Function *function) {
 }
 
 void IrDumper::dump(Constant *constant) {
+    assert(constant);
     BasicType basic_type;
-    if (dynamic_cast<ConstantArray *>(constant)) {
-
+    auto const_array = dynamic_cast<ConstantArray *>(constant);
+    if (const_array) {
+        out_ << "[";
+        auto &initvalue_map = const_array->getInitValueMap();
+        basic_type = const_array->getBasicType();
+        int32_t last_idx = -1;
+        for (auto &[key, value]: initvalue_map) {
+            if (key - last_idx != 1) {
+                out_ << "zero init:[" << last_idx + 1 << "," << key << ") ";
+            } else {
+                out_ << getBasicType(basic_type) << " %" << key << ": ";
+                if (value->isFloat()) {
+                    out_ << value->getFValue();
+                } else {
+                    out_ << value->getIValue();
+                }
+                out_ << " ";
+            }
+            last_idx = key;
+        }
+        size_t array_len = const_array->getArrayLen();
+        if (last_idx != array_len - 1) {
+            out_ << "zero init:[" << last_idx + 1 << "," << array_len << ") ";
+        }
+        out_ << "]";
     } else {
         auto const_value = dynamic_cast<ConstantVar *>(constant);
+        assert(const_value);
         basic_type = constant->getBasicType();
         if (basic_type == BasicType::INT_BTYPE) {
             out_ << "i32 " << const_value->getIValue();

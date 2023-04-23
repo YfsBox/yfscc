@@ -92,17 +92,21 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             auto new_const_array = curr_decl_->type_ == BasicType::FLOAT_BTYPE
                                    ? IrFactory::createFConstantArray(dimension_number, var_name) :
                                    IrFactory::createIConstantArray(dimension_number, var_name);
+            auto const_array = dynamic_cast<ConstantArray *>(new_const_array);
+            assert(const_array);
             auto new_global_array = curr_decl_->type_ == BasicType::FLOAT_BTYPE
-                                    ? IrFactory::createFGlobalArray(true, new_const_array, var_name) :
-                                    IrFactory::createIConstantArray(dimension_number, var_name);
-            auto globalvar_ptr = std::unique_ptr<GlobalVariable>(dynamic_cast<GlobalVariable *>(new_global_array));
+                                    ? IrFactory::createFGlobalArray(true, const_array, var_name) :
+                                    IrFactory::createIGlobalArray(true, const_array, var_name);
+            auto globalvar_ptr = dynamic_cast<GlobalVariable *>(new_global_array);
             // 设置init value
             auto array_init_value_expr = std::dynamic_pointer_cast<ArrayValue>(def->getInitExpr());
-            auto const_array = dynamic_cast<ConstantArray *>(new_const_array);
             assert(array_init_value_expr);
-            assert(const_array);
             setGlobalArrayInitValue(array_init_value_expr, const_array);
-            context_->curr_module_->addGlobalVariable(std::move(globalvar_ptr));
+            printf("add const global to module %s\n", globalvar_ptr->getName().c_str());
+            context_->curr_module_->addGlobalVariable(std::unique_ptr<GlobalVariable>(globalvar_ptr));
+            assert(globalvar_ptr);
+            IrSymbolEntry new_entry(true, def_basic_type, new_global_array);
+            var_symbol_table_.addIdent(new_entry);
         } else {
 
 
@@ -122,8 +126,8 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
                 new_value = IrFactory::createConstFGlobalVar(init_value->getFloatValue(), var_name);
             }
             new_global = std::unique_ptr<GlobalVariable> (dynamic_cast<GlobalVariable *>(new_value));
-            module_->addGlobalVariable(std::move(new_global));          // 加入到module的集合中
-
+            // 加入到module的集合中
+            module_->addGlobalVariable(std::move(new_global));
             IrSymbolEntry new_entry(true, def_basic_type, new_value);
             var_symbol_table_.addIdent(new_entry);
         } else {
@@ -192,17 +196,20 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             auto new_const_array = curr_decl_->type_ == BasicType::FLOAT_BTYPE
                     ? IrFactory::createFConstantArray(dimension_number, var_name) :
                     IrFactory::createIConstantArray(dimension_number, var_name);
+            auto const_array = dynamic_cast<ConstantArray *>(new_const_array);
+            assert(const_array);
             auto new_global_array = curr_decl_->type_ == BasicType::FLOAT_BTYPE
-                    ? IrFactory::createFGlobalArray(false, new_const_array, var_name) :
-                    IrFactory::createIConstantArray(dimension_number, var_name);
-            auto globalvar_ptr = std::unique_ptr<GlobalVariable>(dynamic_cast<GlobalVariable *>(new_global_array));
+                    ? IrFactory::createFGlobalArray(false, const_array, var_name) :
+                    IrFactory::createIGlobalArray(false, const_array, var_name);
+            auto globalvar_ptr = dynamic_cast<GlobalVariable *>(new_global_array);
             // 设置init value
             auto array_init_value_expr = std::dynamic_pointer_cast<ArrayValue>(def->getInitExpr());
-            auto const_array = dynamic_cast<ConstantArray *>(new_const_array);
             assert(array_init_value_expr);
-            assert(const_array);
             setGlobalArrayInitValue(array_init_value_expr, const_array);
-            context_->curr_module_->addGlobalVariable(std::move(globalvar_ptr));
+            printf("add global to module %s\n", globalvar_ptr->getName().c_str());
+            context_->curr_module_->addGlobalVariable(std::unique_ptr<GlobalVariable>(globalvar_ptr));
+            IrSymbolEntry new_entry(false, def_basic_type, new_global_array);
+            var_symbol_table_.addIdent(new_entry);
         } else {
 
 

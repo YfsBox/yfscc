@@ -53,6 +53,8 @@ private:
 
     std::string getBasicType(Instruction *inst) const;
 
+    std::string getBasicType(BasicType basic_type) const;
+
     std::string dumpValue(Value *value) const;
 
     std::string getOptype(Instruction *inst) const;

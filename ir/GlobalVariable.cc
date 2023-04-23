@@ -22,11 +22,9 @@ GlobalVariable::GlobalVariable(bool is_const, int32_t initval, const std::string
 
 }
 
-GlobalVariable::GlobalVariable(bool is_const, bool is_float, Value *const_array, const std::string &name):
+GlobalVariable::GlobalVariable(bool is_const, ConstantArray *const_array, const std::string &name):
         Value(ValueType::GlobalVariableValue, true, name),
-        is_const_(is_float){
-    auto constarray = dynamic_cast<ConstantArray *>(const_array);
-    assert(constarray);
-    const_init_ = std::make_unique<Constant>(constarray);
+        is_const_(is_const),
+        const_init_(const_array){
 }
 GlobalVariable::~GlobalVariable() = default;

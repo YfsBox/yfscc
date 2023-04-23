@@ -27,11 +27,10 @@ int main(int argc, char **argv) {
 
     checker->dumpErrorMsg();
 
-    /*
+
     IrBuilder irbuilder(std::cout);
     irbuilder.visit(root);
     irbuilder.dump();
-*/
     // yylex();
     return 0;
 }
