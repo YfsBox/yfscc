@@ -700,6 +700,13 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
         addInstruction(gep_inst_value);
         visit(arrayval->value_);
         Value *init_value = curr_value_;
+        if (init_value->isPtr()) {
+            auto load_inst_value = basic_type == BasicType::INT_BTYPE ?
+                    IrFactory::createILoadInstruction(init_value) : IrFactory::createFLoadInstruction(init_value);
+            addInstruction(load_inst_value);
+            init_value = load_inst_value;
+        }
+
         if (arrayval->value_->expr_type_ != basic_type) {       // 需要进行类型的转换
             auto cast_inst_value = basic_type == BasicType::INT_BTYPE ?
                     IrFactory::createF2ICastInstruction(init_value) : IrFactory::createI2FCastInstruction(init_value);

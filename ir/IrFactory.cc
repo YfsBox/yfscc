@@ -296,22 +296,22 @@ IrFactory::ValuePtr IrFactory::createConstFGlobalVar(float initval, const std::s
 
 IrFactory::ValuePtr IrFactory::createINotInstruction(Value *value) {
     context_->ssa_no_++;
-    return new UnaryOpInstruction(NotType, BasicType::INT_BTYPE, context_->curr_bb_, value);
+    return new UnaryOpInstruction(NotType, BasicType::INT_BTYPE, context_->curr_bb_, value, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createFNotInstruction(Value *value) {
     context_->ssa_no_++;
-    return new UnaryOpInstruction(NotType, BasicType::FLOAT_BTYPE, context_->curr_bb_, value);
+    return new UnaryOpInstruction(NotType, BasicType::FLOAT_BTYPE, context_->curr_bb_, value, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createINegInstruction(Value *value) {
     context_->ssa_no_++;
-    return new UnaryOpInstruction(NegType, BasicType::INT_BTYPE, context_->curr_bb_, value);
+    return new UnaryOpInstruction(NegType, BasicType::INT_BTYPE, context_->curr_bb_, value, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createFNegInstruction(Value *value) {
     context_->ssa_no_++;
-    return new UnaryOpInstruction(NegType, BasicType::FLOAT_BTYPE, context_->curr_bb_, value);
+    return new UnaryOpInstruction(NegType, BasicType::FLOAT_BTYPE, context_->curr_bb_, value, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createIMemSetInstruction(Value *base, Value *size, Value *value) {

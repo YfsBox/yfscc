@@ -60,6 +60,10 @@ std::string IrDumper::getOptype(Instruction *inst) const {
             return "cmpeq";
         case InstructionType::CmpNEqType:
             return "cmpneq";
+        case InstructionType::NegType:
+            return "neg";
+        case InstructionType::NotType:
+            return "not";
     }
     return "";
 }
@@ -254,14 +258,8 @@ void IrDumper::dump(BasicBlock *block) {
 }
 
 void IrDumper::dump(MemSetInstruction *inst) {
-    out_ << "memset " << getBasicType(inst->getBasicType()) << " %*" << inst->getBase()->getName() << ", offset:";
-    auto offset_const = dynamic_cast<ConstantVar *>(inst->getSize());
-    if (offset_const) {
-        out_ << offset_const->getIValue();
-    } else {
-        out_ << "%" << inst->getSize()->getName();
-    }
-    out_ << ", value:";
+    out_ << "memset " << getBasicType(inst->getBasicType()) << " " << dumpValue(inst->getBase()) << ", size:";
+    out_ << dumpValue(inst->getSize()) << ", value:";
     auto init_value = dynamic_cast<ConstantVar *>(inst->getValue());
     if (init_value) {
         if (inst->getBasicType() == BasicType::INT_BTYPE) {
