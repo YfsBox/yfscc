@@ -142,6 +142,10 @@ public:
 
     static ValuePtr createFNegInstruction(Value *value);
 
+    static ValuePtr createIMemSetInstruction(Value *base, Value *size, Value *value);
+
+    static ValuePtr createFMemSetInstruction(Value *base, Value *size, Value *value);
+
     static void InitContext(IrContext *context);
 
 private:

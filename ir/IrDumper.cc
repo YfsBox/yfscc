@@ -181,6 +181,12 @@ void IrDumper::dump(Instruction *inst) {
         case RetType:
             dump(dynamic_cast<RetInstruction *>(inst));
             return;
+        case GEPType:
+            dump(dynamic_cast<GEPInstruction *>(inst));
+            return;
+        case MemSetType:
+            dump(dynamic_cast<MemSetInstruction *>(inst));
+            return;
     }
     if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
         dump(binary_inst);
@@ -225,6 +231,9 @@ void IrDumper::dump(AllocaInstruction *inst) {
     } else {
         out_ << "float";
     }
+    if (inst->isArray()) {
+        out_ << " array len: " << inst->getValueSize();
+    }
     out_ << '\n';
 }
 
@@ -243,5 +252,40 @@ void IrDumper::dump(BasicBlock *block) {
         dump(inst.get());
     }
 }
+
+void IrDumper::dump(MemSetInstruction *inst) {
+    out_ << "memset " << getBasicType(inst->getBasicType()) << " %*" << inst->getBase()->getName() << ", offset:";
+    auto offset_const = dynamic_cast<ConstantVar *>(inst->getSize());
+    if (offset_const) {
+        out_ << offset_const->getIValue();
+    } else {
+        out_ << "%" << inst->getSize()->getName();
+    }
+    out_ << ", value:";
+    auto init_value = dynamic_cast<ConstantVar *>(inst->getValue());
+    if (init_value) {
+        if (inst->getBasicType() == BasicType::INT_BTYPE) {
+            out_ << init_value->getIValue();
+        } else {
+            out_ << init_value->getFValue();
+        }
+    } else {
+        out_ << "%" << inst->getValue()->getName();
+    }
+    out_ << '\n';
+}
+
+void IrDumper::dump(GEPInstruction *inst) {
+    out_ << "%" << inst->getName() << " = getelemptr " << getBasicType(inst->getBasicType())
+     << " %" << inst->getPtr()->getName() << " offset:";
+    auto const_offset = dynamic_cast<ConstantVar *>(inst->getOffset());
+    if (const_offset) {
+        out_ << const_offset->getIValue();
+    } else {
+        out_ << "%" << inst->getOffset()->getName();
+    }
+    out_ << " * 4\n";
+}
+
 
 

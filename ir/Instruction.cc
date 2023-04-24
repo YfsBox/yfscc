@@ -172,3 +172,12 @@ GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *ptr, V
 }
 
 GEPInstruction::~GEPInstruction() = default;
+
+MemSetInstruction::MemSetInstruction(BasicBlock *block, BasicType btype, Value *base, Value *size, Value *value):
+        Instruction(InstructionType::MemSetType, btype, false, block){
+    addOperand(base);
+    addOperand(size);
+    addOperand(value);
+}
+
+MemSetInstruction::~MemSetInstruction() = default;

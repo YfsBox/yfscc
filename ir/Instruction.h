@@ -37,6 +37,7 @@ enum InstructionType {
     CmpGeType,
     CmpEqType,
     CmpNEqType,
+    MemSetType,
 };
 
 class BasicBlock;
@@ -323,6 +324,27 @@ public:
 
     Value *getOffset() const {
         return getOperand(1);
+    }
+
+private:
+};
+
+class MemSetInstruction: public Instruction {
+public:
+    MemSetInstruction(BasicBlock *block, BasicType btype, Value *base, Value *size, Value *value);
+
+    ~MemSetInstruction();
+
+    Value *getBase() const {
+        return getOperand(0);
+    }
+
+    Value *getSize() const {
+        return getOperand(1);
+    }
+
+    Value *getValue() const {
+        return getOperand(2);
     }
 
 private:

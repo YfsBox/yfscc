@@ -18,7 +18,8 @@ IrBuilder::IrBuilder(std::ostream &out):
     context_(std::make_unique<IrContext>(module_.get())),
     dumper_(std::make_unique<IrDumper>(out)),
     curr_decl_(nullptr),
-    curr_value_(nullptr){
+    curr_value_(nullptr),
+    curr_local_array_(nullptr){
     IrFactory::InitContext(context_.get());
 }
 
@@ -47,10 +48,12 @@ void IrBuilder::visit(const std::shared_ptr<Declare> &decl) {
 
 void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有可能是取地址,
     auto lval_ident = expr->getId();
+    auto find_entry = var_symbol_table_.lookupFromAll(lval_ident->getId());
     if (lval_ident->getDimensionSize()) {       // 对于数组类型的处理
+        // 对其各唯独的参数
+
 
     } else {
-        auto find_entry = var_symbol_table_.lookupFromAll(lval_ident->getId());
         Value *entry_value = find_entry->getValue();
         assert(find_entry);
         setCurrValue(entry_value);      // 这个时候得到的既有可能是指针,也有可能就是值
@@ -82,13 +85,21 @@ void IrBuilder::setGlobalArrayInitValue(const std::shared_ptr<ArrayValue> &array
     }
 }
 
+static size_t getArrayLen(const std::vector<int32_t> &dimension_numbers) {
+    size_t array_len = 1;
+    for (auto dimension: dimension_numbers) {
+        array_len *= dimension;
+    }
+    return array_len;
+}
+
 void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
     BasicType def_basic_type = curr_decl_->type_;
     std::string var_name = def->getId()->getId();
     if (def->getId()->getDimensionSize()) {
+        std::vector<int32_t> dimension_number;
+        getDimensionNumber(def, dimension_number);
         if (var_symbol_table_.isInGlobalScope()) {
-            std::vector<int32_t> dimension_number;
-            getDimensionNumber(def, dimension_number);
             auto new_const_array = curr_decl_->type_ == BasicType::FLOAT_BTYPE
                                    ? IrFactory::createFConstantArray(dimension_number, var_name) :
                                    IrFactory::createIConstantArray(dimension_number, var_name);
@@ -108,8 +119,18 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             IrSymbolEntry new_entry(true, def_basic_type, new_global_array);
             var_symbol_table_.addIdent(new_entry);
         } else {
-
-
+            auto array_len = getArrayLen(dimension_number);
+            Value *allac_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
+                    IrFactory::createIArrayAllocaInstruction(array_len, var_name) : IrFactory::createFArrayAllocaInstruction(array_len, var_name);
+            context_->curr_bb_->addInstruction(allac_inst_value);
+            curr_local_array_ = allac_inst_value;
+            // 处理初始化赋值的情况,递归地初始化列表进行处理,
+            if (def->getInitExpr()) {
+                visit(def->getInitExpr());
+            }
+            curr_value_ = allac_inst_value;
+            IrSymbolEntry new_entry(true, def_basic_type, allac_inst_value);
+            var_symbol_table_.addIdent(new_entry);
         }
     } else {
         if (var_symbol_table_.isInGlobalScope()) {
@@ -190,9 +211,9 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
     BasicType def_basic_type = curr_decl_->type_;
     std::string var_name = def->getId()->getId();
     if (def->getId()->getDimensionSize()) {     // 数组类型的
+        std::vector<int32_t> dimension_number;
+        getDimensionNumber(def, dimension_number);
         if (var_symbol_table_.isInGlobalScope()) {
-            std::vector<int32_t> dimension_number;
-            getDimensionNumber(def, dimension_number);
             auto new_const_array = curr_decl_->type_ == BasicType::FLOAT_BTYPE
                     ? IrFactory::createFConstantArray(dimension_number, var_name) :
                     IrFactory::createIConstantArray(dimension_number, var_name);
@@ -211,8 +232,18 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             IrSymbolEntry new_entry(false, def_basic_type, new_global_array);
             var_symbol_table_.addIdent(new_entry);
         } else {
-
-
+            auto array_len = getArrayLen(dimension_number);
+            Value *allac_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
+                                      IrFactory::createIArrayAllocaInstruction(array_len, var_name) : IrFactory::createFArrayAllocaInstruction(array_len, var_name);
+            context_->curr_bb_->addInstruction(allac_inst_value);
+            curr_local_array_ = allac_inst_value;
+            // 处理初始化赋值的情况,递归地初始化列表进行处理,
+            if (def->getInitExpr()) {
+                visit(def->getInitExpr());
+            }
+            curr_value_ = allac_inst_value;
+            IrSymbolEntry new_entry(false, def_basic_type, allac_inst_value);
+            var_symbol_table_.addIdent(new_entry);
         }
     } else {        // 不是数组
         if (var_symbol_table_.isInGlobalScope()) {      // 是否处于全局作用域
@@ -282,7 +313,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
 void IrBuilder::visit(const std::shared_ptr<BlockItem> &stmt) {
 
 }
-
+// TODO：还没有实现数组类型参数的处理
 void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     Value *function_value = nullptr;
     BasicType ret_type = def->getReturnType();
@@ -601,6 +632,7 @@ void IrBuilder::visit(const std::shared_ptr<Expression> &expr) {
             visit(std::dynamic_pointer_cast<Number>(expr));
             break;
         case ExprType::ARRAYVALUE_TYPE:
+            visit(std::dynamic_pointer_cast<ArrayValue>(expr));
             break;
         case ExprType::CALLFUNC_TYPE:
             break;
@@ -637,7 +669,53 @@ void IrBuilder::visit(const std::shared_ptr<CompUnit> &compunit) {
 void IrBuilder::visit(const std::shared_ptr<ConstDeclare> &decl) {}
 
 void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
-
+    if (arrayval->is_number_) {     // 如果是Number类型就对其进行visit并且将改value用store拷贝到指定的指针上
+        // auto gpe_inst_value
+        BasicType basic_type = curr_decl_->type_;
+        auto const_offset = IrFactory::createIConstantVar(arrayval->array_idx_);
+        auto gep_inst_value = basic_type == BasicType::INT_BTYPE ?
+                IrFactory::createIGEPInstruction(curr_local_array_, const_offset)
+                :IrFactory::createFGEPInstruction(curr_local_array_, const_offset);
+        addInstruction(gep_inst_value);
+        visit(arrayval->value_);
+        Value *init_value = curr_value_;
+        if (arrayval->value_->expr_type_ != basic_type) {       // 需要进行类型的转换
+            auto cast_inst_value = basic_type == BasicType::INT_BTYPE ?
+                    IrFactory::createF2ICastInstruction(init_value) : IrFactory::createI2FCastInstruction(init_value);
+            addInstruction(cast_inst_value);
+            init_value = cast_inst_value;
+        }
+        auto store_inst_value = basic_type == BasicType::INT_BTYPE ?
+                IrFactory::createIStoreInstruction(init_value, gep_inst_value)
+                :IrFactory::createFStoreInstruction(init_value, gep_inst_value);
+        addInstruction(store_inst_value);
+    } else {
+        for (auto &array_value : arrayval->valueList_) {
+            visit(array_value);
+        }
+        // 对于初始化为0的空间部分
+        if (!arrayval->zero_init_intervals_.empty()) {
+            auto zero_const_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
+                                    IrFactory::createIConstantVar(0) : IrFactory::createFConstantVar(0.0);
+            for (auto &[start, end]: arrayval->zero_init_intervals_) {
+                int32_t len = end - start;
+                assert(len >= 0);
+                auto offset_const_value = IrFactory::createIConstantVar(start);
+                auto size_const_value = IrFactory::createIConstantVar(len);
+                auto gep_start_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
+                                            IrFactory::createIGEPInstruction(curr_local_array_, offset_const_value) :
+                                            IrFactory::createFGEPInstruction(curr_local_array_,
+                                                                             offset_const_value);        // 获取start指针
+                addInstruction(gep_start_inst_value);
+                auto memset_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
+                                         IrFactory::createIMemSetInstruction(gep_start_inst_value, size_const_value,
+                                                                             zero_const_value) :
+                                         IrFactory::createFMemSetInstruction(gep_start_inst_value, size_const_value,
+                                                                             zero_const_value);
+                addInstruction(memset_inst_value);
+            }
+        }
+    }
 }
 
 void IrBuilder::visit(const std::shared_ptr<BreakStatement> &stmt) {

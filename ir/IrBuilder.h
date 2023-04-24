@@ -164,6 +164,8 @@ private:
     Declare *curr_decl_;
 
     Value *curr_value_;
+
+    Value *curr_local_array_;
 };
 
 

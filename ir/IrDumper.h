@@ -18,6 +18,8 @@ class LoadInstruction;
 class AllocaInstruction;
 class BasicBlock;
 class RetInstruction;
+class MemSetInstruction;
+class GEPInstruction;
 
 class IrDumper {
 public:
@@ -48,6 +50,10 @@ public:
     void dump(RetInstruction *inst);
 
     void dump(BasicBlock *block);
+
+    void dump(MemSetInstruction *inst);
+
+    void dump(GEPInstruction *inst);
 
 private:
 

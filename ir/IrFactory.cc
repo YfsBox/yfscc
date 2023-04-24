@@ -302,3 +302,10 @@ IrFactory::ValuePtr IrFactory::createFNegInstruction(Value *value) {
     return new UnaryOpInstruction(NegType, BasicType::FLOAT_BTYPE, context_->curr_bb_, value);
 }
 
+IrFactory::ValuePtr IrFactory::createIMemSetInstruction(Value *base, Value *size, Value *value) {
+    return new MemSetInstruction(context_->curr_bb_, BasicType::INT_BTYPE, base, size, value);
+}
+
+IrFactory::ValuePtr IrFactory::createFMemSetInstruction(Value *base, Value *size, Value *value) {
+    return new MemSetInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, base, size, value);
+}
