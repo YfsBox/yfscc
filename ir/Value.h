@@ -32,7 +32,7 @@ public:
     Value &operator = (const Value& value) = delete;
 
     void addUse(User *user, int idx) {
-        user_map_[user] = std::move(Use(this, user, idx));
+        user_map_[user] = Use(user, idx);
     }
 
     void delUse(User *user) {

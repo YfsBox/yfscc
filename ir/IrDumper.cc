@@ -213,7 +213,7 @@ void IrDumper::dump(StoreInstruction *inst) {
     std::string basic_type = getBasicType(inst);
     std::string value_name = dumpValue(inst->getValue());
 
-    out_ << "store " << basic_type << " " << value_name << ", %" << inst->getPtr()->getName();
+    out_ << "store " << basic_type << " " << value_name << ", " << dumpValue(inst->getPtr());
     out_ << '\n';
 }
 
@@ -276,15 +276,20 @@ void IrDumper::dump(MemSetInstruction *inst) {
 }
 
 void IrDumper::dump(GEPInstruction *inst) {
+    assert(inst && inst->getPtr());
     out_ << "%" << inst->getName() << " = getelemptr " << getBasicType(inst->getBasicType())
      << " %" << inst->getPtr()->getName() << " offset:";
-    auto const_offset = dynamic_cast<ConstantVar *>(inst->getOffset());
-    if (const_offset) {
-        out_ << const_offset->getIValue();
+    if (inst->isUseOffset()) {
+        out_ << dumpValue(inst->getOffset()) << " * 4";
     } else {
-        out_ << "%" << inst->getOffset()->getName();
+        out_ << "[";
+        for (int i = 0; i < inst->getIndexSize(); i++) {
+            auto index_value = inst->getIndexValue(i);
+            out_ << dumpValue(index_value) << " ";
+        }
+        out_ << "]";
     }
-    out_ << " * 4\n";
+    out_ << "\n";
 }
 
 

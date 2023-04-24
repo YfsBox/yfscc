@@ -72,9 +72,9 @@ public:
 
     static ValuePtr createIAllocaInstruction();
 
-    static ValuePtr createIArrayAllocaInstruction(size_t array_size, const std::string &name);
+    static ValuePtr createIArrayAllocaInstruction(const std::vector<int32_t> &dimensions, const std::string &name);
 
-    static ValuePtr createFArrayAllocaInstruction(size_t array_size, const std::string &name);
+    static ValuePtr createFArrayAllocaInstruction(const std::vector<int32_t> &dimensions, const std::string &name);
 
     static ValuePtr createILoadInstruction(Value *ptr);
 
@@ -129,6 +129,10 @@ public:
     static ValuePtr createFGEPInstruction(Value *ptr, Value *offset);
 
     static ValuePtr createIGEPInstruction(Value *ptr, Value *offset);
+
+    static ValuePtr createIGEPInstruction(Value *base, const std::vector<Value *> &indexes);
+
+    static ValuePtr createFGEPInstruction(Value *base, const std::vector<Value *> &indexes);
 
     static ValuePtr createConstIGlobalVar(int32_t initval, const std::string &name);
 

@@ -45,14 +45,34 @@ void IrBuilder::visit(const std::shared_ptr<Declare> &decl) {
     }
     curr_decl_ = nullptr;
 }
-
+// 在这里的处理中，一般都是指针类型
 void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有可能是取地址,
     auto lval_ident = expr->getId();
     auto find_entry = var_symbol_table_.lookupFromAll(lval_ident->getId());
-    if (lval_ident->getDimensionSize()) {       // 对于数组类型的处理
+    assert(find_entry);
+    size_t dimension_size = lval_ident->getDimensionSize();
+    if (dimension_size) {       // 对于数组类型的处理,不过应该区分函数参数中的数组和一般定义的数组
         // 对其各唯独的参数
-
-
+        Value *dimension_value = nullptr;
+        std::vector<Value *> dimension_numbers;
+        dimension_numbers.reserve(dimension_size);
+        printf("the dimension size is %ld\n", dimension_size);
+        for (size_t i = 0; i < dimension_size; ++i) {
+            visit(lval_ident->getDimensionExpr(i));
+            dimension_value = curr_value_;
+            if (dimension_value->isPtr()) {
+                dimension_value = IrFactory::createILoadInstruction(dimension_value);
+                addInstruction(dimension_value);
+            }
+            // printf("the dimension size is %d\n", dimension_value->)
+            dimension_numbers.push_back(dimension_value);
+        }
+        printf("begin gep inst value");
+        auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
+                IrFactory::createIGEPInstruction(find_entry->getValue(), dimension_numbers):
+                IrFactory::createFGEPInstruction(find_entry->getValue(), dimension_numbers);
+        addInstruction(gep_inst_value);
+        setCurrValue(gep_inst_value);
     } else {
         Value *entry_value = find_entry->getValue();
         assert(find_entry);
@@ -121,7 +141,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
         } else {
             auto array_len = getArrayLen(dimension_number);
             Value *allac_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
-                    IrFactory::createIArrayAllocaInstruction(array_len, var_name) : IrFactory::createFArrayAllocaInstruction(array_len, var_name);
+                    IrFactory::createIArrayAllocaInstruction(dimension_number, var_name) : IrFactory::createFArrayAllocaInstruction(dimension_number, var_name);
             context_->curr_bb_->addInstruction(allac_inst_value);
             curr_local_array_ = allac_inst_value;
             // 处理初始化赋值的情况,递归地初始化列表进行处理,
@@ -234,7 +254,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
         } else {
             auto array_len = getArrayLen(dimension_number);
             Value *allac_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
-                                      IrFactory::createIArrayAllocaInstruction(array_len, var_name) : IrFactory::createFArrayAllocaInstruction(array_len, var_name);
+                                      IrFactory::createIArrayAllocaInstruction(dimension_number, var_name) : IrFactory::createFArrayAllocaInstruction(dimension_number, var_name);
             context_->curr_bb_->addInstruction(allac_inst_value);
             curr_local_array_ = allac_inst_value;
             // 处理初始化赋值的情况,递归地初始化列表进行处理,
@@ -629,6 +649,7 @@ void IrBuilder::visit(const std::shared_ptr<Expression> &expr) {
             visit(std::dynamic_pointer_cast<LvalExpr>(expr));
             break;
         case ExprType::NUMBER_TYPE:
+            printf("visit number\n");
             visit(std::dynamic_pointer_cast<Number>(expr));
             break;
         case ExprType::ARRAYVALUE_TYPE:
@@ -732,7 +753,8 @@ void IrBuilder::visit(const std::shared_ptr<AssignStatement> &stmt) {
     visit(stmt->getLeftExpr());
     left_type = stmt->getLeftExpr()->expr_type_;
     Value *ptr = curr_value_;
-    assert(ptr && ptr->isPtr());
+
+    // assert(ptr && ptr->isPtr());
 
     visit(stmt->getRightExpr());
     right_type = stmt->getRightExpr()->expr_type_;

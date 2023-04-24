@@ -226,12 +226,14 @@ IrFactory::ValuePtr IrFactory::createIAllocaInstruction(const std::string &name)
     return new AllocaInstruction (context_->curr_bb_, BasicType::INT_BTYPE, name);
 }
 
-IrFactory::ValuePtr IrFactory::createIArrayAllocaInstruction(size_t array_size, const std::string &name) {
-    return new AllocaInstruction (context_->curr_bb_, BasicType::INT_BTYPE, array_size, name);
+IrFactory::ValuePtr IrFactory::createIArrayAllocaInstruction(const std::vector<int32_t> &dimensions,
+                                                             const std::string &name) {
+    return new AllocaInstruction(context_->curr_bb_, BasicType::INT_BTYPE, dimensions, name);
 }
 
-IrFactory::ValuePtr IrFactory::createFArrayAllocaInstruction(size_t array_size, const std::string &name) {
-    return new AllocaInstruction (context_->curr_bb_, BasicType::FLOAT_BTYPE, array_size, name);
+IrFactory::ValuePtr IrFactory::createFArrayAllocaInstruction(const std::vector<int32_t> &dimensions,
+                                                             const std::string &name) {
+    return new AllocaInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, dimensions, name);
 }
 
 IrFactory::ValuePtr IrFactory::createILoadInstruction(Value *ptr) {
@@ -272,6 +274,16 @@ IrFactory::ValuePtr IrFactory::createFGEPInstruction(Value *ptr, Value *offset) 
 IrFactory::ValuePtr IrFactory::createIGEPInstruction(Value *ptr, Value *offset) {
     context_->ssa_no_++;
     return new GEPInstruction (context_->curr_bb_, BasicType::INT_BTYPE, ptr, offset, std::to_string(context_->ssa_no_));
+}
+
+IrFactory::ValuePtr IrFactory::createIGEPInstruction(Value *base, const std::vector<Value *> &indexes) {
+    context_->ssa_no_++;
+    return new GEPInstruction(context_->curr_bb_, BasicType::INT_BTYPE, base, indexes, std::to_string(context_->ssa_no_));
+}
+
+IrFactory::ValuePtr IrFactory::createFGEPInstruction(Value *base, const std::vector<Value *> &indexes) {
+    context_->ssa_no_++;
+    return new GEPInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, base, indexes, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createConstIGlobalVar(int32_t initval, const std::string &name) {

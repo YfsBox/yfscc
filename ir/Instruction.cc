@@ -61,16 +61,13 @@ Value *LoadInstruction::getPtr() const {
 }
 
 AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, const std::string &name):
-        Instruction(InstructionType::AllocaType, type, true, block, name),
-        is_array_(false),
-        value_size_(1){
+        Instruction(InstructionType::AllocaType, type, true, block, name){
 
 }
 
-AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, size_t array_size, const std::string &name):
+AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, const std::vector<int32_t> &dimension, const std::string &name):
         Instruction(InstructionType::AllocaType, type, true, block, name),
-        is_array_(true),
-        value_size_(array_size){
+        array_dimension_size_(dimension){
 
 }
 
@@ -166,9 +163,20 @@ BasicBlock *PhiInstruction::getBasicBlock(int idx) const {
 }
 
 GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *ptr, Value *offset, const std::string &name):
-        Instruction(InstructionType::GEPType, btype, true, block, name){
+        Instruction(InstructionType::GEPType, btype, true, block, name),
+        use_offset_(true){
     addOperand(ptr);
     addOperand(offset);
+}
+
+GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *base, const std::vector<Value *> &indexes,
+                               const std::string &name):
+        Instruction(InstructionType::GEPType, btype, true, block, name),
+        use_offset_(false){
+    addOperand(base);
+    for (auto value : indexes) {
+        addOperand(value);
+    }
 }
 
 GEPInstruction::~GEPInstruction() = default;

@@ -121,25 +121,32 @@ class AllocaInstruction: public Instruction {
 public:
     AllocaInstruction(BasicBlock *block, BasicType type, const std::string &name = "");
 
-    AllocaInstruction(BasicBlock *block, BasicType type, size_t array_size, const std::string &name = "");
+    AllocaInstruction(BasicBlock *block, BasicType type, const std::vector<int32_t> &dimension, const std::string &name = "");
 
     ~AllocaInstruction();
 
     bool isArray() const {
-        return is_array_;
+        return !array_dimension_size_.empty();
     }
 
     size_t getValueSize() {
-        return value_size_;
+        size_t value_size = 1;
+        for (auto dimension: array_dimension_size_) {
+            value_size *= dimension;
+        }
+        return value_size;
     }
 
-    size_t getSizeof() {
-        return 4 * value_size_;
+    size_t getDimensionSize() const {
+        return array_dimension_size_.size();
+    }
+
+    int32_t getDimensionSize(int idx) const {
+        return array_dimension_size_[idx];
     }
 
 private:
-    bool is_array_;
-    size_t value_size_;
+    std::vector<int32_t> array_dimension_size_;
 };
 
 class RetInstruction: public Instruction {
@@ -316,6 +323,10 @@ class GEPInstruction: public Instruction {
 public:
     GEPInstruction(BasicBlock *block, BasicType btype, Value *ptr, Value *offset, const std::string &name = "");
 
+    GEPInstruction(BasicBlock *block, BasicType btype, Value *base, const std::vector<Value *> &indexes, const std::string &name = "");
+
+    GEPInstruction() = default;
+
     ~GEPInstruction();
 
     Value *getPtr() const {
@@ -323,10 +334,32 @@ public:
     }
 
     Value *getOffset() const {
-        return getOperand(1);
+        if (use_offset_) {
+            return getOperand(1);
+        }
+        return nullptr;
+    }
+
+    bool isUseOffset() const {
+        return use_offset_;
+    }
+
+    size_t getIndexSize() const {
+        if (!use_offset_) {
+           return getOperandNum() - 1;
+        }
+        return 0;
+    }
+
+    Value *getIndexValue(int idx) const {
+        if (!use_offset_) {
+            return getOperand(idx + 1);
+        }
+        return nullptr;
     }
 
 private:
+    bool use_offset_;
 };
 
 class MemSetInstruction: public Instruction {
