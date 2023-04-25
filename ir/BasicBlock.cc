@@ -8,4 +8,9 @@ BasicBlock::BasicBlock(Function *func, const std::string &lebal):
 
 BasicBlock::~BasicBlock() = default;
 
+void BasicBlock::bindBasicBlock(BasicBlock *pre, BasicBlock *succ) {
+    pre->addSuccessorBlock(succ);
+    succ->addPredecessorBlock(pre);
+}
+
 

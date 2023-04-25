@@ -7,6 +7,7 @@
 
 #include <list>
 #include <memory>
+#include <unordered_set>
 #include "Value.h"
 #include "Instruction.h"
 
@@ -15,11 +16,13 @@ class Function;
 class BasicBlock: public Value {
 public:
     using InstructionPtr = std::unique_ptr<Instruction>;
-    using BlockList = std::list<BasicBlock *>;
+    using BlockList = std::unordered_set<BasicBlock *>;
 
     BasicBlock(Function *func, const std::string &lebal);
 
     ~BasicBlock();
+
+    static void bindBasicBlock(BasicBlock *pre, BasicBlock *succ);
 
     size_t getInstructionSize() const {
         return instructions_.size();
@@ -42,15 +45,15 @@ public:
     }
 
     void addSuccessorBlock(BasicBlock *block) {
-        successor_blocks_.push_front(block);
+        successor_blocks_.insert(block);
     }
 
     void addPredecessorBlock(BasicBlock *block) {
-        predecessor_blocks_.push_front(block);
+        predecessor_blocks_.insert(block);
     }
 
     void addTerminal(BasicBlock *block) {
-        terminals_.push_front(block);
+        terminals_.insert(block);
     }
 
     Function *getFunction() const {

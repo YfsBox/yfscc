@@ -263,7 +263,16 @@ void IrDumper::dump(RetInstruction *inst) {
 }
 
 void IrDumper::dump(BasicBlock *block) {
-    out_ << block->getName() << ":\n";
+    out_ << block->getName() << ":";
+    out_ << "                       ;preds = ";
+    for (auto pre: block->getPreDecessorBlocks()) {
+        out_ << dumpValue(pre) << " ";
+    }
+    out_ << ";successors = ";
+    for (auto succ : block->getSuccessorBlocks()) {
+        out_ << dumpValue(succ) << " ";
+    }
+    out_ << '\n';
     auto &inst_list = block->getInstructionList();
     for (const auto &inst : inst_list) {
         dump(inst.get());
@@ -304,8 +313,15 @@ void IrDumper::dump(GEPInstruction *inst) {
 }
 
 void IrDumper::dump(BranchInstruction *inst) {
-    out_ << "br " << dumpValue(inst->getCond()) << " " << dumpValue(inst->getTrueLabel()) << " "
-    << dumpValue(inst->getFalseLabel()) << "\n";
+
+    out_ << "br ";
+    if (inst->isCondBranch()) {
+        out_ << dumpValue(inst->getCond()) << " " << dumpValue(inst->getTrueLabel()) << " "
+                                   << dumpValue(inst->getFalseLabel());
+    } else {
+        out_ << dumpValue(inst->getLabel());
+    }
+    out_ << "\n";
 }
 
 void IrDumper::dump(SetCondInstruction *inst) {
