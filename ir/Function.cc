@@ -16,8 +16,8 @@ void Function::addArgument(bool is_float, const std::string &argument_name) {
     arguments_.push_back(std::make_unique<Argument>(is_float, this, argument_name));
 }
 
-void Function::addBasicBlock(BasicBlockPtr block) {
-    blocks_.push_back(std::move(block));
+void Function::addBasicBlock(Value *block) {
+    blocks_.push_back(std::unique_ptr<BasicBlock>(dynamic_cast<BasicBlock *>(block)));
 }
 
 void Function::dump() const {

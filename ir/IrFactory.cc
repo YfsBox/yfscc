@@ -101,7 +101,8 @@ IrFactory::ValuePtr IrFactory::createModInstruction(Value *left, Value *right, B
 }
 
 IrFactory::ValuePtr IrFactory::createBasicBlock(const std::string &name) {
-    return new BasicBlock(context_->curr_function_, name);
+    context_->block_no_++;
+    return new BasicBlock(context_->curr_function_, name + std::to_string(context_->block_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createBrInstruction(Value *label) {

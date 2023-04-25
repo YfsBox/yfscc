@@ -30,7 +30,7 @@ public:
 
     void addArgument(bool is_float, const std::string &argument_name);
 
-    void addBasicBlock(BasicBlockPtr block);
+    void addBasicBlock(Value *block);
 
     Argument *getArgument(int idx) const {
         return arguments_[idx].get();

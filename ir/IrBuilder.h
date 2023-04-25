@@ -13,8 +13,10 @@ class Module;
 class Function;
 class BasicBlock;
 class ConstantArray;
+class Expression;
 class Value;
 class IrDumper;
+class Instruction;
 
 struct IrContext {
 
@@ -25,6 +27,8 @@ struct IrContext {
         
     int ssa_no_{-1};
 
+    int block_no_{-1};
+
     Module *curr_module_;
 
     Function *curr_function_;
@@ -34,6 +38,11 @@ struct IrContext {
     void ResetSSA() {
         ssa_no_ = -1;
     }
+
+    void ResetBlockNo() {
+        block_no_ = -1;
+    }
+
 };
 
 class IrSymbolEntry {
@@ -88,6 +97,8 @@ private:
 
 class IrBuilder: public AstVisitor {
 public:
+    using CondJumpMap = std::unordered_map<std::shared_ptr<Expression>, std::vector<Instruction *>>;
+
     explicit IrBuilder(std::ostream &out);
 
     ~IrBuilder();
@@ -145,11 +156,23 @@ private:
 
     void setCurrValue(Value *value);
 
+    void setCurrBasicBlock(Value *bb);
+
     void addInstruction(Value *inst);
+
+    void addBasicBlock(Value *bb);
 
     void getDimensionNumber(const std::shared_ptr<Define> &def, std::vector<int32_t> &dimension_number);
 
     void setGlobalArrayInitValue(const std::shared_ptr<ArrayValue> &array_init_value, ConstantArray *const_array);
+
+    void enableDealCond();
+
+    void disableDealCond();
+
+    void initJumpMap();
+
+    bool is_deal_cond_;
 
     std::unique_ptr<Module> module_;
 
@@ -166,6 +189,10 @@ private:
     Value *curr_value_;
 
     Value *curr_local_array_;
+
+    CondJumpMap true_jump_map_;     // key表示的是一个条件表达式，value是一个由instruction组成的集合,该条件表达式中包含的指令
+
+    CondJumpMap false_jump_map_;
 };
 
 

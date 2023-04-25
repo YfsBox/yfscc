@@ -36,27 +36,49 @@ public:
     void dumpErrorMsg() const;
 
     void visit(const std::shared_ptr<CompUnit> &compunit) override;
+
     void visit(const std::shared_ptr<Declare> &decl) override;
+
     void visit(const std::shared_ptr<ConstDeclare> &decl) override;
+
     void visit(const std::shared_ptr<VarDeclare> &decl) override;
+
     void visit(const std::shared_ptr<ConstDefine> &def) override;
+
     void visit(const std::shared_ptr<VarDefine> &def) override;
+
     void visit(const std::shared_ptr<FuncDefine> &def) override;
+
     void visit(const std::shared_ptr<UnaryExpr> &expr) override;
+
     void visit(const std::shared_ptr<BinaryExpr> &expr) override;
+
     void visit(const std::shared_ptr<BlockItems> &stmt) override;
+
     void visit(const std::shared_ptr<BlockItem> &stmt) override;
+
     void visit(const std::shared_ptr<AssignStatement> &stmt) override;
+
     void visit(const std::shared_ptr<IfElseStatement> &stmt) override;
+
     void visit(const std::shared_ptr<WhileStatement> &stmt) override;
+
     void visit(const std::shared_ptr<BreakStatement> &stmt) override;
+
     void visit(const std::shared_ptr<ContinueStatement> &stmt) override;
+
     void visit(const std::shared_ptr<CallFuncExpr> &expr) override;
+
     void visit(const std::shared_ptr<ReturnStatement> &stmt) override;
+
     void visit(const std::shared_ptr<Number> &number) override;
+
     void visit(const std::shared_ptr<Expression> &expr) override;
+
     void visit(const std::shared_ptr<LvalExpr> &expr) override;
+
     void visit(const std::shared_ptr<Statement> &stmt) override;
+
     void visit(const std::shared_ptr<ArrayValue> &arrayval) override;
 
 private:

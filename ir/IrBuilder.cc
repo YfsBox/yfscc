@@ -14,6 +14,7 @@
 #include "IrDumper.h"
 
 IrBuilder::IrBuilder(std::ostream &out):
+    is_deal_cond_(false),
     module_(std::make_unique<Module>()),
     context_(std::make_unique<IrContext>(module_.get())),
     dumper_(std::make_unique<IrDumper>(out)),
@@ -30,8 +31,25 @@ void IrBuilder::addValueCast(Value *left, Value *right) {
 
 }
 
+void IrBuilder::enableDealCond() {
+    is_deal_cond_ = true;
+}
+
+void IrBuilder::disableDealCond() {
+    is_deal_cond_ = false;
+}
+
+void IrBuilder::initJumpMap() {
+    true_jump_map_.clear();
+    false_jump_map_.clear();
+}
+
 void IrBuilder::addInstruction(Value *inst) {
     context_->curr_bb_->addInstruction(inst);
+}
+
+void IrBuilder::addBasicBlock(Value *bb) {
+    context_->curr_function_->addBasicBlock(bb);
 }
 
 void IrBuilder::visit(const std::shared_ptr<Declare> &decl) {
@@ -403,10 +421,11 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     }
     // 在一个函数开始的地方,应该有新的basic block
     module_->addFunction(std::unique_ptr<Function>(function));
+    context_->ResetBlockNo();
     auto new_bb_value = IrFactory::createBasicBlock(function_name);       // 暂时lebal作为函数名
     auto new_bb = dynamic_cast<BasicBlock *>(new_bb_value);
-    context_->curr_bb_ = new_bb;        // 设置为当前的新的basic block
-    function->addBasicBlock(std::unique_ptr<BasicBlock>(new_bb));
+    setCurrBasicBlock(new_bb);
+    function->addBasicBlock(new_bb);
     // 还需要给参数中对应的变量分配空间????
     for (int i = 0; i < formal_size; ++i) {
         auto dimension_size = param_dimensions[i].size();
@@ -566,7 +585,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
     }
 
     Value *binaryop_inst = nullptr;
-    switch (expr->getOpType()) {
+    switch (op_type) {
         case BinaryOpType::ADD_OPTYPE:
             binaryop_inst = IrFactory::createAddInstruction(left, right, this_type);
             break;
@@ -588,12 +607,14 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             } else {
                 binaryop_inst = IrFactory::createEqFCmpInstruction(left, right);
             }
+            break;
         case BinaryOpType::NEQ_OPTYPE:
             if (this_type == BasicType::INT_BTYPE) {
                 binaryop_inst = IrFactory::createNeICmpInstruction(left, right);
             } else {
                 binaryop_inst = IrFactory::createNeFCmpInstruction(left, right);
             }
+            break;
         case BinaryOpType::GTE_OPTYPE:
             if (this_type == BasicType::INT_BTYPE) {
                 binaryop_inst = IrFactory::createGeICmpInstruction(left, right);
@@ -622,10 +643,76 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
                 binaryop_inst = IrFactory::createLtFCmpInstruction(left, right);
             }
             break;
+
+        case BinaryOpType::AND_OPTYPE: {
+            visit(expr->getLeftExpr());
+            visit(expr->getRightExpr());
+            auto right_block = true_jump_map_[expr->getRightExpr()].front()->getParent();
+            auto &left_jump_insts = true_jump_map_[expr->getLeftExpr()];
+            for (auto jump: left_jump_insts) {
+                auto br_inst = dynamic_cast<BranchInstruction *>(jump);
+                assert(br_inst);
+                br_inst->setTrueLabel(right_block);
+                right_block->addPredecessorBlock(br_inst->getParent());
+                br_inst->getParent()->addSuccessorBlock(right_block);
+            }
+            auto false_jumps = false_jump_map_[expr->getLeftExpr()];
+            false_jumps.insert(false_jumps.end(), false_jump_map_[expr->getRightExpr()].begin(),
+                               false_jump_map_[expr->getRightExpr()].end());
+            true_jump_map_[expr] = true_jump_map_[expr->getRightExpr()];
+            false_jump_map_[expr] = false_jumps;
+            break;
+        }
+        case BinaryOpType::OR_OPTYPE: {
+            visit(expr->getLeftExpr());
+            visit(expr->getRightExpr());
+            auto right_block = false_jump_map_[expr->getLeftExpr()].front()->getParent();
+            auto &left_jump_insts = false_jump_map_[expr->getLeftExpr()];
+
+            for (auto jump: left_jump_insts) {
+                auto br_inst = dynamic_cast<BranchInstruction *>(jump);
+                assert(br_inst);
+                br_inst->setFalseLabel(right_block);
+                right_block->addPredecessorBlock(br_inst->getParent());
+                br_inst->getParent()->addSuccessorBlock(right_block);
+            }
+
+            auto true_jumps = true_jump_map_[expr->getLeftExpr()];
+            true_jumps.insert(true_jumps.end(), true_jump_map_[expr->getRightExpr()].begin(),
+                              true_jump_map_[expr->getRightExpr()].end());
+            true_jump_map_[expr] = true_jumps;
+            false_jump_map_[expr] = false_jump_map_[expr->getRightExpr()];
+            break;
+        }
     }
+    bool is_logic_op = (op_type == EQ_OPTYPE || op_type == NEQ_OPTYPE ||
+            op_type == GTE_OPTYPE || op_type == GT_OPTYPE ||
+            op_type == LTE_OPTYPE || op_type == LT_OPTYPE);
     // TODO还有and和or,这是比较复杂的
-    addInstruction(binaryop_inst);
-    setCurrValue(binaryop_inst);
+    if (op_type != BinaryOpType::AND_OPTYPE && op_type != BinaryOpType::OR_OPTYPE) {
+        addInstruction(binaryop_inst);
+        setCurrValue(binaryop_inst);
+        if (is_deal_cond_) {
+            if (!is_logic_op) {
+                auto zero_value = this_type == BasicType::INT_BTYPE ?
+                                  IrFactory::createIConstantVar(0) : IrFactory::createFConstantVar(0.0);
+                auto cmp_inst_value = this_type == BasicType::INT_BTYPE ?
+                                      IrFactory::createNeICmpInstruction(binaryop_inst, zero_value)
+                                                                        : IrFactory::createNeFCmpInstruction(
+                                binaryop_inst, zero_value);
+                addInstruction(cmp_inst_value);
+                setCurrValue(cmp_inst_value);
+            }
+            auto new_br_inst = IrFactory::createCondBrInstruction(curr_value_, nullptr, nullptr);
+            addInstruction(new_br_inst);
+            auto new_block = IrFactory::createBasicBlock("lebal");
+            setCurrBasicBlock(new_block);
+            addBasicBlock(new_block);
+            // 设置回填用的map
+            true_jump_map_[expr].push_back(dynamic_cast<Instruction *>(new_br_inst));
+            false_jump_map_[expr].push_back(dynamic_cast<Instruction *>(new_br_inst));
+        }
+    }
 }
 
 void IrBuilder::visit(const std::shared_ptr<BlockItems> &stmt) {
@@ -649,13 +736,13 @@ void IrBuilder::visit(const std::shared_ptr<Expression> &expr) {
             visit(std::dynamic_pointer_cast<LvalExpr>(expr));
             break;
         case ExprType::NUMBER_TYPE:
-            printf("visit number\n");
             visit(std::dynamic_pointer_cast<Number>(expr));
             break;
         case ExprType::ARRAYVALUE_TYPE:
             visit(std::dynamic_pointer_cast<ArrayValue>(expr));
             break;
         case ExprType::CALLFUNC_TYPE:
+            visit(std::dynamic_pointer_cast<CallFuncExpr>(expr));
             break;
     }
 }
@@ -760,9 +847,7 @@ void IrBuilder::visit(const std::shared_ptr<AssignStatement> &stmt) {
     visit(stmt->getLeftExpr());
     left_type = stmt->getLeftExpr()->expr_type_;
     Value *ptr = curr_value_;
-
     // assert(ptr && ptr->isPtr());
-
     visit(stmt->getRightExpr());
     right_type = stmt->getRightExpr()->expr_type_;
     Value *right_value = curr_value_;
@@ -785,7 +870,63 @@ void IrBuilder::visit(const std::shared_ptr<AssignStatement> &stmt) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
+    enableDealCond();
+    visit(stmt->getCond());
+    disableDealCond();
 
+    auto then_value = IrFactory::createBasicBlock("then");
+    auto next_value = IrFactory::createBasicBlock("next");
+    if (stmt->hasElse()) {
+        auto else_value = IrFactory::createBasicBlock("else");
+
+        for (auto true_jump: true_jump_map_[stmt->getCond()]) {
+            auto branch_inst = dynamic_cast<BranchInstruction *>(true_jump);
+            branch_inst->setTrueLabel(then_value);
+            true_jump->getParent()->addSuccessorBlock(dynamic_cast<BasicBlock *>(then_value));
+            dynamic_cast<BasicBlock *>(then_value)->addPredecessorBlock(true_jump);
+        }
+
+        for (auto false_jump: false_jump_map_[stmt->getCond()]) {
+            auto branch_inst = dynamic_cast<BranchInstruction *>(false_jump);
+            branch_inst->setFalseLabel(else_value);
+            false_jump->getParent()->addSuccessorBlock(dynamic_cast<BasicBlock *>(else_value));
+            dynamic_cast<BasicBlock *>(next_value)->addPredecessorBlock(else_value);
+        }
+
+        initJumpMap();
+
+        addBasicBlock(then_value);
+        setCurrBasicBlock(then_value);
+        visit(stmt->getIfStmt());
+
+        addBasicBlock(else_value);
+        setCurrBasicBlock(else_value);
+        visit(stmt->getElseStmt());
+
+    } else {
+        for (auto true_jump: true_jump_map_[stmt->getCond()]) {
+            auto branch_inst = dynamic_cast<BranchInstruction *>(true_jump);
+            branch_inst->setTrueLabel(then_value);
+            true_jump->getParent()->addSuccessorBlock(dynamic_cast<BasicBlock *>(then_value));
+            dynamic_cast<BasicBlock *>(then_value)->addPredecessorBlock(true_jump);
+        }
+
+        for (auto false_jump: false_jump_map_[stmt->getCond()]) {
+            auto branch_inst = dynamic_cast<BranchInstruction *>(next_value);
+            branch_inst->setFalseLabel(next_value);
+            false_jump->getParent()->addSuccessorBlock(dynamic_cast<BasicBlock *>(next_value));
+            dynamic_cast<BasicBlock *>(next_value)->addPredecessorBlock(false_jump);
+        }
+
+        initJumpMap();
+
+        addBasicBlock(then_value);
+        setCurrBasicBlock(then_value);
+        visit(stmt->getIfStmt());
+
+    }
+    addBasicBlock(next_value);
+    setCurrBasicBlock(next_value);
 }
 
 void IrBuilder::visit(const std::shared_ptr<ReturnStatement> &stmt) {
@@ -826,4 +967,8 @@ void IrBuilder::dump() const {
 
 void IrBuilder::setCurrValue(Value *value) {
     curr_value_ = value;
+}
+
+void IrBuilder::setCurrBasicBlock(Value *bb) {
+    context_->curr_bb_ = dynamic_cast<BasicBlock *>(bb);
 }

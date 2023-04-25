@@ -212,6 +212,14 @@ public:
         return getOperand(0);
     }
 
+    void setTrueLabel(Value *value) {
+        setOperand(value, 1);
+    }
+
+    void setFalseLabel(Value *value) {
+        setOperand(value, 2);
+    }
+
 private:
     bool is_cond_;
 };
