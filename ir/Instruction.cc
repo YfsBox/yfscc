@@ -99,13 +99,15 @@ RetInstruction::RetInstruction(BasicBlock *block, BasicType basic_type, Value *v
 RetInstruction::~RetInstruction() = default;
 
 BranchInstruction::BranchInstruction(BasicBlock *block, Value *label, const std::string &name):
-        Instruction(InstructionType::BrType, BasicType::VOID_BTYPE, false, block, name){
+        Instruction(InstructionType::BrType, BasicType::VOID_BTYPE, false, block, name),
+        is_cond_(false){
     addOperand(label);
 }
 
 BranchInstruction::BranchInstruction(BasicBlock *block, Value *cond, Value *true_label, Value *false_label,
                                      const std::string &name):
-        Instruction(InstructionType::BrType, BasicType::VOID_BTYPE, false, block, name){
+        Instruction(InstructionType::BrType, BasicType::VOID_BTYPE, false, block, name),
+        is_cond_(true){
     addOperand(cond);
     addOperand(true_label);
     addOperand(false_label);

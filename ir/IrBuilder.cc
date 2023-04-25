@@ -650,6 +650,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             auto right_block = true_jump_map_[expr->getRightExpr()].front()->getParent();
             auto &left_jump_insts = true_jump_map_[expr->getLeftExpr()];
             for (auto jump: left_jump_insts) {
+                printf("set the jump true lebal: %s\n", jump->getName().c_str());
                 auto br_inst = dynamic_cast<BranchInstruction *>(jump);
                 assert(br_inst);
                 br_inst->setTrueLabel(right_block);
@@ -670,6 +671,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             auto &left_jump_insts = false_jump_map_[expr->getLeftExpr()];
 
             for (auto jump: left_jump_insts) {
+                printf("set the jump false lebal: %s\n", jump->getName().c_str());
                 auto br_inst = dynamic_cast<BranchInstruction *>(jump);
                 assert(br_inst);
                 br_inst->setFalseLabel(right_block);
@@ -693,7 +695,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
         addInstruction(binaryop_inst);
         setCurrValue(binaryop_inst);
         if (is_deal_cond_) {
-            if (!is_logic_op) {
+            if (is_logic_op) {
                 auto zero_value = this_type == BasicType::INT_BTYPE ?
                                   IrFactory::createIConstantVar(0) : IrFactory::createFConstantVar(0.0);
                 auto cmp_inst_value = this_type == BasicType::INT_BTYPE ?
@@ -704,6 +706,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
                 setCurrValue(cmp_inst_value);
             }
             auto new_br_inst = IrFactory::createCondBrInstruction(curr_value_, nullptr, nullptr);
+            printf("create new cond branch %s\n", new_br_inst->getName().c_str());
             addInstruction(new_br_inst);
             auto new_block = IrFactory::createBasicBlock("lebal");
             setCurrBasicBlock(new_block);
@@ -880,17 +883,19 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
         auto else_value = IrFactory::createBasicBlock("else");
 
         for (auto true_jump: true_jump_map_[stmt->getCond()]) {
+            printf("set the jump true lebal: %s\n", true_jump->getName().c_str());
             auto branch_inst = dynamic_cast<BranchInstruction *>(true_jump);
             branch_inst->setTrueLabel(then_value);
             true_jump->getParent()->addSuccessorBlock(dynamic_cast<BasicBlock *>(then_value));
-            dynamic_cast<BasicBlock *>(then_value)->addPredecessorBlock(true_jump);
+            dynamic_cast<BasicBlock *>(then_value)->addPredecessorBlock(true_jump->getParent());
         }
 
         for (auto false_jump: false_jump_map_[stmt->getCond()]) {
+            printf("set the jump false lebal: %s\n", false_jump->getName().c_str());
             auto branch_inst = dynamic_cast<BranchInstruction *>(false_jump);
             branch_inst->setFalseLabel(else_value);
             false_jump->getParent()->addSuccessorBlock(dynamic_cast<BasicBlock *>(else_value));
-            dynamic_cast<BasicBlock *>(next_value)->addPredecessorBlock(else_value);
+            dynamic_cast<BasicBlock *>(else_value)->addPredecessorBlock(branch_inst->getParent());
         }
 
         initJumpMap();
@@ -908,14 +913,14 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
             auto branch_inst = dynamic_cast<BranchInstruction *>(true_jump);
             branch_inst->setTrueLabel(then_value);
             true_jump->getParent()->addSuccessorBlock(dynamic_cast<BasicBlock *>(then_value));
-            dynamic_cast<BasicBlock *>(then_value)->addPredecessorBlock(true_jump);
+            dynamic_cast<BasicBlock *>(then_value)->addPredecessorBlock(branch_inst->getParent());
         }
 
         for (auto false_jump: false_jump_map_[stmt->getCond()]) {
             auto branch_inst = dynamic_cast<BranchInstruction *>(next_value);
             branch_inst->setFalseLabel(next_value);
             false_jump->getParent()->addSuccessorBlock(dynamic_cast<BasicBlock *>(next_value));
-            dynamic_cast<BasicBlock *>(next_value)->addPredecessorBlock(false_jump);
+            dynamic_cast<BasicBlock *>(next_value)->addPredecessorBlock(branch_inst->getParent());
         }
 
         initJumpMap();

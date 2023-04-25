@@ -25,6 +25,7 @@ std::string IrDumper::getBasicType(BasicType basic_type) const {
 }
 
 std::string IrDumper::dumpValue(Value *value) const {
+    assert(value);
     auto to_const = dynamic_cast<ConstantVar *>(value);
     if (to_const) {
         return to_const->isFloat() ?
@@ -33,6 +34,24 @@ std::string IrDumper::dumpValue(Value *value) const {
         std::string is_ptr_ch = value->isPtr() ? "*" : "";
         return is_ptr_ch + "%" + value->getName();
     }
+}
+
+std::string IrDumper::getCmpCondType(SetCondInstruction *inst) const {
+    switch (inst->getCmpType()) {
+        case SetCondInstruction::SetGT:
+            return "cmpgt";
+        case SetCondInstruction::SetLT:
+            return "cmplt";
+        case SetCondInstruction::SetGE:
+            return "cmpge";
+        case SetCondInstruction::SetLE:
+            return "cmple";
+        case SetCondInstruction::SetNE:
+            return "cmpne";
+        case SetCondInstruction::SetEQ:
+            return "cmpeq";
+    }
+    return "";
 }
 
 std::string IrDumper::getOptype(Instruction *inst) const {
@@ -48,18 +67,6 @@ std::string IrDumper::getOptype(Instruction *inst) const {
             return "div";
         case InstructionType::ModType:
             return "mod";
-        case InstructionType::CmpLType:
-            return "cmpl";
-        case InstructionType::CmpLeType:
-            return "cmple";
-        case InstructionType::CmpGType:
-            return "cmpg";
-        case InstructionType::CmpGeType:
-            return "cmpge";
-        case InstructionType::CmpEqType:
-            return "cmpeq";
-        case InstructionType::CmpNEqType:
-            return "cmpneq";
         case InstructionType::NegType:
             return "neg";
         case InstructionType::NotType:
@@ -191,6 +198,12 @@ void IrDumper::dump(Instruction *inst) {
         case MemSetType:
             dump(dynamic_cast<MemSetInstruction *>(inst));
             return;
+        case BrType:
+            dump(dynamic_cast<BranchInstruction *>(inst));
+            return;
+        case SetCondType:
+            dump(dynamic_cast<SetCondInstruction *>(inst));
+            return;
     }
     if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
         dump(binary_inst);
@@ -288,6 +301,17 @@ void IrDumper::dump(GEPInstruction *inst) {
         out_ << "]";
     }
     out_ << "\n";
+}
+
+void IrDumper::dump(BranchInstruction *inst) {
+    out_ << "br " << dumpValue(inst->getCond()) << " " << dumpValue(inst->getTrueLabel()) << " "
+    << dumpValue(inst->getFalseLabel()) << "\n";
+}
+
+void IrDumper::dump(SetCondInstruction *inst) {
+    std::string cmp_type = inst->isFloatCmp() ? "float" : "int32";
+    out_ << dumpValue(inst) << " = " << getCmpCondType(inst) << " " << cmp_type << " "
+    << dumpValue(inst->getLeft()) << " " << dumpValue(inst->getRight()) << "\n";
 }
 
 

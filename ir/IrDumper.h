@@ -20,6 +20,8 @@ class BasicBlock;
 class RetInstruction;
 class MemSetInstruction;
 class GEPInstruction;
+class BranchInstruction;
+class SetCondInstruction;
 
 class IrDumper {
 public:
@@ -55,6 +57,10 @@ public:
 
     void dump(GEPInstruction *inst);
 
+    void dump(BranchInstruction *inst);
+
+    void dump(SetCondInstruction *inst);
+
 private:
 
     std::string getBasicType(Instruction *inst) const;
@@ -64,6 +70,8 @@ private:
     std::string dumpValue(Value *value) const;
 
     std::string getOptype(Instruction *inst) const;
+
+    std::string getCmpCondType(SetCondInstruction *inst) const;
 
     std::ostream &out_;
 };
