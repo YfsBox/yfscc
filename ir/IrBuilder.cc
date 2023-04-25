@@ -666,7 +666,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
         case BinaryOpType::OR_OPTYPE: {
             visit(expr->getLeftExpr());
             visit(expr->getRightExpr());
-            auto right_block = false_jump_map_[expr->getLeftExpr()].front()->getParent();
+            auto right_block = false_jump_map_[expr->getRightExpr()].front()->getParent();
             auto &left_jump_insts = false_jump_map_[expr->getLeftExpr()];
 
             for (auto jump: left_jump_insts) {
@@ -875,6 +875,7 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
     if (stmt->hasElse()) {
         auto else_value = IrFactory::createBasicBlock("else");
         BasicBlock *else_bb = dynamic_cast<BasicBlock *>(else_value);
+        BasicBlock::bindBasicBlock(else_bb, next_bb);
 
         for (auto true_jump: true_jump_map_[stmt->getCond()]) {
             printf("set the jump from %s to true lebal: %s\n", true_jump->getName().c_str(), else_value->getName().c_str());
