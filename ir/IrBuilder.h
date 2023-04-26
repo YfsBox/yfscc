@@ -172,13 +172,21 @@ private:
 
     void setGlobalArrayInitValue(const std::shared_ptr<ArrayValue> &array_init_value, ConstantArray *const_array);
 
-    void enableDealCond();
+    void dealExprAsCond(const std::shared_ptr<Expression> &expr);
 
-    void disableDealCond();
+    void enableDealCond() {
+        is_deal_cond_ = true;
+    }
+
+    void disableDealCond() {
+        is_deal_cond_ = false;
+    }
 
     void initJumpMap();
 
     bool is_deal_cond_;
+
+    Expression *curr_top_expr_;
 
     std::unique_ptr<Module> module_;
 

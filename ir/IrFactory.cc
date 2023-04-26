@@ -16,12 +16,14 @@ void IrFactory::InitContext(IrContext *context) {
 }
 
 IrFactory::ValuePtr IrFactory::createArgument(bool is_float, Function *function, const std::string &name) {
-    return new Argument(is_float, function, name);
+    context_->ssa_no_++;
+    return new Argument(is_float, function, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createArrayArgument(bool is_float, Function *function, const std::vector<int32_t> &dimension,
                                                    const std::string &name) {
-    return new Argument(is_float, dimension, function, name);
+    context_->ssa_no_++;
+    return new Argument(is_float, dimension, function, std::to_string(context_->ssa_no_));
 }
 
 

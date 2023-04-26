@@ -31,8 +31,10 @@ std::string IrDumper::dumpValue(Value *value) const {
                std::to_string(to_const->getFValue()) : std::to_string(to_const->getIValue());
     } else if (dynamic_cast<GlobalVariable *>(value)) {
         return "@" + value->getName();
+    } else if (value != nullptr) {
+        return "%" + value->getName();
     }
-    return "%" + value->getName();
+    return "";
 }
 
 std::string IrDumper::dumpValue(BasicType basic_type, Value *value) const {
@@ -69,7 +71,7 @@ std::string IrDumper::getOptype(Instruction *inst) const {
         case InstructionType::MulType:
             return "mul";
         case InstructionType::DivType:
-            return "div";
+            return "sdiv";
         case InstructionType::ModType:
             return "mod";
         case InstructionType::NegType:

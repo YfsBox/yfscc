@@ -15,6 +15,7 @@
 
 IrBuilder::IrBuilder(std::ostream &out):
     is_deal_cond_(false),
+    curr_top_expr_(nullptr),
     module_(std::make_unique<Module>()),
     context_(std::make_unique<IrContext>(module_.get())),
     dumper_(std::make_unique<IrDumper>(out)),
@@ -29,14 +30,6 @@ IrBuilder::~IrBuilder() = default;
 void IrBuilder::addValueCast(Value *left, Value *right) {
 
 
-}
-
-void IrBuilder::enableDealCond() {
-    is_deal_cond_ = true;
-}
-
-void IrBuilder::disableDealCond() {
-    is_deal_cond_ = false;
 }
 
 void IrBuilder::initJumpMap() {
@@ -120,6 +113,23 @@ void IrBuilder::setGlobalArrayInitValue(const std::shared_ptr<ArrayValue> &array
         for (auto &[idx, initvalue]: init_values) {
             const_array->setInitValue(idx, initvalue);
         }
+    }
+}
+
+void IrBuilder::dealExprAsCond(const std::shared_ptr<Expression> &expr) {
+    // 分为二次和一次的
+    auto binary_expr = std::dynamic_pointer_cast<BinaryExpr>(expr);
+    auto unary_expr = std::dynamic_pointer_cast<UnaryExpr>(expr);
+    if ((binary_expr && binary_expr->getOpType() != AND_OPTYPE && binary_expr->getOpType() != OR_OPTYPE) || unary_expr) {
+        auto new_br_inst = IrFactory::createCondBrInstruction(curr_value_, nullptr, nullptr);
+        addInstruction(new_br_inst);
+        auto new_block = IrFactory::createBasicBlock("lebal.");
+        BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(new_block));
+        setCurrBasicBlock(new_block);
+        addBasicBlock(new_block);
+        // 设置回填用的map
+        true_jump_map_[expr].push_back(dynamic_cast<Instruction *>(new_br_inst));
+        false_jump_map_[expr].push_back(dynamic_cast<Instruction *>(new_br_inst));
     }
 }
 
@@ -515,20 +525,18 @@ void IrBuilder::visit(const std::shared_ptr<UnaryExpr> &expr) {
         case UnaryOpType::NEGATIVE_OPTYPE:
             unary_inst = basic_type == BasicType::INT_BTYPE ?
                     IrFactory::createINegInstruction(value) : IrFactory::createFNegInstruction(value);
+            addInstruction(unary_inst);
             break;
         case UnaryOpType::NOTOP_OPTYPE:
             unary_inst = basic_type == BasicType::INT_BTYPE ?
                     IrFactory::createINotInstruction(value) : IrFactory::createFNotInstruction(value);
+            addInstruction(unary_inst);
             break;
         case UnaryOpType::POSITIVE_OPTYPE:
+            unary_inst = value;
             break;
     }
-    if (unary_inst) {
-        addInstruction(unary_inst);
-        setCurrValue(unary_inst);
-    } else {
-        setCurrValue(value);
-    }
+    setCurrValue(unary_inst);
 }
 
 void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
@@ -651,7 +659,10 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
 
         case BinaryOpType::AND_OPTYPE: {
             visit(expr->getLeftExpr());
+            dealExprAsCond(expr->getLeftExpr());
             visit(expr->getRightExpr());
+            dealExprAsCond(expr->getRightExpr());
+            // 对其做出条件化处理
             auto right_block = true_jump_map_[expr->getRightExpr()].front()->getParent();
             auto &left_jump_insts = true_jump_map_[expr->getLeftExpr()];
             for (auto jump: left_jump_insts) {
@@ -670,7 +681,9 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
         }
         case BinaryOpType::OR_OPTYPE: {
             visit(expr->getLeftExpr());
+            dealExprAsCond(expr->getLeftExpr());
             visit(expr->getRightExpr());
+            dealExprAsCond(expr->getRightExpr());
             auto right_block = false_jump_map_[expr->getRightExpr()].front()->getParent();
             auto &left_jump_insts = false_jump_map_[expr->getLeftExpr()];
 
@@ -697,7 +710,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
     if (op_type != BinaryOpType::AND_OPTYPE && op_type != BinaryOpType::OR_OPTYPE) {
         addInstruction(binaryop_inst);
         setCurrValue(binaryop_inst);
-        if (is_deal_cond_) {
+        /*if (is_deal_cond_ && (is_logic_op || curr_top_expr_ == expr.get())) {
             auto new_br_inst = IrFactory::createCondBrInstruction(curr_value_, nullptr, nullptr);
             // printf("create new cond branch %s\n", new_br_inst->getName().c_str());
             addInstruction(new_br_inst);
@@ -708,7 +721,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             // 设置回填用的map
             true_jump_map_[expr].push_back(dynamic_cast<Instruction *>(new_br_inst));
             false_jump_map_[expr].push_back(dynamic_cast<Instruction *>(new_br_inst));
-        }
+        }*/
     }
 }
 
@@ -851,7 +864,10 @@ void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
     setCurrBasicBlock(while_start_bb_value);
 
     enableDealCond();
+    curr_top_expr_ = stmt->getCond().get();
     visit(stmt->getCond());
+    dealExprAsCond(stmt->getCond());
+    curr_top_expr_ = nullptr;
     disableDealCond();
 
     if (stmt->getStatement()) {
@@ -916,7 +932,10 @@ void IrBuilder::visit(const std::shared_ptr<AssignStatement> &stmt) {
 
 void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
     enableDealCond();
+    curr_top_expr_ = stmt->getCond().get();
     visit(stmt->getCond());
+    dealExprAsCond(stmt->getCond());
+    curr_top_expr_ = nullptr;
     disableDealCond();
 
     auto then_value = IrFactory::createBasicBlock("ifelse.then.");
