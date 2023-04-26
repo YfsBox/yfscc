@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include "common/Ast.h"
 #include "common/Utils.h"
 #include "ir/IrBuilder.h"
@@ -13,7 +14,7 @@ int main(int argc, char **argv) {
     std::string source_file;
     if (argc > 1) {
         source_file = argv[1];
-        printf("the src file is: %s\n", source_file.c_str());
+        // printf("the src file is: %s\n", source_file.c_str());
     }
 
     auto content = getFileContent(source_file);
@@ -24,7 +25,6 @@ int main(int argc, char **argv) {
     checker->visit(root);
 
     //root->dump(std::cout, 0);
-
     checker->dumpErrorMsg();
 
 

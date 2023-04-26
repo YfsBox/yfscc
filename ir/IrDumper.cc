@@ -29,9 +29,10 @@ std::string IrDumper::dumpValue(Value *value) const {
     if (to_const) {
         return to_const->isFloat() ?
                std::to_string(to_const->getFValue()) : std::to_string(to_const->getIValue());
-    } else {
-        return "%" + value->getName();
+    } else if (dynamic_cast<GlobalVariable *>(value)) {
+        return "@" + value->getName();
     }
+    return "%" + value->getName();
 }
 
 std::string IrDumper::dumpValue(BasicType basic_type, Value *value) const {
@@ -83,8 +84,10 @@ void IrDumper::dump(Module *module) {
     for (const auto &global: module->global_variables_) {
         dump(global.get());
     }
+    out_ << "\n";
     for (const auto &function: module->functions_) {
         dump(function.get());
+        out_ << '\n';
     }
 }
 
@@ -256,7 +259,7 @@ void IrDumper::dump(AllocaInstruction *inst) {
 void IrDumper::dump(RetInstruction *inst) {
     out_ << "ret ";
     if (!inst->isRetVoid()) {
-        out_ << dumpValue(inst->getRetValue());
+        out_ << dumpValue(inst->getBasicType(), inst->getRetValue());
     }
     out_ << '\n';
 }

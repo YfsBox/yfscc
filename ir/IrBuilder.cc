@@ -369,6 +369,9 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     param_dimensions.reserve(formal_size);
     arguments.reserve(formal_size);
 
+    context_->ResetSSA();
+    context_->ResetBlockNo();
+
     for (size_t i = 0; i < formal_size; ++i) {          // 根据Ast中的Formal解析出Argument
         auto formal = formals->getFuncFormal(i);
         std::string formal_name = formal->getFormalId()->getId();
@@ -698,7 +701,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             auto new_br_inst = IrFactory::createCondBrInstruction(curr_value_, nullptr, nullptr);
             // printf("create new cond branch %s\n", new_br_inst->getName().c_str());
             addInstruction(new_br_inst);
-            auto new_block = IrFactory::createBasicBlock("lebal");
+            auto new_block = IrFactory::createBasicBlock("lebal.");
             BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(new_block));
             setCurrBasicBlock(new_block);
             addBasicBlock(new_block);
@@ -832,11 +835,11 @@ void IrBuilder::visit(const std::shared_ptr<BreakStatement> &stmt) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
-    auto while_start_bb_value = IrFactory::createBasicBlock("while");
+    auto while_start_bb_value = IrFactory::createBasicBlock("while.start.");
     BasicBlock *while_start_bb = dynamic_cast<BasicBlock *>(while_start_bb_value);
-    auto while_then_bb_value = IrFactory::createBasicBlock("then");
+    auto while_then_bb_value = IrFactory::createBasicBlock("while.body.");
     BasicBlock *while_then_bb = dynamic_cast<BasicBlock *>(while_then_bb_value);
-    auto while_next_bb_value = IrFactory::createBasicBlock("next");
+    auto while_next_bb_value = IrFactory::createBasicBlock("while.next.");
     BasicBlock *while_next_bb = dynamic_cast<BasicBlock *>(while_next_bb_value);
 
     BasicBlock::bindBasicBlock(context_->curr_bb_, while_start_bb);
@@ -916,14 +919,14 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
     visit(stmt->getCond());
     disableDealCond();
 
-    auto then_value = IrFactory::createBasicBlock("then");
+    auto then_value = IrFactory::createBasicBlock("ifelse.then.");
     BasicBlock *then_bb = dynamic_cast<BasicBlock *>(then_value);
-    auto next_value = IrFactory::createBasicBlock("next");
+    auto next_value = IrFactory::createBasicBlock("ifelse.next.");
     BasicBlock *next_bb = dynamic_cast<BasicBlock *>(next_value);
     BasicBlock::bindBasicBlock(then_bb, next_bb);
 
     if (stmt->hasElse()) {
-        auto else_value = IrFactory::createBasicBlock("else");
+        auto else_value = IrFactory::createBasicBlock("ifelse.else.");
         BasicBlock *else_bb = dynamic_cast<BasicBlock *>(else_value);
         BasicBlock::bindBasicBlock(else_bb, next_bb);
 
