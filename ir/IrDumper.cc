@@ -25,31 +25,35 @@ std::string IrDumper::getBasicType(BasicType basic_type) const {
 }
 
 std::string IrDumper::dumpValue(Value *value) const {
-    assert(value);
     auto to_const = dynamic_cast<ConstantVar *>(value);
     if (to_const) {
         return to_const->isFloat() ?
-            std::to_string(to_const->getFValue()) : std::to_string(to_const->getIValue());
+               std::to_string(to_const->getFValue()) : std::to_string(to_const->getIValue());
     } else {
-        std::string is_ptr_ch = value->isPtr() ? "*" : "";
-        return is_ptr_ch + "%" + value->getName();
+        return "%" + value->getName();
     }
+}
+
+std::string IrDumper::dumpValue(BasicType basic_type, Value *value) const {
+    assert(value);
+    std::string ptr_ch = value->isPtr() ? "* " : " ";
+    return getBasicType(basic_type) + ptr_ch + dumpValue(value);
 }
 
 std::string IrDumper::getCmpCondType(SetCondInstruction *inst) const {
     switch (inst->getCmpType()) {
         case SetCondInstruction::SetGT:
-            return "cmpgt";
+            return "sgt";
         case SetCondInstruction::SetLT:
-            return "cmplt";
+            return "slt";
         case SetCondInstruction::SetGE:
-            return "cmpge";
+            return "sge";
         case SetCondInstruction::SetLE:
-            return "cmple";
+            return "sle";
         case SetCondInstruction::SetNE:
-            return "cmpne";
+            return "ne";
         case SetCondInstruction::SetEQ:
-            return "cmpeq";
+            return "eq";
     }
     return "";
 }
@@ -100,7 +104,7 @@ void IrDumper::dump(Function *function) {
     std::string ret_type;
     switch (function->getRetType()) {
         case BasicType::INT_BTYPE:
-            ret_type = "int";
+            ret_type = "i32";
             break;
         case BasicType::FLOAT_BTYPE:
             ret_type = "float";
@@ -113,7 +117,7 @@ void IrDumper::dump(Function *function) {
     auto argument_size = function->getArgumentSize();
     for (int i = 0; i < argument_size; ++i) {
         auto arg = function->getArgument(i);
-        std::string type_str = arg->isFloat() ? "float" : "int32";
+        std::string type_str = arg->isFloat() ? "float" : "i32";
         out_ << type_str;
         // 一维数组
         auto dimension_size = arg->getArraySize();
@@ -129,7 +133,7 @@ void IrDumper::dump(Function *function) {
             out_ << ", ";
         }
     }
-    out_ << ") {\n";
+    out_ << ") #0 {\n";
     auto &blocks = function->getBlocks();
     for (const auto &block: blocks) {
         dump(block.get());
@@ -148,7 +152,7 @@ void IrDumper::dump(Constant *constant) {
         int32_t last_idx = -1;
         for (auto &[key, value]: initvalue_map) {
             if (key - last_idx != 1) {
-                out_ << "zero init:[" << last_idx + 1 << "," << key << ") ";
+                out_ << "zero init:[" << last_idx + 1 << ", " << key << ") ";
             } else {
                 out_ << getBasicType(basic_type) << " %" << key << ": ";
                 if (value->isFloat()) {
@@ -162,7 +166,7 @@ void IrDumper::dump(Constant *constant) {
         }
         size_t array_len = const_array->getArrayLen();
         if (last_idx != array_len - 1) {
-            out_ << "zero init:[" << last_idx + 1 << "," << array_len << ") ";
+            out_ << "zero init:[" << last_idx + 1 << ", " << array_len << ") ";
         }
         out_ << "]";
     } else {
@@ -216,28 +220,23 @@ void IrDumper::dump(Instruction *inst) {
 
 void IrDumper::dump(BinaryOpInstruction *binst) {
     out_ << dumpValue(binst) << " = " << getOptype(binst) <<
-        " " << getBasicType(binst) << " " << dumpValue(binst->getLeft())
-        << "," << dumpValue(binst->getRight()) << '\n';
+        " " << dumpValue(binst->getBasicType(), binst->getLeft())
+        << ", " << dumpValue( binst->getRight()) << '\n';
 }
 
 void IrDumper::dump(UnaryOpInstruction *uinst) {
     out_ << dumpValue(uinst) << " = " << getOptype(uinst) <<
-        " " << getBasicType(uinst) << " " << dumpValue(uinst->getValue())
+        " " << dumpValue(uinst->getBasicType(), uinst->getValue())
         << "\n";
 }
 
 void IrDumper::dump(StoreInstruction *inst) {
-    std::string basic_type = getBasicType(inst);
-    std::string value_name = dumpValue(inst->getValue());
-
-    out_ << "store " << basic_type << " " << value_name << ", " << dumpValue(inst->getPtr());
+    out_ << "store " << dumpValue(inst->getBasicType(), inst->getValue()) << ", " << dumpValue(inst->getBasicType(), inst->getPtr());
     out_ << '\n';
 }
 
 void IrDumper::dump(LoadInstruction *inst) {
-    std::string basic_type = getBasicType(inst);
-    std::string value_name = dumpValue(inst->getPtr());
-    out_ << dumpValue(inst) << " = load " << basic_type << " " << value_name;
+    out_ << dumpValue(inst) << " = load " << getBasicType(inst->getBasicType()) << ", " << dumpValue(inst->getBasicType(), inst->getPtr());
     out_ << '\n';
 }
 
@@ -255,7 +254,7 @@ void IrDumper::dump(AllocaInstruction *inst) {
 }
 
 void IrDumper::dump(RetInstruction *inst) {
-    out_ << "return ";
+    out_ << "ret ";
     if (!inst->isRetVoid()) {
         out_ << dumpValue(inst->getRetValue());
     }
@@ -263,6 +262,9 @@ void IrDumper::dump(RetInstruction *inst) {
 }
 
 void IrDumper::dump(BasicBlock *block) {
+    if (block->getInstructionList().empty()) {
+        return;
+    }
     out_ << block->getName() << ":";
     out_ << "                       ;preds = ";
     for (auto pre: block->getPreDecessorBlocks()) {
@@ -316,18 +318,19 @@ void IrDumper::dump(BranchInstruction *inst) {
 
     out_ << "br ";
     if (inst->isCondBranch()) {
-        out_ << dumpValue(inst->getCond()) << " " << dumpValue(inst->getTrueLabel()) << " "
+        out_ << "i1 " << dumpValue(inst->getCond()) << ", label " << dumpValue(inst->getTrueLabel()) << ", label "
                                    << dumpValue(inst->getFalseLabel());
     } else {
-        out_ << dumpValue(inst->getLabel());
+        out_ << "label " << dumpValue(inst->getLabel());
     }
     out_ << "\n";
 }
 
 void IrDumper::dump(SetCondInstruction *inst) {
-    std::string cmp_type = inst->isFloatCmp() ? "float" : "int32";
-    out_ << dumpValue(inst) << " = " << getCmpCondType(inst) << " " << cmp_type << " "
-    << dumpValue(inst->getLeft()) << " " << dumpValue(inst->getRight()) << "\n";
+    std::string cmp_type = inst->isFloatCmp() ? "float" : "i32";
+    std::string cmp_str = inst->isFloatCmp() ? "fcmp" : "icmp";
+    out_ << dumpValue(inst) << " = " << cmp_str << " " << getCmpCondType(inst) << " " << cmp_type << " "
+    << dumpValue(inst->getLeft()) << ", " << dumpValue(inst->getRight()) << "\n";
 }
 
 

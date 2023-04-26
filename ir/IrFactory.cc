@@ -106,8 +106,8 @@ IrFactory::ValuePtr IrFactory::createBasicBlock(const std::string &name) {
 }
 
 IrFactory::ValuePtr IrFactory::createBrInstruction(Value *label) {
-    context_->ssa_no_++;
-    return new BranchInstruction(context_->curr_bb_, label, std::to_string(context_->ssa_no_));
+    // context_->ssa_no_++;
+    return new BranchInstruction(context_->curr_bb_, label /*std::to_string(context_->ssa_no_)*/);
 }
 
 IrFactory::ValuePtr IrFactory::createCallInstruction(const std::vector<Value *> &actuals) {
@@ -116,8 +116,8 @@ IrFactory::ValuePtr IrFactory::createCallInstruction(const std::vector<Value *> 
 }
 
 IrFactory::ValuePtr IrFactory::createCondBrInstruction(Value *cond, Value *truelabel, Value *falselabel) {
-    context_->ssa_no_++;
-    return new BranchInstruction(context_->curr_bb_, cond, truelabel, falselabel, std::to_string(context_->ssa_no_));
+    // context_->ssa_no_++;
+    return new BranchInstruction(context_->curr_bb_, cond, truelabel, falselabel /*std::to_string(context_->ssa_no_)*/);
 }
 
 IrFactory::ValuePtr IrFactory::createDivInstruction(Value *left, Value *right, BasicType btype) {

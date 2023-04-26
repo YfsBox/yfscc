@@ -74,7 +74,7 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有�
         Value *dimension_value = nullptr;
         std::vector<Value *> dimension_numbers;
         dimension_numbers.reserve(dimension_size);
-        printf("the dimension size is %ld\n", dimension_size);
+        // printf("the dimension size is %ld\n", dimension_size);
         for (size_t i = 0; i < dimension_size; ++i) {
             visit(lval_ident->getDimensionExpr(i));
             dimension_value = curr_value_;
@@ -85,7 +85,7 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有�
             // printf("the dimension size is %d\n", dimension_value->)
             dimension_numbers.push_back(dimension_value);
         }
-        printf("begin gep inst value");
+        // printf("begin gep inst value");
         auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
                 IrFactory::createIGEPInstruction(find_entry->getValue(), dimension_numbers):
                 IrFactory::createFGEPInstruction(find_entry->getValue(), dimension_numbers);
@@ -151,7 +151,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             auto array_init_value_expr = std::dynamic_pointer_cast<ArrayValue>(def->getInitExpr());
             assert(array_init_value_expr);
             setGlobalArrayInitValue(array_init_value_expr, const_array);
-            printf("add const global to module %s\n", globalvar_ptr->getName().c_str());
+            // printf("add const global to module %s\n", globalvar_ptr->getName().c_str());
             context_->curr_module_->addGlobalVariable(std::unique_ptr<GlobalVariable>(globalvar_ptr));
             assert(globalvar_ptr);
             IrSymbolEntry new_entry(true, def_basic_type, new_global_array);
@@ -265,7 +265,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             auto array_init_value_expr = std::dynamic_pointer_cast<ArrayValue>(def->getInitExpr());
             assert(array_init_value_expr);
             setGlobalArrayInitValue(array_init_value_expr, const_array);
-            printf("add global to module %s\n", globalvar_ptr->getName().c_str());
+            // printf("add global to module %s\n", globalvar_ptr->getName().c_str());
             context_->curr_module_->addGlobalVariable(std::unique_ptr<GlobalVariable>(globalvar_ptr));
             IrSymbolEntry new_entry(false, def_basic_type, new_global_array);
             var_symbol_table_.addIdent(new_entry);
@@ -394,7 +394,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
         }
     }
     for (auto &param_name : param_names) {
-        printf("param name : %s in func %s\n", param_name.c_str(), function_name.c_str());
+        // printf("param name : %s in func %s\n", param_name.c_str(), function_name.c_str());
     }
 
     // 创建这个function(Value)
@@ -408,7 +408,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     // 将其中的argument加入到function之中
     auto function = dynamic_cast<Function *>(function_value);
     context_->curr_function_ = function;
-    printf("the argument size is %lu before add\n", function->getArgumentSize());
+    // printf("the argument size is %lu before add\n", function->getArgumentSize());
     // 进入新的一层符号表,并将参数加入到符号表
     var_symbol_table_.enterScope();
     for (const auto argument: arguments) {
@@ -417,7 +417,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
         IrSymbolEntry new_entry(false, to_arg->isFloat() ?
                     BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE,to_arg);
         var_symbol_table_.addIdent(new_entry);
-        printf("add %s to function %s, after that the size is %lu\n", argument->getName().c_str(), function->getName().c_str(), function->getArgumentSize());
+        // printf("add %s to function %s, after that the size is %lu\n", argument->getName().c_str(), function->getName().c_str(), function->getArgumentSize());
     }
     // 在一个函数开始的地方,应该有新的basic block
     module_->addFunction(std::unique_ptr<Function>(function));
@@ -650,7 +650,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             auto right_block = true_jump_map_[expr->getRightExpr()].front()->getParent();
             auto &left_jump_insts = true_jump_map_[expr->getLeftExpr()];
             for (auto jump: left_jump_insts) {
-                printf("set the jump from %s to true lebal: %s\n", jump->getParent()->getName().c_str(), right_block->getName().c_str());
+                // printf("set the jump from %s to true lebal: %s\n", jump->getParent()->getName().c_str(), right_block->getName().c_str());
                 auto br_inst = dynamic_cast<BranchInstruction *>(jump);
                 assert(br_inst);
                 br_inst->setTrueLabel(right_block);
@@ -670,7 +670,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             auto &left_jump_insts = false_jump_map_[expr->getLeftExpr()];
 
             for (auto jump: left_jump_insts) {
-                printf("set the jump from %s to false lebal: %s\n", jump->getParent()->getName().c_str(), right_block->getName().c_str());
+                // printf("set the jump from %s to false lebal: %s\n", jump->getParent()->getName().c_str(), right_block->getName().c_str());
                 auto br_inst = dynamic_cast<BranchInstruction *>(jump);
                 assert(br_inst);
                 br_inst->setFalseLabel(right_block);
@@ -694,7 +694,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
         setCurrValue(binaryop_inst);
         if (is_deal_cond_) {
             auto new_br_inst = IrFactory::createCondBrInstruction(curr_value_, nullptr, nullptr);
-            printf("create new cond branch %s\n", new_br_inst->getName().c_str());
+            // printf("create new cond branch %s\n", new_br_inst->getName().c_str());
             addInstruction(new_br_inst);
             auto new_block = IrFactory::createBasicBlock("lebal");
             BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(new_block));
@@ -922,14 +922,14 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
         BasicBlock::bindBasicBlock(else_bb, next_bb);
 
         for (auto true_jump: true_jump_map_[stmt->getCond()]) {
-            printf("set the jump from %s to true lebal: %s\n", true_jump->getName().c_str(), then_value->getName().c_str());
+            // printf("set the jump from %s to true lebal: %s\n", true_jump->getName().c_str(), then_value->getName().c_str());
             auto branch_inst = dynamic_cast<BranchInstruction *>(true_jump);
             branch_inst->setTrueLabel(then_value);
             BasicBlock::bindBasicBlock(true_jump->getParent(), then_bb);
         }
 
         for (auto false_jump: false_jump_map_[stmt->getCond()]) {
-            printf("set the jump from %s to false lebal: %s\n", false_jump->getName().c_str(), else_value->getName().c_str());
+            // printf("set the jump from %s to false lebal: %s\n", false_jump->getName().c_str(), else_value->getName().c_str());
             auto branch_inst = dynamic_cast<BranchInstruction *>(false_jump);
             branch_inst->setFalseLabel(else_value);
             BasicBlock::bindBasicBlock(false_jump->getParent(), else_bb);
