@@ -213,11 +213,15 @@ public:
     }
 
     void setTrueLabel(Value *value) {
-        setOperand(value, 1);
+        if (getOperandNum() >= 3) {
+            setOperand(value, 1);
+        }
     }
 
     void setFalseLabel(Value *value) {
-        setOperand(value, 2);
+        if (getOperandNum() >= 3) {
+            setOperand(value, 2);
+        }
     }
 
 private:

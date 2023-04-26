@@ -830,6 +830,50 @@ void IrBuilder::visit(const std::shared_ptr<BreakStatement> &stmt) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
+    auto while_start_bb_value = IrFactory::createBasicBlock("while");
+    BasicBlock *while_start_bb = dynamic_cast<BasicBlock *>(while_start_bb_value);
+    auto while_then_bb_value = IrFactory::createBasicBlock("then");
+    BasicBlock *while_then_bb = dynamic_cast<BasicBlock *>(while_then_bb_value);
+    auto while_next_bb_value = IrFactory::createBasicBlock("next");
+    BasicBlock *while_next_bb = dynamic_cast<BasicBlock *>(while_next_bb_value);
+
+    BasicBlock::bindBasicBlock(context_->curr_bb_, while_start_bb);
+    BasicBlock::bindBasicBlock(while_start_bb, while_then_bb);
+    BasicBlock::bindBasicBlock(while_start_bb, while_next_bb);
+
+    addInstruction(IrFactory::createBrInstruction(while_start_bb_value));
+    addBasicBlock(while_start_bb_value);
+    setCurrBasicBlock(while_start_bb_value);
+
+    enableDealCond();
+    visit(stmt->getCond());
+    disableDealCond();
+
+    if (stmt->getStatement()) {
+        for (auto true_jump: true_jump_map_[stmt->getCond()]) {
+            BranchInstruction *branch_inst = dynamic_cast<BranchInstruction *>(true_jump);
+            branch_inst->setTrueLabel(while_then_bb_value);
+            BasicBlock::bindBasicBlock(branch_inst->getParent(), while_then_bb);
+        }
+
+        for (auto false_jump: false_jump_map_[stmt->getCond()]) {
+            BranchInstruction *branch_inst = dynamic_cast<BranchInstruction *>(false_jump);
+            branch_inst->setFalseLabel(while_next_bb_value);
+            BasicBlock::bindBasicBlock(branch_inst->getParent(), while_next_bb);
+        }
+
+        initJumpMap();
+
+        addBasicBlock(while_then_bb);
+        setCurrBasicBlock(while_then_bb);
+        visit(stmt->getStatement());
+
+        addInstruction(IrFactory::createBrInstruction(while_start_bb_value));
+        BasicBlock::bindBasicBlock(context_->curr_bb_, while_start_bb);
+    }
+
+    addBasicBlock(while_next_bb_value);
+    setCurrBasicBlock(while_next_bb_value);
 
 }
 
@@ -878,7 +922,7 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
         BasicBlock::bindBasicBlock(else_bb, next_bb);
 
         for (auto true_jump: true_jump_map_[stmt->getCond()]) {
-            printf("set the jump from %s to true lebal: %s\n", true_jump->getName().c_str(), else_value->getName().c_str());
+            printf("set the jump from %s to true lebal: %s\n", true_jump->getName().c_str(), then_value->getName().c_str());
             auto branch_inst = dynamic_cast<BranchInstruction *>(true_jump);
             branch_inst->setTrueLabel(then_value);
             BasicBlock::bindBasicBlock(true_jump->getParent(), then_bb);
@@ -913,7 +957,7 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
         }
 
         for (auto false_jump: false_jump_map_[stmt->getCond()]) {
-            auto branch_inst = dynamic_cast<BranchInstruction *>(next_value);
+            auto branch_inst = dynamic_cast<BranchInstruction *>(false_jump);
             branch_inst->setFalseLabel(next_value);
             BasicBlock::bindBasicBlock(false_jump->getParent(), next_bb);
         }
