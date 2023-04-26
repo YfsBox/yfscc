@@ -20,6 +20,24 @@ void Function::addBasicBlock(Value *block) {
     blocks_.push_back(std::unique_ptr<BasicBlock>(dynamic_cast<BasicBlock *>(block)));
 }
 
+
+void Function::removeEmptyBasicBlock() {
+    for (auto bbit = blocks_.begin(); bbit != blocks_.end();) {
+        if (bbit->get()->getInstructionSize() == 0) {
+            BasicBlock *bb = bbit->get();
+            for (auto pre: bb->getPreDecessorBlocks()) {
+                pre->removeSuccessorBlock(bb);
+            }
+            for (auto succ: bb->getSuccessorBlocks()) {
+                succ->removePredecessorBlock(bb);
+            }
+            bbit = blocks_.erase(bbit);
+        } else {
+            ++bbit;
+        }
+    }
+}
+
 void Function::dump() const {
 
 }

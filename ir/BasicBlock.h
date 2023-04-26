@@ -52,6 +52,14 @@ public:
         predecessor_blocks_.insert(block);
     }
 
+    void removePredecessorBlock(BasicBlock *block) {
+        predecessor_blocks_.erase(block);
+    }
+
+    void removeSuccessorBlock(BasicBlock *block) {
+        successor_blocks_.erase(block);
+    }
+
     void addTerminal(BasicBlock *block) {
         terminals_.insert(block);
     }

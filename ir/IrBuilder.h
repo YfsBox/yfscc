@@ -5,6 +5,7 @@
 #ifndef YFSCC_IRBUILDER_H
 #define YFSCC_IRBUILDER_H
 
+#include <deque>
 #include "Value.h"
 #include "../common/SysbolTable.h"
 #include "../common/AstVisitor.h"
@@ -47,17 +48,19 @@ struct IrContext {
 
 class IrSymbolEntry {
 public:
-    IrSymbolEntry(bool is_const, BasicType basic_type, Value *value):
+    IrSymbolEntry(bool is_const, BasicType basic_type, Value *value, const std::string &name):
             is_const_(is_const),
             basic_type_(basic_type),
-            value_(value) {
+            value_(value),
+            name_(name){
     }
 
     IrSymbolEntry(bool is_const, BasicType basic_type, std::vector<int32_t> &array_size, Value *value, const std::string &name):
             is_const_(is_const),
             basic_type_(basic_type),
             value_(value),
-            array_dimension_(std::move(array_size)) {
+            array_dimension_(std::move(array_size)),
+            name_(name) {
 
     }
 
@@ -80,7 +83,7 @@ public:
     }
 
     std::string getName() const {
-        return value_->getName();
+        return name_;
     }
 
     Value *getValue() const {
@@ -89,6 +92,7 @@ public:
 
 private:
     bool is_const_;
+    std::string name_;
     BasicType basic_type_;
     std::vector<int32_t> array_dimension_;
     Value *value_;
@@ -98,6 +102,8 @@ private:
 class IrBuilder: public AstVisitor {
 public:
     using CondJumpMap = std::unordered_map<std::shared_ptr<Expression>, std::vector<Instruction *>>;
+
+    using WhileBasicBlockPair = std::pair<BasicBlock *, BasicBlock *>;
 
     explicit IrBuilder(std::ostream &out);
 
@@ -193,6 +199,8 @@ private:
     CondJumpMap true_jump_map_;     // key表示的是一个条件表达式，value是一个由instruction组成的集合,该条件表达式中包含的指令
 
     CondJumpMap false_jump_map_;
+
+    std::deque<WhileBasicBlockPair> while_stack_;
 };
 
 

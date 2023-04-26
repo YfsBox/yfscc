@@ -32,6 +32,8 @@ public:
 
     void addBasicBlock(Value *block);
 
+    void removeEmptyBasicBlock();
+
     Argument *getArgument(int idx) const {
         return arguments_[idx].get();
     }

@@ -154,7 +154,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             // printf("add const global to module %s\n", globalvar_ptr->getName().c_str());
             context_->curr_module_->addGlobalVariable(std::unique_ptr<GlobalVariable>(globalvar_ptr));
             assert(globalvar_ptr);
-            IrSymbolEntry new_entry(true, def_basic_type, new_global_array);
+            IrSymbolEntry new_entry(true, def_basic_type, new_global_array, var_name);
             var_symbol_table_.addIdent(new_entry);
         } else {
             auto array_len = getArrayLen(dimension_number);
@@ -167,7 +167,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
                 visit(def->getInitExpr());
             }
             curr_value_ = allac_inst_value;
-            IrSymbolEntry new_entry(true, def_basic_type, allac_inst_value);
+            IrSymbolEntry new_entry(true, def_basic_type, allac_inst_value, var_name);
             var_symbol_table_.addIdent(new_entry);
         }
     } else {
@@ -187,7 +187,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             new_global = std::unique_ptr<GlobalVariable> (dynamic_cast<GlobalVariable *>(new_value));
             // 加入到module的集合中
             module_->addGlobalVariable(std::move(new_global));
-            IrSymbolEntry new_entry(true, def_basic_type, new_value);
+            IrSymbolEntry new_entry(true, def_basic_type, new_value, var_name);
             var_symbol_table_.addIdent(new_entry);
         } else {
             // alloca
@@ -226,7 +226,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             // context_->curr_bb_->addInstruction(store_inst_value);
             addInstruction(store_inst_value);
             // 不要忘了将变量加入符号表
-            IrSymbolEntry new_entry(true, def_basic_type, alloca_inst_value);
+            IrSymbolEntry new_entry(true, def_basic_type, alloca_inst_value, var_name);
             var_symbol_table_.addIdent(new_entry);
         }
 
@@ -267,7 +267,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             setGlobalArrayInitValue(array_init_value_expr, const_array);
             // printf("add global to module %s\n", globalvar_ptr->getName().c_str());
             context_->curr_module_->addGlobalVariable(std::unique_ptr<GlobalVariable>(globalvar_ptr));
-            IrSymbolEntry new_entry(false, def_basic_type, new_global_array);
+            IrSymbolEntry new_entry(false, def_basic_type, new_global_array, var_name);
             var_symbol_table_.addIdent(new_entry);
         } else {
             auto array_len = getArrayLen(dimension_number);
@@ -280,7 +280,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
                 visit(def->getInitExpr());
             }
             curr_value_ = allac_inst_value;
-            IrSymbolEntry new_entry(false, def_basic_type, allac_inst_value);
+            IrSymbolEntry new_entry(false, def_basic_type, allac_inst_value, var_name);
             var_symbol_table_.addIdent(new_entry);
         }
     } else {        // 不是数组
@@ -299,7 +299,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             new_global = std::unique_ptr<GlobalVariable> (dynamic_cast<GlobalVariable *>(new_value));
             module_->addGlobalVariable(std::move(new_global));          // 加入到module的集合中
 
-            IrSymbolEntry new_entry(false, def_basic_type, new_value);
+            IrSymbolEntry new_entry(false, def_basic_type, new_value, var_name);
             var_symbol_table_.addIdent(new_entry);
         } else {
             Value *alloca_inst_value = nullptr;
@@ -340,7 +340,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             } else {
                 addInstruction(alloca_inst_value);
             }
-            IrSymbolEntry new_entry(true, def_basic_type, alloca_inst_value);
+            IrSymbolEntry new_entry(true, def_basic_type, alloca_inst_value, var_name);
             var_symbol_table_.addIdent(new_entry);
         }
 
@@ -411,11 +411,12 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     // printf("the argument size is %lu before add\n", function->getArgumentSize());
     // 进入新的一层符号表,并将参数加入到符号表
     var_symbol_table_.enterScope();
+    int32_t idx = 0;
     for (const auto argument: arguments) {
         auto to_arg = dynamic_cast<Argument *>(argument);
         function->addArgument(std::unique_ptr<Argument>(to_arg));
         IrSymbolEntry new_entry(false, to_arg->isFloat() ?
-                    BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE,to_arg);
+                    BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, to_arg, param_names[idx++]);
         var_symbol_table_.addIdent(new_entry);
         // printf("add %s to function %s, after that the size is %lu\n", argument->getName().c_str(), function->getName().c_str(), function->getArgumentSize());
     }
@@ -449,6 +450,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     visit(def->getBlock());
     // 退出
     var_symbol_table_.exitScope();
+    context_->curr_function_->removeEmptyBasicBlock();
 }
 
 void IrBuilder::visit(const std::shared_ptr<Statement> &stmt) {
@@ -826,7 +828,7 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<BreakStatement> &stmt) {
-
+    addInstruction(IrFactory::createBrInstruction(while_stack_.back().second));
 }
 
 void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
@@ -864,9 +866,13 @@ void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
 
         initJumpMap();
 
+        while_stack_.push_back({while_start_bb, while_next_bb});
+
         addBasicBlock(while_then_bb);
         setCurrBasicBlock(while_then_bb);
         visit(stmt->getStatement());
+
+        while_stack_.pop_back();
 
         addInstruction(IrFactory::createBrInstruction(while_start_bb_value));
         BasicBlock::bindBasicBlock(context_->curr_bb_, while_start_bb);
@@ -1004,7 +1010,7 @@ void IrBuilder::visit(const std::shared_ptr<ReturnStatement> &stmt) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<ContinueStatement> &stmt) {
-
+    addInstruction(IrFactory::createBrInstruction(while_stack_.back().first));
 }
 
 void IrBuilder::dump() const {

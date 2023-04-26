@@ -212,7 +212,8 @@ IrFactory::ValuePtr IrFactory::createXorInstruction(Value *left, Value *right, B
 }
 
 IrFactory::ValuePtr IrFactory::createFAllocaInstruction(const std::string &name) {      // 返回的都是指针
-    return new AllocaInstruction (context_->curr_bb_, BasicType::FLOAT_BTYPE, name);
+    context_->ssa_no_++;
+    return new AllocaInstruction (context_->curr_bb_, BasicType::FLOAT_BTYPE, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createFAllocaInstruction() {
@@ -226,7 +227,8 @@ IrFactory::ValuePtr IrFactory::createIAllocaInstruction() {
 }
 
 IrFactory::ValuePtr IrFactory::createIAllocaInstruction(const std::string &name) {
-    return new AllocaInstruction (context_->curr_bb_, BasicType::INT_BTYPE, name);
+    context_->ssa_no_++;
+    return new AllocaInstruction (context_->curr_bb_, BasicType::INT_BTYPE, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createIArrayAllocaInstruction(const std::vector<int32_t> &dimensions,
