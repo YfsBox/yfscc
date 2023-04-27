@@ -52,7 +52,8 @@ void SemanticCheck::addLibFunc() {
     }
 
     // 对于其中一些有参数的处理，目前考虑用相同的对象，不知有没有问题
-    auto int_formal = std::make_shared<FuncFParam>(BasicType::INT_BTYPE, nullptr);
+    auto empty_formal_ident = std::make_shared<Identifier>("");
+    auto int_formal = std::make_shared<FuncFParam>(BasicType::INT_BTYPE, empty_formal_ident);
 
     auto int_array_formal_ident = std::make_shared<Identifier>("");
     int_array_formal_ident->addDimension(nullptr);      // 一个一维，表示的是int[]

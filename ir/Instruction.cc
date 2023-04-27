@@ -2,6 +2,7 @@
 // Created by 杨丰硕 on 2023/4/15.
 //
 #include <cassert>
+#include "Function.h"
 #include "BasicBlock.h"
 #include "Instruction.h"
 
@@ -76,7 +77,7 @@ AllocaInstruction::~AllocaInstruction() = default;
 
 CallInstruction::CallInstruction(BasicBlock *block, Function *function, std::vector<Value *> actuals,
                                  const std::string &name):
-        Instruction(InstructionType::CallType, BasicType::VOID_BTYPE, false, block, name),
+        Instruction(InstructionType::CallType, function->getRetType(), false, block, name),
         function_(function){
     for (auto value : actuals) {
         addOperand(value);

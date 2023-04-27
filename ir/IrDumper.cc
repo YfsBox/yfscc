@@ -18,11 +18,18 @@ IrDumper::IrDumper(std::ostream &out):
 IrDumper::~IrDumper() = default;
 
 std::string IrDumper::getBasicType(Instruction *inst) const {
-    return inst->getBasicType() == BasicType::INT_BTYPE ? "i32" : "float";
+    return getBasicType(inst->getBasicType());
 }
 
 std::string IrDumper::getBasicType(BasicType basic_type) const {
-    return basic_type == BasicType::INT_BTYPE ? "i32" : "float";
+    if (basic_type == BasicType::INT_BTYPE) {
+        return "i32";
+    } else if (basic_type == BasicType::FLOAT_BTYPE) {
+        return "float";
+    } else {
+        return "void";
+    }
+    // return basic_type == BasicType::INT_BTYPE ? "i32" : "float";
 }
 
 std::string IrDumper::dumpValue(Value *value) const {
@@ -67,7 +74,7 @@ std::string IrDumper::getArrayType(const std::vector <int32_t> &dimension, Basic
     if (dimension.empty()) {
         return array_type;
     }
-    if (dimension[0] == 0) {
+    if (dimension[0] == Argument::ArrayArgumentNullIdx) {
         for (int i = 1; i < dimension.size(); ++i) {
             array_type += "[" + std::to_string(dimension[i]) + " ";
         }
@@ -215,6 +222,7 @@ void IrDumper::dump(Constant *constant) {
 
 void IrDumper::dump(Instruction *inst) {
     out_ << "   ";
+    assert(inst);
     switch (inst->getInstType()) {
         case StoreType:
             dump(dynamic_cast<StoreInstruction *>(inst));
@@ -239,6 +247,9 @@ void IrDumper::dump(Instruction *inst) {
             return;
         case SetCondType:
             dump(dynamic_cast<SetCondInstruction *>(inst));
+            return;
+        case CallType:
+            dump(dynamic_cast<CallInstruction *>(inst));
             return;
     }
     if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
@@ -376,7 +387,7 @@ void IrDumper::dump(CallInstruction *inst) {
         if (argument->isArray()) {      // 获取该formal的类型
             out_ << getArrayType(argument->getDimension(), argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE);
         } else {
-            dumpValue(argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, actual);
+            out_ << dumpValue(argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, actual);
         }
         if (i != actual_size - 1) {
             out_ << ", ";

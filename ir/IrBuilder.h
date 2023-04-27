@@ -9,6 +9,7 @@
 #include "Value.h"
 #include "../common/SysbolTable.h"
 #include "../common/AstVisitor.h"
+#include "../semantic/SemanticCheck.h"
 
 class Module;
 class Function;
@@ -105,7 +106,9 @@ public:
 
     using WhileBasicBlockPair = std::pair<BasicBlock *, BasicBlock *>;
 
-    explicit IrBuilder(std::ostream &out);
+    using LibFunctionMap = std::unordered_map<std::string, std::unique_ptr<Function>>;
+
+    explicit IrBuilder(std::ostream &out, const SemanticCheck::FuncDefineMap &libfunc_map);
 
     ~IrBuilder();
 
@@ -182,6 +185,8 @@ private:
         is_deal_cond_ = false;
     }
 
+    void addLibFunctions(const SemanticCheck::FuncDefineMap &libfunc_map);
+
     void initJumpMap();
 
     bool is_deal_cond_;
@@ -209,6 +214,8 @@ private:
     CondJumpMap false_jump_map_;
 
     std::deque<WhileBasicBlockPair> while_stack_;
+
+    LibFunctionMap libfunction_map_;
 };
 
 

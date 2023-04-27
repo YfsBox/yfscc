@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <memory>
+#include <cassert>
 #include <vector>
 #include <list>
 #include "Value.h"
@@ -35,6 +36,7 @@ public:
     void removeEmptyBasicBlock();
 
     Argument *getArgument(int idx) const {
+        assert(idx < arguments_.size());
         return arguments_[idx].get();
     }
 

@@ -13,7 +13,7 @@
 #include "IrFactory.h"
 #include "IrDumper.h"
 
-IrBuilder::IrBuilder(std::ostream &out):
+IrBuilder::IrBuilder(std::ostream &out, const SemanticCheck::FuncDefineMap &libfunc_map):
     is_deal_cond_(false),
     curr_top_expr_(nullptr),
     module_(std::make_unique<Module>()),
@@ -23,6 +23,7 @@ IrBuilder::IrBuilder(std::ostream &out):
     curr_value_(nullptr),
     curr_local_array_(nullptr){
     IrFactory::InitContext(context_.get());
+    addLibFunctions(libfunc_map);
 }
 
 IrBuilder::~IrBuilder() = default;
@@ -43,6 +44,34 @@ void IrBuilder::addInstruction(Value *inst) {
 
 void IrBuilder::addBasicBlock(Value *bb) {
     context_->curr_function_->addBasicBlock(bb);
+}
+
+void IrBuilder::addLibFunctions(const SemanticCheck::FuncDefineMap &libfunc_map) {
+    for (auto &[name, libfunc]: libfunc_map) {
+        Function *new_function = nullptr;
+        std::string func_name = libfunc->getId()->getId();
+        if (libfunc->getReturnType() == BasicType::INT_BTYPE) {
+            new_function = dynamic_cast<Function *>(IrFactory::createIntFunction(func_name));
+        } else if (libfunc->getReturnType() == BasicType::FLOAT_BTYPE) {
+            new_function = dynamic_cast<Function *>(IrFactory::createFloatFunction(func_name));
+        } else {
+            new_function = dynamic_cast<Function *>(IrFactory::createVoidFunction(func_name));
+        }
+        // 设置参数
+        auto formals = libfunc->getFormals();
+        for (int i = 0; i < formals->getFormalSize(); ++i) {
+            auto formal = formals->getFuncFormal(i);
+            Argument *argument = nullptr;
+            if (formal->getFormalId()->getDimensionSize()) {    // 数组类型
+                argument = dynamic_cast<Argument *>(IrFactory::createArrayArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, new_function, formal->getFormalId()->getFormalDimensionNumbers()));
+            } else {        // 非数组类型
+                argument = dynamic_cast<Argument *>(IrFactory::createArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, new_function));
+            }
+            new_function->addArgument(std::unique_ptr<Argument>(argument));
+        }
+        // context_->curr_module_->addFunction(std::unique_ptr<Function>(new_function));
+        libfunction_map_[name] = std::unique_ptr<Function>(new_function);
+    }
 }
 
 void IrBuilder::visit(const std::shared_ptr<Declare> &decl) {
@@ -392,7 +421,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
         auto dimension_size = formal_id->getDimensionSize();
         for (size_t j = 0; j < dimension_size; ++j) {
             if (j == 0) {
-                dimension.emplace_back(0);
+                dimension.emplace_back(Argument::ArrayArgumentNullIdx);
             } else {
                 auto dimension_number = std::dynamic_pointer_cast<Number> (formal_id->getDimensionExpr(j));
                 assert(dimension_number);
@@ -752,12 +781,16 @@ void IrBuilder::visit(const std::shared_ptr<VarDeclare> &decl) {
 
 void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
     Function *function = nullptr;
+    std::string call_func_name = expr->getFuncId()->getId();
     for (int i = 0; i < context_->curr_module_->getFuncSize(); ++i) {
         auto func = context_->curr_module_->getFunction(i);
-        if (func->getName() == expr->getFuncId()->getId()) {
+        if (func->getName() == call_func_name) {
             function = func;
             break;
         }
+    }
+    if (!function && libfunction_map_.count(call_func_name)) {
+        function = libfunction_map_[call_func_name].get();
     }
     // 处理参数
     auto actual_size = expr->getActualSize();
@@ -790,6 +823,7 @@ void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
 
     auto call_inst_value = IrFactory::createCallInstruction(actuals, function);
     addInstruction(call_inst_value);
+    setCurrValue(call_inst_value);
 
 }
 

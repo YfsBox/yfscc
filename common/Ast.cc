@@ -1,6 +1,7 @@
 //
 // Created by 杨丰硕 on 2023/2/6.
 //
+#include <cassert>
 #include "Ast.h"
 #include "Utils.h"
 
@@ -77,6 +78,23 @@ void Identifier::dump(std::ostream &out, size_t n) {
     } else {
         out << "\n";
     }
+}
+
+std::vector<int32_t> Identifier::getFormalDimensionNumbers() const {
+    std::vector<int32_t> dimensions;
+    dimensions.reserve(array_dimension_.size());
+    bool is_first = true;
+    for (auto &dimension_expr: array_dimension_) {
+        if (is_first) {
+            dimensions.emplace_back(-1);
+            is_first = false;
+        } else {
+            auto number = std::dynamic_pointer_cast<Number>(dimension_expr);
+            assert(number);
+            dimensions.emplace_back(number->getIntValue());
+        }
+    }
+    return dimensions;
 }
 
 void Number::dump(std::ostream &out, size_t n) {

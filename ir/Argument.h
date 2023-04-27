@@ -12,6 +12,9 @@ class Function;
 
 class Argument: public Value {
 public:
+
+    static constexpr const int32_t ArrayArgumentNullIdx = -1;
+
     Argument(bool is_float, Function *func, const std::string &name);
 
     Argument(bool is_float, const std::vector<int32_t> &dimension, Function *func, const std::string &name);

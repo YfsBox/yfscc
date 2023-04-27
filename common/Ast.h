@@ -249,6 +249,8 @@ public:
         array_dimension_[idx] = expr;
     }
 
+    std::vector<int32_t> getFormalDimensionNumbers() const;   // 只用于函数formal的纬度确定
+
 private:
     std::string id_;        // 该变量的name
     std::vector<ExpressionPtr> array_dimension_;    // 为了支持数组,所以将数组的维度信息放到identifier里面

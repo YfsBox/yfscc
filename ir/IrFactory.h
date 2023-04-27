@@ -21,9 +21,9 @@ public:
 
     ~IrFactory() = default;
 
-    static ValuePtr createArgument(bool is_float, Function *function, const std::string &name);
+    static ValuePtr createArgument(bool is_float, Function *function, const std::string &name = "");
 
-    static ValuePtr createArrayArgument(bool is_float, Function *function, const std::vector<int32_t> &dimension, const std::string &name);
+    static ValuePtr createArrayArgument(bool is_float, Function *function, const std::vector<int32_t> &dimension, const std::string &name = "");
 
     static ValuePtr createFConstantVar(float value);
 

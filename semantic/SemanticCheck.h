@@ -81,6 +81,10 @@ public:
 
     void visit(const std::shared_ptr<ArrayValue> &arrayval) override;
 
+    const FuncDefineMap &getLibFunctionsMap() const {
+        return lib_func_map_;
+    }
+
 private:
 
     bool checkIsValidMain(const FuncDefine *funcdef);
@@ -129,15 +133,21 @@ private:
     std::ostream &out_;
 
     size_t curr_while_depth_;        // 用来记录当前是否处于while之中
+
     size_t error_cnt;
 
     FuncDefine *curr_func_scope_;       // 当前所处的函数
+
     Declare *curr_decl_;      // 用来追踪当前的array_decl,需要知道其声明类型
+
     std::vector<std::string> error_msgs_;
     // SymbolTable<FuncDefine> func_systable_;
     FuncDefineMap func_map_;
+
     FuncDefineMap lib_func_map_;
+
     SymbolTable<SymbolEntry> ident_systable_;
+
     CurrArrayValueListInfo curr_array_list_info_;
 };  // 这其中的很多变量都表示在进行递归AST时，当前的一些状态
 

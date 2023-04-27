@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     checker->dumpErrorMsg();
 
 
-    IrBuilder irbuilder(std::cout);
+    IrBuilder irbuilder(std::cout, checker->getLibFunctionsMap());
     irbuilder.visit(root);
     irbuilder.dump();
     // yylex();
