@@ -77,7 +77,7 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有�
             }
             // printf("the dimension size is %d\n", dimension_value->)
             dimension_numbers.push_back(dimension_value);
-        }
+        }       // 求出每个维度idx的值
         // printf("begin gep inst value");
         auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
                 IrFactory::createIGEPInstruction(find_entry->getValue(), dimension_numbers):
@@ -406,9 +406,6 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
             arguments.push_back(IrFactory::createArrayArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, nullptr, dimension, formal_name));
         }
     }
-    for (auto &param_name : param_names) {
-        // printf("param name : %s in func %s\n", param_name.c_str(), function_name.c_str());
-    }
 
     // 创建这个function(Value)
     if (ret_type == BasicType::INT_BTYPE) {
@@ -428,9 +425,10 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     for (const auto argument: arguments) {
         auto to_arg = dynamic_cast<Argument *>(argument);
         function->addArgument(std::unique_ptr<Argument>(to_arg));
+        /*
         IrSymbolEntry new_entry(false, to_arg->isFloat() ?
                     BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, to_arg, param_names[idx++]);
-        var_symbol_table_.addIdent(new_entry);
+        var_symbol_table_.addIdent(new_entry);*/
         // printf("add %s to function %s, after that the size is %lu\n", argument->getName().c_str(), function->getName().c_str(), function->getArgumentSize());
     }
     // 在一个函数开始的地方,应该有新的basic block
@@ -451,6 +449,9 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
             store_inst_value = param_types[i] == BasicType::INT_BTYPE ?
                     IrFactory::createIStoreInstruction(function->getArgument(i), alloca_ptr)
                     : IrFactory::createFStoreInstruction(function->getArgument(i), alloca_ptr);
+            IrSymbolEntry new_entry(false, param_types[i] == BasicType::FLOAT_BTYPE ?
+                                           BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, alloca_ptr, param_names[i]);
+            var_symbol_table_.addIdent(new_entry);
         } else if (dimension_size == 1) {   // 一维数组
 
         } else {    // 多维数组
@@ -710,18 +711,6 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
     if (op_type != BinaryOpType::AND_OPTYPE && op_type != BinaryOpType::OR_OPTYPE) {
         addInstruction(binaryop_inst);
         setCurrValue(binaryop_inst);
-        /*if (is_deal_cond_ && (is_logic_op || curr_top_expr_ == expr.get())) {
-            auto new_br_inst = IrFactory::createCondBrInstruction(curr_value_, nullptr, nullptr);
-            // printf("create new cond branch %s\n", new_br_inst->getName().c_str());
-            addInstruction(new_br_inst);
-            auto new_block = IrFactory::createBasicBlock("lebal.");
-            BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(new_block));
-            setCurrBasicBlock(new_block);
-            addBasicBlock(new_block);
-            // 设置回填用的map
-            true_jump_map_[expr].push_back(dynamic_cast<Instruction *>(new_br_inst));
-            false_jump_map_[expr].push_back(dynamic_cast<Instruction *>(new_br_inst));
-        }*/
     }
 }
 
@@ -762,6 +751,45 @@ void IrBuilder::visit(const std::shared_ptr<VarDeclare> &decl) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
+    Function *function = nullptr;
+    for (int i = 0; i < context_->curr_module_->getFuncSize(); ++i) {
+        auto func = context_->curr_module_->getFunction(i);
+        if (func->getName() == expr->getFuncId()->getId()) {
+            function = func;
+            break;
+        }
+    }
+    // 处理参数
+    auto actual_size = expr->getActualSize();
+    std::vector<Value *> actuals;
+    actuals.reserve(actual_size);
+    for (int i = 0; i < actual_size; ++i) {
+        auto actual = expr->getActual(i);
+        auto formal = function->getArgument(i);
+        visit(actual);
+        Value *actual_value = curr_value_;
+        if (dynamic_cast<GEPInstruction *>(actual_value)) {
+            // 要区分是取值还是指针类型
+            if (!formal->isArray()) {
+                actual_value = expr->expr_type_ == BasicType::INT_BTYPE ?
+                        IrFactory::createILoadInstruction(actual_value) : IrFactory::createFLoadInstruction(actual_value);
+            }
+        } else if (actual_value->isPtr()) {
+            actual_value = expr->expr_type_ == BasicType::INT_BTYPE ?
+                    IrFactory::createILoadInstruction(actual_value) : IrFactory::createFLoadInstruction(actual_value);
+            addInstruction(actual_value);
+        }
+        BasicType formal_basic_type = formal->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE;
+        if (expr->expr_type_ != formal_basic_type) {
+            actual_value = formal_basic_type == BasicType::INT_BTYPE?
+                    IrFactory::createF2ICastInstruction(actual_value) : IrFactory::createI2FCastInstruction(actual_value);
+            addInstruction(actual_value);
+        }
+        actuals.emplace_back(actual_value);
+    }
+
+    auto call_inst_value = IrFactory::createCallInstruction(actuals, function);
+    addInstruction(call_inst_value);
 
 }
 
@@ -893,8 +921,10 @@ void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
 
         while_stack_.pop_back();
 
-        addInstruction(IrFactory::createBrInstruction(while_start_bb_value));
-        BasicBlock::bindBasicBlock(context_->curr_bb_, while_start_bb);
+        if (!context_->curr_bb_->getHasJump()) {
+            addInstruction(IrFactory::createBrInstruction(while_start_bb_value));
+            BasicBlock::bindBasicBlock(context_->curr_bb_, while_start_bb);
+        }
     }
 
     addBasicBlock(while_next_bb_value);
@@ -969,13 +999,17 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
         setCurrBasicBlock(then_value);
         visit(stmt->getIfStmt());
 
-        addInstruction(IrFactory::createBrInstruction(next_value));
+        if (!context_->curr_bb_->getHasJump()) {
+            addInstruction(IrFactory::createBrInstruction(next_value));
+        }
 
         addBasicBlock(else_value);
         setCurrBasicBlock(else_value);
         visit(stmt->getElseStmt());
 
-        addInstruction(IrFactory::createBrInstruction(next_value));
+        if (!context_->curr_bb_->getHasJump()) {
+            addInstruction(IrFactory::createBrInstruction(next_value));
+        }
 
     } else {
         for (auto true_jump: true_jump_map_[stmt->getCond()]) {
@@ -996,7 +1030,9 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
         setCurrBasicBlock(then_value);
         visit(stmt->getIfStmt());
 
-        addInstruction(IrFactory::createBrInstruction(next_value));
+        if (!context_->curr_bb_->getHasJump()) {
+            addInstruction(IrFactory::createBrInstruction(next_value));
+        }
 
     }
     addBasicBlock(next_value);

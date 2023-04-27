@@ -1,6 +1,7 @@
 //
 // Created by 杨丰硕 on 2023/4/20.
 //
+#include <stack>
 #include "Module.h"
 #include "GlobalVariable.h"
 #include "IrDumper.h"
@@ -61,6 +62,32 @@ std::string IrDumper::getCmpCondType(SetCondInstruction *inst) const {
     return "";
 }
 
+std::string IrDumper::getArrayType(const std::vector <int32_t> &dimension, BasicType basic_type) {
+    std::string array_type;
+    if (dimension.empty()) {
+        return array_type;
+    }
+    if (dimension[0] == 0) {
+        for (int i = 1; i < dimension.size(); ++i) {
+            array_type += "[" + std::to_string(dimension[i]) + " ";
+        }
+        array_type += getBasicType(basic_type);
+        for (int i = 1; i < dimension.size(); ++i) {
+            array_type += "]";
+        }
+        array_type += "*";
+    } else {
+        for (int i = 0; i < dimension.size(); ++i) {
+            array_type += "[" + std::to_string(dimension[i]) + " ";
+        }
+        array_type += getBasicType(basic_type);
+        for (int i = 0; i < dimension.size(); ++i) {
+            array_type += "]";
+        }
+    }
+    return array_type;
+}
+
 std::string IrDumper::getOptype(Instruction *inst) const {
     auto inst_type = inst->getInstType();
     switch (inst_type) {
@@ -73,7 +100,7 @@ std::string IrDumper::getOptype(Instruction *inst) const {
         case InstructionType::DivType:
             return "sdiv";
         case InstructionType::ModType:
-            return "mod";
+            return "srem";
         case InstructionType::NegType:
             return "neg";
         case InstructionType::NotType:
@@ -338,5 +365,24 @@ void IrDumper::dump(SetCondInstruction *inst) {
     << dumpValue(inst->getLeft()) << ", " << dumpValue(inst->getRight()) << "\n";
 }
 
+void IrDumper::dump(CallInstruction *inst) {
+    out_ << dumpValue(inst) << " = call " << getBasicType(inst->getBasicType()) << " @" << inst->getFunction()->getName();
+    out_ << "(";
+    auto actual_size = inst->getActualSize();
+    auto call_function = inst->getFunction();
+    for (int i = 0; i < actual_size; ++i) {
+        auto actual = inst->getActual(i);
+        auto argument = call_function->getArgument(i);
+        if (argument->isArray()) {      // 获取该formal的类型
+            out_ << getArrayType(argument->getDimension(), argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE);
+        } else {
+            dumpValue(argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, actual);
+        }
+        if (i != actual_size - 1) {
+            out_ << ", ";
+        }
+    }
+    out_ << ")\n";
+}
 
 

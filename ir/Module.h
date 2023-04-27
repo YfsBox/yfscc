@@ -31,6 +31,14 @@ public:
         functions_.emplace_back(std::move(func));
     }
 
+    size_t getFuncSize() const {
+        return functions_.size();
+    }
+
+    Function *getFunction(int idx) {
+        return functions_[idx].get();
+    }
+
 private:
     std::vector<GlobalVariablePtr> global_variables_;
 

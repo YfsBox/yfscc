@@ -38,6 +38,10 @@ public:
         return dimensions_[idx];
     }
 
+    const std::vector<int32_t> getDimension() const {
+        return dimensions_;
+    }
+
 private:
     bool is_float_;      // 参数类型
     Function *parent_;

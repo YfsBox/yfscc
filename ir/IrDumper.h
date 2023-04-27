@@ -22,6 +22,7 @@ class MemSetInstruction;
 class GEPInstruction;
 class BranchInstruction;
 class SetCondInstruction;
+class CallInstruction;
 
 class IrDumper {
 public:
@@ -61,6 +62,8 @@ public:
 
     void dump(SetCondInstruction *inst);
 
+    void dump(CallInstruction *inst);
+
 private:
 
     std::string getBasicType(Instruction *inst) const;
@@ -74,6 +77,8 @@ private:
     std::string getOptype(Instruction *inst) const;
 
     std::string getCmpCondType(SetCondInstruction *inst) const;
+
+    std::string getArrayType(const std::vector<int32_t> &dimension, BasicType basic_type);
 
     std::ostream &out_;
 };

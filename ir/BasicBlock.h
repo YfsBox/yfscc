@@ -72,7 +72,17 @@ public:
         return instructions_;
     }
 
+    void setHasJump(bool jump) {
+        has_jump_ = jump;
+    }
+
+    bool getHasJump() const {
+        return has_jump_;
+    }
+
 private:
+    bool has_jump_;
+
     Function *owner_function_;
 
     std::list<InstructionPtr> instructions_;

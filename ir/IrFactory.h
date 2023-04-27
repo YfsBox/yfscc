@@ -11,6 +11,7 @@ class Value;
 class Module;
 class BasicBlock;
 class IrContext;
+class Function;
 
 class IrFactory {
 public:
@@ -94,7 +95,7 @@ public:
 
     static ValuePtr createCondBrInstruction(Value *cond, Value *truelabel, Value *falselabel);
 
-    static ValuePtr createCallInstruction(const std::vector<Value *> &actuals);
+    static ValuePtr createCallInstruction(const std::vector<Value *> &actuals, Function *function);
 
     static ValuePtr createEqICmpInstruction(Value *left, Value *right);
 
