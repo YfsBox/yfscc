@@ -75,7 +75,7 @@ std::string IrDumper::getArrayType(const std::vector<int32_t> &dimension, BasicT
     }
     if (dimension[0] == Argument::ArrayArgumentNullIdx) {
         for (int i = 1; i < dimension.size(); ++i) {
-            array_type += "[" + std::to_string(dimension[i]) + " ";
+            array_type += "[" + std::to_string(dimension[i]) + " x ";
         }
         array_type += getBasicType(basic_type);
         for (int i = 1; i < dimension.size(); ++i) {
@@ -84,7 +84,7 @@ std::string IrDumper::getArrayType(const std::vector<int32_t> &dimension, BasicT
         array_type += "*";
     } else {
         for (int i = 0; i < dimension.size(); ++i) {
-            array_type += "[" + std::to_string(dimension[i]) + " ";
+            array_type += "[" + std::to_string(dimension[i]) + " x ";
         }
         array_type += getBasicType(basic_type);
         for (int i = 0; i < dimension.size(); ++i) {
@@ -200,6 +200,8 @@ void IrDumper::dump(Constant *constant) {
     BasicType basic_type;
     auto const_array = dynamic_cast<ConstantArray *>(constant);
     if (const_array) {
+        out_ << getArrayType(const_array->getDimensionNumbers(), const_array->getBasicType()) << "zeroinitializer\n";
+        /*
         out_ << "[";
         auto &initvalue_map = const_array->getInitValueMap();
         basic_type = const_array->getBasicType();
@@ -222,7 +224,7 @@ void IrDumper::dump(Constant *constant) {
         if (last_idx != array_len - 1) {
             out_ << "zero init:[" << last_idx + 1 << ", " << array_len << ") ";
         }
-        out_ << "]";
+        out_ << "]";*/
     } else {
         auto const_value = dynamic_cast<ConstantVar *>(constant);
         assert(const_value);
@@ -266,6 +268,8 @@ void IrDumper::dump(Instruction *inst) {
         case CallType:
             dump(dynamic_cast<CallInstruction *>(inst));
             return;
+        case ZextType:
+            dump(dynamic_cast<ZextInstruction *>(inst));
     }
     if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
         dump(binary_inst);
@@ -313,7 +317,7 @@ void IrDumper::dump(AllocaInstruction *inst) {
         out_ << "float";
     }
     if (inst->isArray()) {
-        out_ << " array len: " << inst->getValueSize();
+        out_ << " " << getArrayType(inst->getArrayDimensionSize(), inst->getBasicType());
     }
     out_ << '\n';
 }
@@ -421,4 +425,7 @@ void IrDumper::dump(CallInstruction *inst) {
     out_ << ")\n";
 }
 
+void IrDumper::dump(ZextInstruction *inst) {
+    out_ << dumpValue(inst) << " = zext i1 " << dumpValue(inst->getValue()) << " to i32\n";
+}
 

@@ -4,7 +4,7 @@
 #include "Constant.h"
 
 Constant::Constant(bool isfloat, const std::string &name):
-    User(ConstantValue, false, name),
+    User(ConstantValue, false, false, name),
     is_float_(isfloat){
 
 }

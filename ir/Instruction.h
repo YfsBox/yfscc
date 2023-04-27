@@ -45,7 +45,7 @@ class BasicBlock;
 
 class Instruction: public User {
 public:
-    Instruction(InstructionType type, BasicType basic_type, bool isptr, BasicBlock *block, const std::string &name = "");
+    Instruction(InstructionType type, BasicType basic_type, bool isptr, bool isbool, BasicBlock *block, const std::string &name = "");
 
     virtual ~Instruction();
 
@@ -144,6 +144,10 @@ public:
 
     int32_t getDimensionSize(int idx) const {
         return array_dimension_size_[idx];
+    }
+
+    const std::vector<int32_t> &getArrayDimensionSize() const {
+        return array_dimension_size_;
     }
 
 private:
@@ -398,9 +402,14 @@ private:
 
 class ZextInstruction: public Instruction {
 public:
+    ZextInstruction(BasicBlock *block, Value *left, const std::string &name);
 
+    ~ZextInstruction();
+
+    Value *getValue() const {
+        return getOperand(0);
+    }
 private:
-
 };
 
 #endif //YFSCC_INSTRUCTION_H

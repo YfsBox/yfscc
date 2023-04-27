@@ -239,12 +239,14 @@ IrFactory::ValuePtr IrFactory::createIAllocaInstruction(const std::string &name)
 
 IrFactory::ValuePtr IrFactory::createIArrayAllocaInstruction(const std::vector<int32_t> &dimensions,
                                                              const std::string &name) {
-    return new AllocaInstruction(context_->curr_bb_, BasicType::INT_BTYPE, dimensions, name);
+    context_->ssa_no_++;
+    return new AllocaInstruction(context_->curr_bb_, BasicType::INT_BTYPE, dimensions, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createFArrayAllocaInstruction(const std::vector<int32_t> &dimensions,
                                                              const std::string &name) {
-    return new AllocaInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, dimensions, name);
+    context_->ssa_no_++;
+    return new AllocaInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, dimensions, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createILoadInstruction(Value *ptr) {
@@ -331,4 +333,9 @@ IrFactory::ValuePtr IrFactory::createIMemSetInstruction(Value *base, Value *size
 
 IrFactory::ValuePtr IrFactory::createFMemSetInstruction(Value *base, Value *size, Value *value) {
     return new MemSetInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, base, size, value);
+}
+
+IrFactory::ValuePtr IrFactory::createIZextInstruction(Value *value) {
+    context_->ssa_no_++;
+    return new ZextInstruction(context_->curr_bb_, value, std::to_string(context_->ssa_no_));
 }

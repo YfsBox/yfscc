@@ -72,6 +72,10 @@ public:
         return dimension_size_number_[0] * dimension_number_[0];
     }
 
+    const std::vector<int32_t> &getDimensionNumbers() const {
+        return dimension_number_;
+    }
+
 private:
     std::vector<int32_t> dimension_number_;
     std::vector<size_t> dimension_size_number_;

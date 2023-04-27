@@ -23,6 +23,7 @@ class GEPInstruction;
 class BranchInstruction;
 class SetCondInstruction;
 class CallInstruction;
+class ZextInstruction;
 
 class IrDumper {
 public:
@@ -63,6 +64,8 @@ public:
     void dump(SetCondInstruction *inst);
 
     void dump(CallInstruction *inst);
+
+    void dump(ZextInstruction *inst);
 
 private:
 

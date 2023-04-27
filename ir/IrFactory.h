@@ -151,6 +151,8 @@ public:
 
     static ValuePtr createFMemSetInstruction(Value *base, Value *size, Value *value);
 
+    static ValuePtr createIZextInstruction(Value *value);
+
     static void InitContext(IrContext *context);
 
 private:

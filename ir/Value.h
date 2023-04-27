@@ -23,7 +23,7 @@ class Value {
 public:
     using UserMap = std::unordered_map<User *, Use>;
 
-    Value(ValueType vtype, bool isptr, const std::string &name = ""): name_(name), type_(vtype), is_ptr_(isptr) {}
+    Value(ValueType vtype, bool isptr, bool isbool, const std::string &name = ""): name_(name), type_(vtype), is_bool_type_(isbool), is_ptr_(isptr) {}
 
     virtual ~Value() = default;
 
@@ -55,7 +55,12 @@ public:
         return is_ptr_;
     }
 
+    bool isBool() const {
+        return is_bool_type_;
+    }
+
 protected:
+    bool is_bool_type_;
     bool is_ptr_;
     UserMap user_map_;
     std::string name_;

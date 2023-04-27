@@ -15,7 +15,6 @@
 
 IrBuilder::IrBuilder(std::ostream &out, const SemanticCheck::FuncDefineMap &libfunc_map):
     is_deal_cond_(false),
-    is_cond_value_(false),
     curr_top_expr_(nullptr),
     module_(std::make_unique<Module>()),
     context_(std::make_unique<IrContext>(module_.get())),
@@ -93,7 +92,6 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有�
     auto find_entry = var_symbol_table_.lookupFromAll(lval_ident->getId());
     assert(find_entry);
     size_t dimension_size = lval_ident->getDimensionSize();
-    is_cond_value_ = false;
     if (dimension_size) {       // 对于数组类型的处理,不过应该区分函数参数中的数组和一般定义的数组
         // 对其各唯独的参数
         Value *dimension_value = nullptr;
@@ -161,7 +159,7 @@ void IrBuilder::dealExprAsCond(const std::shared_ptr<Expression> &expr) {
             expr_value = load_inst_value;
             addInstruction(load_inst_value);
         }
-        if (!is_cond_value_) {
+        if (!expr_value->isBool()) {
             auto setcond_inst_value = expr->expr_type_ == BasicType::INT_BTYPE ?
                     IrFactory::createNeICmpInstruction(IrFactory::createIConstantVar(0), expr_value)
                     : IrFactory::createNeFCmpInstruction(IrFactory::createFConstantVar(0.0), expr_value);
@@ -577,7 +575,7 @@ void IrBuilder::visit(const std::shared_ptr<UnaryExpr> &expr) {
         }
     }
 
-    if (expr->getOpType() == UnaryOpType::NOTOP_OPTYPE && !is_cond_value_) {
+    if (expr->getOpType() == UnaryOpType::NOTOP_OPTYPE && !value->isBool()) {
         // 处理成条件的形式
         auto setcond_inst_value = expr->getExpr()->expr_type_ == BasicType::INT_BTYPE ?
                 IrFactory::createNeICmpInstruction(IrFactory::createIConstantVar(0), value)
@@ -586,7 +584,11 @@ void IrBuilder::visit(const std::shared_ptr<UnaryExpr> &expr) {
         addInstruction(setcond_inst_value);
     }
 
-    is_cond_value_ = false;
+    if (expr->getOpType() != UnaryOpType::NOTOP_OPTYPE && value->isBool()) {
+        value = IrFactory::createIZextInstruction(value);
+        addInstruction(value);
+    }
+
     auto optype = expr->getOpType();
     Value *unary_inst = nullptr;
     switch (optype) {
@@ -598,7 +600,6 @@ void IrBuilder::visit(const std::shared_ptr<UnaryExpr> &expr) {
         case UnaryOpType::NOTOP_OPTYPE:
             unary_inst = basic_type == BasicType::INT_BTYPE ?
                     IrFactory::createINotInstruction(value) : IrFactory::createFNotInstruction(value);
-            is_cond_value_ = true;
             addInstruction(unary_inst);
             break;
         case UnaryOpType::POSITIVE_OPTYPE:
@@ -614,12 +615,16 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
     GlobalVariable *left_to_global = nullptr, *right_to_global = nullptr;
     ConstantVar *left_to_const = nullptr, *right_to_const = nullptr;
     auto op_type = expr->getOpType();
-    is_cond_value_ = false;
+
     if (op_type != BinaryOpType::AND_OPTYPE && op_type != BinaryOpType::OR_OPTYPE) {
         visit(expr->getLeftExpr());     // 处理左边
         left = curr_value_;
         left_type = expr->getLeftExpr()->expr_type_;
-        if (curr_value_->isPtr()) {
+        if (left->isBool()) {
+            left = IrFactory::createIZextInstruction(left);
+            addInstruction(left);
+        }
+        if (left->isPtr()) {
             left_to_global = dynamic_cast<GlobalVariable *>(curr_value_);
             if (left_to_global && left_to_global->isConst()) {
                 left_to_const = dynamic_cast<ConstantVar *>(left_to_global->getConstInit());
@@ -637,7 +642,13 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
         visit(expr->getRightExpr());        // 处理右边
         right = curr_value_;
         right_type = expr->getRightExpr()->expr_type_;
-        if (curr_value_->isPtr()) {
+
+        if (right->isBool()) {
+            right = IrFactory::createIZextInstruction(right);
+            addInstruction(right);
+        }
+
+        if (right->isPtr()) {
             right_to_global = dynamic_cast<GlobalVariable *>(curr_value_);
             if (right_to_global && right_to_global->isConst()) {
                 right_to_const = dynamic_cast<ConstantVar *>(right_to_global->getConstInit());
@@ -776,12 +787,8 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
     bool is_logic_op = (op_type == EQ_OPTYPE || op_type == NEQ_OPTYPE ||
             op_type == GTE_OPTYPE || op_type == GT_OPTYPE ||
             op_type == LTE_OPTYPE || op_type == LT_OPTYPE);
-    if (is_logic_op) {
-        is_cond_value_ = true;
-    }
     // TODO还有and和or,这是比较复杂的
     if (op_type != BinaryOpType::AND_OPTYPE && op_type != BinaryOpType::OR_OPTYPE) {
-        is_cond_value_ = true;
         addInstruction(binaryop_inst);
         setCurrValue(binaryop_inst);
     }
