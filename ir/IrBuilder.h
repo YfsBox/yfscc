@@ -191,6 +191,8 @@ private:
 
     bool is_deal_cond_;
 
+    bool is_cond_value_;
+
     Expression *curr_top_expr_;
 
     std::unique_ptr<Module> module_;

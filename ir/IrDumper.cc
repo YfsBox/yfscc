@@ -29,7 +29,6 @@ std::string IrDumper::getBasicType(BasicType basic_type) const {
     } else {
         return "void";
     }
-    // return basic_type == BasicType::INT_BTYPE ? "i32" : "float";
 }
 
 std::string IrDumper::dumpValue(Value *value) const {
@@ -69,7 +68,7 @@ std::string IrDumper::getCmpCondType(SetCondInstruction *inst) const {
     return "";
 }
 
-std::string IrDumper::getArrayType(const std::vector <int32_t> &dimension, BasicType basic_type) {
+std::string IrDumper::getArrayType(const std::vector<int32_t> &dimension, BasicType basic_type) {
     std::string array_type;
     if (dimension.empty()) {
         return array_type;
@@ -117,6 +116,22 @@ std::string IrDumper::getOptype(Instruction *inst) const {
 }
 
 void IrDumper::dump(Module *module) {
+    for (const auto &decl: module->lib_func_decl_) {
+        out_ << "declare " << getBasicType(decl->getRetType()) << " @" << decl->getName() << "(";
+        for (int i = 0; i < decl->getArgumentSize(); ++i) {
+            auto argument = decl->getArgument(i);
+            if (argument->isArray()) {      // 获取该formal的类型
+                out_ << getArrayType(argument->getDimension(), argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE) << " " << dumpValue(argument);
+            } else {
+                out_ << dumpValue(argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, argument);
+            }
+            if (i != decl->getArgumentSize() - 1) {
+                out_ << ", ";
+            }
+        }
+        out_ << ") #1\n\n";
+    }
+
     for (const auto &global: module->global_variables_) {
         dump(global.get());
     }
@@ -268,9 +283,16 @@ void IrDumper::dump(BinaryOpInstruction *binst) {
 }
 
 void IrDumper::dump(UnaryOpInstruction *uinst) {
-    out_ << dumpValue(uinst) << " = " << getOptype(uinst) <<
-        " " << dumpValue(uinst->getBasicType(), uinst->getValue())
-        << "\n";
+    if (uinst->getInstType() == NegType) {
+        out_ << dumpValue(uinst) << " = sub nsw " << getBasicType(uinst->getBasicType()) << " 0, " <<
+        dumpValue(uinst->getValue()) << '\n';
+    } else if (uinst->getInstType() == NotType) {
+        out_ << dumpValue(uinst) << " = xor i1 " << dumpValue(uinst->getValue()) << ", true\n";
+    } else {
+        out_ << dumpValue(uinst) << " = " << getOptype(uinst) <<
+             " " << dumpValue(uinst->getBasicType(), uinst->getValue())
+             << "\n";
+    }
 }
 
 void IrDumper::dump(StoreInstruction *inst) {
@@ -377,7 +399,10 @@ void IrDumper::dump(SetCondInstruction *inst) {
 }
 
 void IrDumper::dump(CallInstruction *inst) {
-    out_ << dumpValue(inst) << " = call " << getBasicType(inst->getBasicType()) << " @" << inst->getFunction()->getName();
+    if (inst->getBasicType() != BasicType::VOID_BTYPE) {
+        out_ << dumpValue(inst) << " = ";
+    }
+    out_ << "call " << getBasicType(inst->getBasicType()) << " @" << inst->getFunction()->getName();
     out_ << "(";
     auto actual_size = inst->getActualSize();
     auto call_function = inst->getFunction();
@@ -385,7 +410,7 @@ void IrDumper::dump(CallInstruction *inst) {
         auto actual = inst->getActual(i);
         auto argument = call_function->getArgument(i);
         if (argument->isArray()) {      // 获取该formal的类型
-            out_ << getArrayType(argument->getDimension(), argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE);
+            out_ << getArrayType(argument->getDimension(), argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE) <<  " " << dumpValue(actual);;
         } else {
             out_ << dumpValue(argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, actual);
         }

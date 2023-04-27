@@ -15,6 +15,7 @@
 
 IrBuilder::IrBuilder(std::ostream &out, const SemanticCheck::FuncDefineMap &libfunc_map):
     is_deal_cond_(false),
+    is_cond_value_(false),
     curr_top_expr_(nullptr),
     module_(std::make_unique<Module>()),
     context_(std::make_unique<IrContext>(module_.get())),
@@ -48,6 +49,7 @@ void IrBuilder::addBasicBlock(Value *bb) {
 
 void IrBuilder::addLibFunctions(const SemanticCheck::FuncDefineMap &libfunc_map) {
     for (auto &[name, libfunc]: libfunc_map) {
+        context_->ResetSSA();
         Function *new_function = nullptr;
         std::string func_name = libfunc->getId()->getId();
         if (libfunc->getReturnType() == BasicType::INT_BTYPE) {
@@ -70,7 +72,7 @@ void IrBuilder::addLibFunctions(const SemanticCheck::FuncDefineMap &libfunc_map)
             new_function->addArgument(std::unique_ptr<Argument>(argument));
         }
         // context_->curr_module_->addFunction(std::unique_ptr<Function>(new_function));
-        libfunction_map_[name] = std::unique_ptr<Function>(new_function);
+        context_->curr_module_->addFunctionDecl(std::unique_ptr<Function>(new_function));
     }
 }
 
@@ -91,6 +93,7 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有�
     auto find_entry = var_symbol_table_.lookupFromAll(lval_ident->getId());
     assert(find_entry);
     size_t dimension_size = lval_ident->getDimensionSize();
+    is_cond_value_ = false;
     if (dimension_size) {       // 对于数组类型的处理,不过应该区分函数参数中的数组和一般定义的数组
         // 对其各唯独的参数
         Value *dimension_value = nullptr;
@@ -149,8 +152,23 @@ void IrBuilder::dealExprAsCond(const std::shared_ptr<Expression> &expr) {
     // 分为二次和一次的
     auto binary_expr = std::dynamic_pointer_cast<BinaryExpr>(expr);
     auto unary_expr = std::dynamic_pointer_cast<UnaryExpr>(expr);
-    if ((binary_expr && binary_expr->getOpType() != AND_OPTYPE && binary_expr->getOpType() != OR_OPTYPE) || unary_expr) {
-        auto new_br_inst = IrFactory::createCondBrInstruction(curr_value_, nullptr, nullptr);
+    auto lval_epxr = std::dynamic_pointer_cast<LvalExpr>(expr);
+    if ((binary_expr && binary_expr->getOpType() != AND_OPTYPE && binary_expr->getOpType() != OR_OPTYPE) || unary_expr || lval_epxr) {
+        auto expr_value = curr_value_;
+        if (expr_value->isPtr()) {
+            auto load_inst_value = expr->expr_type_ == BasicType::INT_BTYPE ?
+                    IrFactory::createILoadInstruction(expr_value) : IrFactory::createFLoadInstruction(expr_value);
+            expr_value = load_inst_value;
+            addInstruction(load_inst_value);
+        }
+        if (!is_cond_value_) {
+            auto setcond_inst_value = expr->expr_type_ == BasicType::INT_BTYPE ?
+                    IrFactory::createNeICmpInstruction(IrFactory::createIConstantVar(0), expr_value)
+                    : IrFactory::createNeFCmpInstruction(IrFactory::createFConstantVar(0.0), expr_value);
+            expr_value = setcond_inst_value;
+            addInstruction(setcond_inst_value);
+        }
+        auto new_br_inst = IrFactory::createCondBrInstruction(expr_value, nullptr, nullptr);
         addInstruction(new_br_inst);
         auto new_block = IrFactory::createBasicBlock("lebal.");
         BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(new_block));
@@ -205,7 +223,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             if (def->getInitExpr()) {
                 visit(def->getInitExpr());
             }
-            curr_value_ = allac_inst_value;
+            setCurrValue(allac_inst_value);
             IrSymbolEntry new_entry(true, def_basic_type, allac_inst_value, var_name);
             var_symbol_table_.addIdent(new_entry);
         }
@@ -236,18 +254,26 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             } else {
                 alloca_inst_value = IrFactory::createFAllocaInstruction(var_name);
             }
+            addInstruction(alloca_inst_value);
             // visit求出初始值,const的局部变量一定存在不可能为null
             visit(def->init_expr_);
             // 如果类型不一样,就需要进行转化
             BasicType init_expr_type = def->init_expr_->expr_type_;
             Value *cast_inst_value = nullptr;
             Value *init_value = curr_value_;        // 该结果也正是从visit中的所求出的value
+            if (init_value->isPtr()) {
+                auto load_inst_value = def->init_expr_->expr_type_ == BasicType::INT_BTYPE ?
+                        IrFactory::createILoadInstruction(init_value) : IrFactory::createFLoadInstruction(init_value);
+                addInstruction(load_inst_value);
+                init_value = load_inst_value;
+            }
             if (init_expr_type == BasicType::INT_BTYPE && def_basic_type == BasicType::FLOAT_BTYPE) {
                 cast_inst_value = IrFactory::createI2FCastInstruction(init_value);
             } else if (init_expr_type == BasicType::FLOAT_BTYPE && def_basic_type == BasicType::INT_BTYPE) {
                 cast_inst_value = IrFactory::createF2ICastInstruction(init_value);
             }
             if (cast_inst_value) {
+                addInstruction(cast_inst_value);
                 init_value = cast_inst_value;
             }
             // store
@@ -257,13 +283,9 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             } else {
                 store_inst_value = IrFactory::createFStoreInstruction(init_value, alloca_inst_value);
             }
-            // 最后将指令加入到当前的basic block
-            addInstruction(alloca_inst_value);
-            if (cast_inst_value) {
-                addInstruction(cast_inst_value);
-            }
             // context_->curr_bb_->addInstruction(store_inst_value);
             addInstruction(store_inst_value);
+            setCurrValue(alloca_inst_value);
             // 不要忘了将变量加入符号表
             IrSymbolEntry new_entry(true, def_basic_type, alloca_inst_value, var_name);
             var_symbol_table_.addIdent(new_entry);
@@ -318,7 +340,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             if (def->getInitExpr()) {
                 visit(def->getInitExpr());
             }
-            curr_value_ = allac_inst_value;
+            setCurrValue(allac_inst_value);
             IrSymbolEntry new_entry(false, def_basic_type, allac_inst_value, var_name);
             var_symbol_table_.addIdent(new_entry);
         }
@@ -347,19 +369,26 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             } else {
                 alloca_inst_value = IrFactory::createFAllocaInstruction(var_name);
             }       // 所返回的东西视为一个地址
-
+            addInstruction(alloca_inst_value);
             if (def->hasInitExpr()) {
                 visit(def->init_expr_);
 
                 BasicType init_expr_type = def->init_expr_->expr_type_;
                 Value *cast_inst_value = nullptr;
                 Value *init_value = curr_value_;
+                if (init_value->isPtr()) {
+                    auto load_inst_value = init_expr_type == BasicType::INT_BTYPE ?
+                            IrFactory::createILoadInstruction(init_value) : IrFactory::createFLoadInstruction(init_value);
+                    addInstruction(load_inst_value);
+                    init_value = load_inst_value;
+                }
                 if (init_expr_type == BasicType::INT_BTYPE && def_basic_type == BasicType::FLOAT_BTYPE) {
                     cast_inst_value = IrFactory::createI2FCastInstruction(curr_value_);
                 } else if (init_expr_type == BasicType::FLOAT_BTYPE && def_basic_type == BasicType::INT_BTYPE) {
                     cast_inst_value = IrFactory::createF2ICastInstruction(curr_value_);
                 }
                 if (cast_inst_value) {
+                    addInstruction(cast_inst_value);
                     init_value = cast_inst_value;
                 }
 
@@ -370,14 +399,9 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
                     store_inst_value = IrFactory::createFStoreInstruction(init_value, alloca_inst_value);
                 }
                 // 最后将指令加入到当前的basic block
-                addInstruction(alloca_inst_value);
-                if (cast_inst_value) {
-                    addInstruction(cast_inst_value);
-                }
+                setCurrValue(alloca_inst_value);
                 addInstruction(store_inst_value);
                 // 不要忘了将变量加入符号表
-            } else {
-                addInstruction(alloca_inst_value);
             }
             IrSymbolEntry new_entry(true, def_basic_type, alloca_inst_value, var_name);
             var_symbol_table_.addIdent(new_entry);
@@ -497,6 +521,9 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<Statement> &stmt) {
+    if (!stmt) {
+        return;
+    }
     auto stmt_type = stmt->getStmtType();
     switch (stmt_type) {
         case ASSIGN_STMTTYPE:
@@ -549,6 +576,17 @@ void IrBuilder::visit(const std::shared_ptr<UnaryExpr> &expr) {
             addInstruction(value);
         }
     }
+
+    if (expr->getOpType() == UnaryOpType::NOTOP_OPTYPE && !is_cond_value_) {
+        // 处理成条件的形式
+        auto setcond_inst_value = expr->getExpr()->expr_type_ == BasicType::INT_BTYPE ?
+                IrFactory::createNeICmpInstruction(IrFactory::createIConstantVar(0), value)
+                : IrFactory::createNeFCmpInstruction(IrFactory::createFConstantVar(0.0), value);
+        value = setcond_inst_value;
+        addInstruction(setcond_inst_value);
+    }
+
+    is_cond_value_ = false;
     auto optype = expr->getOpType();
     Value *unary_inst = nullptr;
     switch (optype) {
@@ -560,6 +598,7 @@ void IrBuilder::visit(const std::shared_ptr<UnaryExpr> &expr) {
         case UnaryOpType::NOTOP_OPTYPE:
             unary_inst = basic_type == BasicType::INT_BTYPE ?
                     IrFactory::createINotInstruction(value) : IrFactory::createFNotInstruction(value);
+            is_cond_value_ = true;
             addInstruction(unary_inst);
             break;
         case UnaryOpType::POSITIVE_OPTYPE:
@@ -575,6 +614,7 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
     GlobalVariable *left_to_global = nullptr, *right_to_global = nullptr;
     ConstantVar *left_to_const = nullptr, *right_to_const = nullptr;
     auto op_type = expr->getOpType();
+    is_cond_value_ = false;
     if (op_type != BinaryOpType::AND_OPTYPE && op_type != BinaryOpType::OR_OPTYPE) {
         visit(expr->getLeftExpr());     // 处理左边
         left = curr_value_;
@@ -736,8 +776,12 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
     bool is_logic_op = (op_type == EQ_OPTYPE || op_type == NEQ_OPTYPE ||
             op_type == GTE_OPTYPE || op_type == GT_OPTYPE ||
             op_type == LTE_OPTYPE || op_type == LT_OPTYPE);
+    if (is_logic_op) {
+        is_cond_value_ = true;
+    }
     // TODO还有and和or,这是比较复杂的
     if (op_type != BinaryOpType::AND_OPTYPE && op_type != BinaryOpType::OR_OPTYPE) {
+        is_cond_value_ = true;
         addInstruction(binaryop_inst);
         setCurrValue(binaryop_inst);
     }
@@ -789,8 +833,15 @@ void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
             break;
         }
     }
-    if (!function && libfunction_map_.count(call_func_name)) {
-        function = libfunction_map_[call_func_name].get();
+
+    if (!function) {
+        for (int i = 0; i < context_->curr_module_->getLibFuncSize(); ++i) {
+            auto func = context_->curr_module_->getLibFunction(i);
+            if (func->getName() == call_func_name) {
+                function = func;
+                break;
+            }
+        }
     }
     // 处理参数
     auto actual_size = expr->getActualSize();

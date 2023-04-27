@@ -38,6 +38,7 @@ enum InstructionType {
     CmpEqType,
     CmpNEqType,
     MemSetType,
+    ZextType,
 };
 
 class BasicBlock;
@@ -393,6 +394,13 @@ public:
     }
 
 private:
+};
+
+class ZextInstruction: public Instruction {
+public:
+
+private:
+
 };
 
 #endif //YFSCC_INSTRUCTION_H

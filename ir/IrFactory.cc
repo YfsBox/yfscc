@@ -114,7 +114,9 @@ IrFactory::ValuePtr IrFactory::createBrInstruction(Value *label) {
 }
 
 IrFactory::ValuePtr IrFactory::createCallInstruction(const std::vector<Value *> &actuals, Function *function) {
-    context_->ssa_no_++;
+    if (function->getRetType() != BasicType::VOID_BTYPE) {
+        context_->ssa_no_++;
+    }
     return new CallInstruction(context_->curr_bb_, function, actuals, std::to_string(context_->ssa_no_));
 }
 
