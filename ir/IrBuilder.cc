@@ -151,7 +151,8 @@ void IrBuilder::dealExprAsCond(const std::shared_ptr<Expression> &expr) {
     auto binary_expr = std::dynamic_pointer_cast<BinaryExpr>(expr);
     auto unary_expr = std::dynamic_pointer_cast<UnaryExpr>(expr);
     auto lval_epxr = std::dynamic_pointer_cast<LvalExpr>(expr);
-    if ((binary_expr && binary_expr->getOpType() != AND_OPTYPE && binary_expr->getOpType() != OR_OPTYPE) || unary_expr || lval_epxr) {
+    auto call_expr = std::dynamic_pointer_cast<CallFuncExpr>(expr);
+    if ((binary_expr && binary_expr->getOpType() != AND_OPTYPE && binary_expr->getOpType() != OR_OPTYPE) || unary_expr || lval_epxr || call_expr) {
         auto expr_value = curr_value_;
         if (expr_value->isPtr()) {
             auto load_inst_value = expr->expr_type_ == BasicType::INT_BTYPE ?
@@ -610,6 +611,7 @@ void IrBuilder::visit(const std::shared_ptr<UnaryExpr> &expr) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
+    assert(expr);
     Value *left = nullptr, *right = nullptr;
     BasicType left_type, right_type, this_type;
     GlobalVariable *left_to_global = nullptr, *right_to_global = nullptr;
@@ -744,6 +746,8 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             visit(expr->getRightExpr());
             dealExprAsCond(expr->getRightExpr());
             // 对其做出条件化处理
+            assert(true_jump_map_.find(expr->getRightExpr()) != true_jump_map_.end());
+            assert(!true_jump_map_[expr->getRightExpr()].empty());
             auto right_block = true_jump_map_[expr->getRightExpr()].front()->getParent();
             auto &left_jump_insts = true_jump_map_[expr->getLeftExpr()];
             for (auto jump: left_jump_insts) {
@@ -795,11 +799,13 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<BlockItems> &stmt) {
+    var_symbol_table_.enterScope();
     auto blocks_size = stmt->getItemSize();
     for (int i = 0; i < blocks_size; ++i) {
         auto block = stmt->getBlockItem(i);
         visit(block->getStmt());
     }
+    var_symbol_table_.exitScope();
 }
 
 void IrBuilder::visit(const std::shared_ptr<Expression> &expr) {
