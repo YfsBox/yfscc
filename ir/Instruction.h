@@ -130,6 +130,10 @@ public:
         return !array_dimension_size_.empty();
     }
 
+    bool isPtrPtr() const {
+        return is_ptr_ptr_;
+    }
+
     size_t getValueSize() {
         size_t value_size = 1;
         for (auto dimension: array_dimension_size_) {
@@ -149,6 +153,7 @@ public:
     const std::vector<int32_t> &getArrayDimensionSize() const {
         return array_dimension_size_;
     }
+
 
 private:
     bool is_ptr_ptr_;

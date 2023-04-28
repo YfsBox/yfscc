@@ -439,7 +439,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
 void IrBuilder::visit(const std::shared_ptr<BlockItem> &stmt) {
 
 }
-// TODO：还没有实现数组类型参数的处理
+
 void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     Value *function_value = nullptr;
     BasicType ret_type = def->getReturnType();
@@ -518,7 +518,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
         auto argument = dynamic_cast<Argument *>(arguments[i]);
         Value *alloca_ptr = nullptr;
         Value *store_inst_value = nullptr;
-        if (!argument->isPtr()) {      // 普通变量
+        if (!argument->isPtrPtr()) {      // 普通变量
             alloca_ptr = param_types[i] == BasicType::INT_BTYPE ?
                     IrFactory::createIAllocaInstruction() : IrFactory::createFAllocaInstruction();
         } else {

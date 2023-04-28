@@ -52,7 +52,6 @@ std::string IrDumper::dumpValue(BasicType basic_type, Value *value) const {
     return getBasicType(basic_type) + ptr_ch + dumpValue(value);
 }
 
-
 std::string IrDumper::getCmpCondType(SetCondInstruction *inst) const {
     switch (inst->getCmpType()) {
         case SetCondInstruction::SetGT:
@@ -126,6 +125,70 @@ std::string IrDumper::getOptype(Instruction *inst, BasicType basic_type) const {
     return optype;
 }
 
+std::string IrDumper::getStrTypeAsOperand(Value *value) {
+    auto inst = dynamic_cast<Instruction *>(value);
+    if (inst) {
+        return getStrTypeAsOperand(inst);
+    }
+    auto arg = dynamic_cast<Argument *>(value);
+    if (arg) {
+        return getStrTypeAsOperand(arg);
+    }
+    auto global = dynamic_cast<GlobalVariable *>(value);
+    if (global) {
+        return getStrTypeAsOperand(global);
+    }
+    auto const_value = dynamic_cast<ConstantVar *>(value);
+    if (const_value) {
+        return getBasicType(const_value->getBasicType());
+    }
+    return "";
+}
+
+std::string IrDumper::getStrTypeAsOperand(Instruction *inst) {
+    std::string operand_str;
+    auto alloca_inst = dynamic_cast<AllocaInstruction *>(inst);
+    if (alloca_inst) {
+        if (alloca_inst->isArray()) {
+            operand_str += getArrayType(alloca_inst->getArrayDimensionSize(), inst->getBasicType());
+        } else {
+            operand_str += getBasicType(inst->getBasicType());
+        }
+        if (alloca_inst->isPtrPtr()) {
+            operand_str += "*";
+        }
+    } else {
+        operand_str += getBasicType(inst->getBasicType());
+    }
+    return operand_str;
+}
+
+std::string IrDumper::getStrTypeAsOperand(Argument *argument) {
+    std::string operand_str;
+    if (argument->isArray()) {
+        operand_str += getArrayType(argument->getDimension(), argument->getBasicType());
+    } else {
+        operand_str += getBasicType(argument->getBasicType());
+    }
+    if (argument->isPtrPtr()) {
+        operand_str += "*";
+    }
+    return operand_str;
+}
+
+std::string IrDumper::getStrTypeAsOperand(GlobalVariable *global) {
+    std::string operand_str;
+    auto global_value = global->getConstInit();
+    auto value_array = dynamic_cast<ConstantArray *>(global_value);
+    if (value_array) {
+        operand_str += getArrayType(value_array->getDimensionNumbers(), global->getBasicType());
+    } else {
+        operand_str += getBasicType(global->getBasicType());
+    }
+    return operand_str;
+}
+
+
 void IrDumper::dump(Module *module) {
     for (const auto &decl: module->lib_func_decl_) {
         out_ << "declare " << getBasicType(decl->getRetType()) << " @" << decl->getName() << "(";
@@ -183,20 +246,15 @@ void IrDumper::dump(Function *function) {
     for (int i = 0; i < argument_size; ++i) {
         auto arg = function->getArgument(i);
         std::string type_str = getBasicType(arg->getBasicType());
-        out_ << type_str;
-        // 一维数组
-        auto dimension_size = arg->getArraySize();
-        if (dimension_size > 1) {
-            for (int j = 0; j < dimension_size; j++) {
-                if (j == 0) {
-                    out_ << "[]";
-                } else {
-                    out_ << "[" << arg->getDimensionByIdx(j) << "]";
-                }
-            }
+        if (!arg->isArray()) {
+            out_ << type_str;
         } else {
+            out_ << getArrayType(arg->getDimension(), arg->getBasicType());
+        }
+        if (arg->isPtrPtr()) {
             out_ << "*";
         }
+
         out_ << " %" << arg->getName();
         if (i != argument_size - 1) {
             out_ << ", ";
@@ -316,7 +374,8 @@ void IrDumper::dump(UnaryOpInstruction *uinst) {
 }
 
 void IrDumper::dump(StoreInstruction *inst) {
-    out_ << "store " << getBasicType(inst->getBasicType()) <<  inst->getValue() << ", " << dumpValue(inst->getBasicType(), inst->getPtr());
+    out_ << "store " << getStrTypeAsOperand(inst->getValue()) << " " << dumpValue(inst->getValue()) << ", "
+    << getStrTypeAsOperand(inst->getPtr()) << "* " << dumpValue(inst->getPtr());
     out_ << '\n';
 }
 
@@ -335,6 +394,9 @@ void IrDumper::dump(AllocaInstruction *inst) {
         } else {
             out_ << "float";
         }
+    }
+    if (inst->isPtrPtr()) {     // 如果是指向指针的指针
+        out_ << "*";
     }
     out_ << '\n';
 }
@@ -401,8 +463,9 @@ void IrDumper::dump(GEPInstruction *inst) {
                 array_var = global_var;
             }
         }
-        out_ << getArrayType(dimension_numbers, inst->getBasicType()) << ","
-             << getArrayType(dimension_numbers, inst->getBasicType()) << "* "
+        std::string strtype = getStrTypeAsOperand(inst->getPtr());
+        out_ << strtype << ","
+             << strtype << "* "
              << dumpValue(array_var);
         out_ << ", i32 0, ";
 

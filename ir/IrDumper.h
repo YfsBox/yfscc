@@ -24,6 +24,7 @@ class BranchInstruction;
 class SetCondInstruction;
 class CallInstruction;
 class ZextInstruction;
+class Argument;
 
 class IrDumper {
 public:
@@ -84,6 +85,14 @@ private:
     std::string getArrayType(const std::vector<int32_t> &dimension, BasicType basic_type);
 
     std::string getVarType(BasicType btype, Value *value, bool isptr);
+
+    std::string getStrTypeAsOperand(Value *value);
+
+    std::string getStrTypeAsOperand(Instruction *inst);
+
+    std::string getStrTypeAsOperand(GlobalVariable *global);
+
+    std::string getStrTypeAsOperand(Argument *argument);
 
     std::ostream &out_;
 };
