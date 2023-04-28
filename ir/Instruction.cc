@@ -51,7 +51,7 @@ StoreInstruction::~StoreInstruction() = default;
 
 LoadInstruction::LoadInstruction(BasicBlock *block, BasicType basic_type, Value *ptr, BasicType type, const std::string &name):
         Instruction(InstructionType::LoadType, basic_type, false, false, block, name),
-        value_type_(type){
+        value_type_(type) {
     addOperand(ptr);
 }
 
@@ -59,6 +59,10 @@ LoadInstruction::~LoadInstruction() = default;
 
 Value *LoadInstruction::getPtr() const {
     return getOperand(0);
+}
+
+std::vector<int32_t> LoadInstruction::getArrayDimensionSize() const {
+    return dynamic_cast<AllocaInstruction *>(getPtr())->getArrayDimensionSize();
 }
 
 AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, bool isptrptr, const std::string &name):

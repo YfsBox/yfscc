@@ -25,11 +25,14 @@ struct IrContext {
     IrContext(Module *module): curr_module_(module),
         ssa_no_(-1),
         curr_function_(nullptr),
-        curr_bb_(nullptr) {}
+        curr_bb_(nullptr),
+        curr_bb_has_ret_(false){}
         
     int ssa_no_{-1};
 
     int block_no_{-1};
+
+    bool curr_bb_has_ret_;
 
     Module *curr_module_;
 
@@ -190,6 +193,8 @@ private:
     std::vector<Value *> arrayIndex2IndexVec(int32_t index) const;
 
     void initJumpMap();
+
+    bool isSecondaryPtr(Value *ptr) const;
 
     bool is_deal_cond_;
 

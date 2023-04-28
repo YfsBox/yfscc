@@ -114,6 +114,9 @@ public:
     ~LoadInstruction();
 
     Value *getPtr() const;
+
+    std::vector<int32_t> getArrayDimensionSize() const;
+
 private:
     BasicType value_type_;
 };

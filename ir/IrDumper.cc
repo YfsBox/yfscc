@@ -148,6 +148,7 @@ std::string IrDumper::getStrTypeAsOperand(Value *value) {
 std::string IrDumper::getStrTypeAsOperand(Instruction *inst) {
     std::string operand_str;
     auto alloca_inst = dynamic_cast<AllocaInstruction *>(inst);
+    auto load_inst = dynamic_cast<LoadInstruction *>(inst);
     if (alloca_inst) {
         if (alloca_inst->isArray()) {
             operand_str += getArrayType(alloca_inst->getArrayDimensionSize(), inst->getBasicType());
@@ -156,6 +157,11 @@ std::string IrDumper::getStrTypeAsOperand(Instruction *inst) {
         }
         if (alloca_inst->isPtrPtr()) {
             operand_str += "*";
+        }
+    } else if (load_inst) {
+        operand_str = getStrTypeAsOperand(load_inst->getPtr());
+        if (operand_str.back() == '*') {
+            operand_str.pop_back();
         }
     } else {
         operand_str += getBasicType(inst->getBasicType());
@@ -344,6 +350,9 @@ void IrDumper::dump(Instruction *inst) {
         case ZextType:
             dump(dynamic_cast<ZextInstruction *>(inst));
             return;
+        case CastType:
+            dump(dynamic_cast<CastInstruction *>(inst));
+            return;
     }
     if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
         dump(binary_inst);
@@ -380,7 +389,8 @@ void IrDumper::dump(StoreInstruction *inst) {
 }
 
 void IrDumper::dump(LoadInstruction *inst) {
-    out_ << dumpValue(inst) << " = load " << getBasicType(inst->getBasicType()) << ", " << dumpValue(inst->getBasicType(), inst->getPtr());
+    std::string str_type = getStrTypeAsOperand(inst->getPtr());
+    out_ << dumpValue(inst) << " = load " << str_type << ", " << str_type << "* " << dumpValue(inst->getPtr());
     out_ << '\n';
 }
 
@@ -449,26 +459,14 @@ void IrDumper::dump(GEPInstruction *inst) {
     assert(inst && inst->getPtr());
     out_ << "%" << inst->getName() << " = getelementptr ";
     if (!inst->isUseOffset()) {
-        std::vector<int32_t> dimension_numbers;
-        Value *array_var = nullptr;
-        auto array_base = dynamic_cast<AllocaInstruction *>(inst->getPtr());
-        if (array_base) {
-            dimension_numbers = array_base->getArrayDimensionSize();
-            array_var = array_base;
-        } else {
-            auto global_var = dynamic_cast<GlobalVariable *>(inst->getPtr());
-            auto var_array = dynamic_cast<ConstantArray *>(global_var->getConstInit());
-            if (var_array) {
-                dimension_numbers = var_array->getDimensionNumbers();
-                array_var = global_var;
-            }
-        }
         std::string strtype = getStrTypeAsOperand(inst->getPtr());
         out_ << strtype << ","
              << strtype << "* "
-             << dumpValue(array_var);
-        out_ << ", i32 0, ";
-
+             << dumpValue(inst->getPtr());
+        out_ << ", ";
+        if (strtype != "i32" && strtype != "float") {
+            out_ << "i32 0, ";
+        }
         for (int i = 0; i < inst->getIndexSize(); i++) {
             auto index_value = inst->getIndexValue(i);
             out_ << dumpValue(BasicType::INT_BTYPE, index_value);
@@ -511,11 +509,7 @@ void IrDumper::dump(CallInstruction *inst) {
     for (int i = 0; i < actual_size; ++i) {
         auto actual = inst->getActual(i);
         auto argument = call_function->getArgument(i);
-        if (argument->isArray()) {      // 获取该formal的类型
-            out_ << getArrayType(argument->getDimension(), argument->getBasicType()) <<  " " << dumpValue(actual);;
-        } else {
-            out_ << getBasicType(argument->getBasicType()) << " " << dumpValue(actual);
-        }
+        out_ << getStrTypeAsOperand(argument) << " " << dumpValue(actual);
         if (i != actual_size - 1) {
             out_ << ", ";
         }
@@ -525,5 +519,15 @@ void IrDumper::dump(CallInstruction *inst) {
 
 void IrDumper::dump(ZextInstruction *inst) {
     out_ << dumpValue(inst) << " = zext i1 " << dumpValue(inst->getValue()) << " to i32\n";
+}
+
+void IrDumper::dump(CastInstruction *inst) {
+    out_ << dumpValue(inst) << " = ";
+    if (inst->isF2I()) {
+        out_ << "fptosi float " << dumpValue(inst->getValue()) << " to i32";
+    } else {
+        out_ << "sitofp i32 " << dumpValue(inst->getValue()) << " to float";
+    }
+    out_ << '\n';
 }
 

@@ -10,7 +10,8 @@
 
 class User: public Value {
 public:
-    explicit User(ValueType type, bool isptr, bool isbool, const std::string &name = "", size_t num = 0): Value(type, isptr, isbool, name) , operand_num_(num) {}
+    explicit User(ValueType type, bool isptr, bool isbool, const std::string &name = "", size_t num = 0):
+        Value(type, isptr, isbool, name) , operand_num_(num) {}
 
     virtual ~User() = default;
 

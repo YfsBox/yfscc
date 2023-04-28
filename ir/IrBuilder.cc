@@ -39,8 +39,15 @@ void IrBuilder::initJumpMap() {
     false_jump_map_.clear();
 }
 
+bool IrBuilder::isSecondaryPtr(Value *ptr) const {
+    auto alloca_inst = dynamic_cast<AllocaInstruction *>(ptr);
+    return alloca_inst && alloca_inst->isPtrPtr();
+}
+
 void IrBuilder::addInstruction(Value *inst) {
-    context_->curr_bb_->addInstruction(inst);
+    if (!context_->curr_bb_has_ret_) {
+        context_->curr_bb_->addInstruction(inst);
+    }
 }
 
 void IrBuilder::addBasicBlock(Value *bb) {
@@ -134,9 +141,16 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有�
             dimension_numbers.push_back(dimension_value);
         }       // 求出每个维度idx的值
         // printf("begin gep inst value");
+        Value *base_ptr = find_entry->getValue();
+        if (isSecondaryPtr(base_ptr)) {
+            base_ptr = find_entry->getBasicType() == BasicType::INT_BTYPE ?
+                    IrFactory::createILoadInstruction(base_ptr):
+                    IrFactory::createFLoadInstruction(base_ptr);
+            addInstruction(base_ptr);
+        }
         auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
-                IrFactory::createIGEPInstruction(find_entry->getValue(), dimension_numbers):
-                IrFactory::createFGEPInstruction(find_entry->getValue(), dimension_numbers);
+                IrFactory::createIGEPInstruction(base_ptr, dimension_numbers):
+                IrFactory::createFGEPInstruction(base_ptr, dimension_numbers);
         addInstruction(gep_inst_value);
         setCurrValue(gep_inst_value);
     } else {
@@ -894,23 +908,42 @@ void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
         auto formal = function->getArgument(i);
         visit(actual);
         Value *actual_value = curr_value_;
-        if (dynamic_cast<GEPInstruction *>(actual_value)) {
-            // 要区分是取值还是指针类型
-            if (!formal->isArray()) {
+        auto arg_type = formal->getArgumentType();
+        if (arg_type == Argument::ValueType) {
+            if (dynamic_cast<GEPInstruction *>(actual_value)) {
                 actual_value = actual->expr_type_ == BasicType::INT_BTYPE ?
-                        IrFactory::createILoadInstruction(actual_value) : IrFactory::createFLoadInstruction(actual_value);
+                        IrFactory::createILoadInstruction(actual_value): IrFactory::createFLoadInstruction(actual_value);
                 addInstruction(actual_value);
             }
-        } else if (actual_value->isPtr()) {
-            actual_value = actual->expr_type_ == BasicType::INT_BTYPE ?
-                    IrFactory::createILoadInstruction(actual_value) : IrFactory::createFLoadInstruction(actual_value);
-            addInstruction(actual_value);
-        }
-        BasicType formal_basic_type = formal->getBasicType();
-        if (actual->expr_type_ != formal_basic_type) {
-            actual_value = formal_basic_type == BasicType::INT_BTYPE?
-                    IrFactory::createF2ICastInstruction(actual_value) : IrFactory::createI2FCastInstruction(actual_value);
-            addInstruction(actual_value);
+            if (actual_value->isPtr()) {
+                actual_value = actual->expr_type_ == BasicType::INT_BTYPE ?
+                        IrFactory::createILoadInstruction(actual_value): IrFactory::createFLoadInstruction(actual_value);
+                addInstruction(actual_value);
+            }
+            BasicType formal_basic_type = formal->getBasicType();
+            if (actual->expr_type_ != formal_basic_type) {
+                actual_value = formal_basic_type == BasicType::INT_BTYPE ?
+                        IrFactory::createF2ICastInstruction(actual_value): IrFactory::createI2FCastInstruction(actual_value);
+                addInstruction(actual_value);
+            }
+        } else {
+            auto gep_inst_value = dynamic_cast<GEPInstruction *>(actual_value);
+            if (!gep_inst_value) {
+                if (isSecondaryPtr(actual_value)) {
+                    actual_value = actual->expr_type_ == BasicType::INT_BTYPE ?
+                            IrFactory::createILoadInstruction(actual_value): IrFactory::createFLoadInstruction(actual_value);
+                    LoadInstruction *load_inst_value = dynamic_cast<LoadInstruction *>(actual_value);
+                    addInstruction(actual_value);
+                }
+                if (arg_type == Argument::ValuePtrType) {
+                    std::vector<Value *> index_vec;
+                    index_vec.push_back(IrFactory::createIConstantVar(0));
+                    actual_value = actual->expr_type_ == BasicType::INT_BTYPE ?
+                            IrFactory::createIGEPInstruction(actual_value, index_vec):
+                            IrFactory::createFGEPInstruction(actual_value, index_vec);
+                    addInstruction(actual_value);
+                }
+            }
         }
         actuals.emplace_back(actual_value);
     }
@@ -943,13 +976,19 @@ void IrBuilder::visit(const std::shared_ptr<CompUnit> &compunit) {
 void IrBuilder::visit(const std::shared_ptr<ConstDeclare> &decl) {}
 
 void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
+    Value *array_base = curr_local_array_;
+    if (isSecondaryPtr(array_base)) {
+        array_base = curr_decl_->type_ == BasicType::INT_BTYPE ?
+                     IrFactory::createILoadInstruction(array_base): IrFactory::createFLoadInstruction(array_base);
+        addInstruction(array_base);
+    }
     if (arrayval->is_number_) {     // 如果是Number类型就对其进行visit并且将改value用store拷贝到指定的指针上
         // auto gpe_inst_value
         BasicType basic_type = curr_decl_->type_;
         auto const_offset = IrFactory::createIConstantVar(arrayval->array_idx_);
         auto gep_inst_value = basic_type == BasicType::INT_BTYPE ?
-                IrFactory::createIGEPInstruction(curr_local_array_, arrayIndex2IndexVec(arrayval->array_idx_))
-                :IrFactory::createFGEPInstruction(curr_local_array_, arrayIndex2IndexVec(arrayval->array_idx_));
+                IrFactory::createIGEPInstruction(array_base, arrayIndex2IndexVec(arrayval->array_idx_))
+                :IrFactory::createFGEPInstruction(array_base, arrayIndex2IndexVec(arrayval->array_idx_));
         addInstruction(gep_inst_value);
         visit(arrayval->value_);
         Value *init_value = curr_value_;
@@ -984,8 +1023,8 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
                 auto offset_const_value = IrFactory::createIConstantVar(start);
                 auto size_const_value = IrFactory::createIConstantVar(len);
                 auto gep_start_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
-                                            IrFactory::createIGEPInstruction(curr_local_array_, arrayIndex2IndexVec(start)) :
-                                            IrFactory::createFGEPInstruction(curr_local_array_,arrayIndex2IndexVec(start));        // 获取start指针
+                                            IrFactory::createIGEPInstruction(array_base, arrayIndex2IndexVec(start)) :
+                                            IrFactory::createFGEPInstruction(array_base,arrayIndex2IndexVec(start));        // 获取start指针
                 addInstruction(gep_start_inst_value);
 
                 auto memset_inst_value = IrFactory::createCallInstruction({gep_start_inst_value, offset_const_value, size_const_value}, memset_function_);
@@ -1189,6 +1228,7 @@ void IrBuilder::visit(const std::shared_ptr<ReturnStatement> &stmt) {
     } else {
         addInstruction(IrFactory::createVoidRetInstruction());
     }
+    context_->curr_bb_has_ret_ = true;
 }
 
 void IrBuilder::visit(const std::shared_ptr<ContinueStatement> &stmt) {
@@ -1204,5 +1244,6 @@ void IrBuilder::setCurrValue(Value *value) {
 }
 
 void IrBuilder::setCurrBasicBlock(Value *bb) {
+    context_->curr_bb_has_ret_ = false;
     context_->curr_bb_ = dynamic_cast<BasicBlock *>(bb);
 }

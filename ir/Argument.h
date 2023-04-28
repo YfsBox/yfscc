@@ -14,6 +14,12 @@ class Function;
 class Argument: public Value {
 public:
 
+    enum ArgumentType {
+        ValueType,
+        ValuePtrType,
+        ArrayPtrType,
+    };
+
     static constexpr const int32_t ArrayArgumentNullIdx = -1;
 
     Argument(BasicType basic_type, Function *func, bool isptr, const std::string &name);
@@ -50,11 +56,21 @@ public:
         return dimensions_;
     }
 
+    ArgumentType getArgumentType() const {
+        if (!is_ptr_) {
+            return ValueType;
+        }
+        if (dimensions_.empty()) {
+            return ValuePtrType;
+        }
+        return ArrayPtrType;
+    }
+
 private:
     bool is_ptr_;
     BasicType basic_type_;      // 参数类型
     Function *parent_;
     std::vector<int32_t> dimensions_;
-};
+};      // 有值、值指针、数组指针三种类型
 
 #endif //YFSCC_ARGUMENT_H

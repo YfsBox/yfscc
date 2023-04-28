@@ -25,6 +25,7 @@ class SetCondInstruction;
 class CallInstruction;
 class ZextInstruction;
 class Argument;
+class CastInstruction;
 
 class IrDumper {
 public:
@@ -67,6 +68,8 @@ public:
     void dump(CallInstruction *inst);
 
     void dump(ZextInstruction *inst);
+
+    void dump(CastInstruction *inst);
 
 private:
 
