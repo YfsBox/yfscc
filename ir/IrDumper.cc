@@ -52,6 +52,7 @@ std::string IrDumper::dumpValue(BasicType basic_type, Value *value) const {
     return getBasicType(basic_type) + ptr_ch + dumpValue(value);
 }
 
+
 std::string IrDumper::getCmpCondType(SetCondInstruction *inst) const {
     switch (inst->getCmpType()) {
         case SetCondInstruction::SetGT:
@@ -185,12 +186,16 @@ void IrDumper::dump(Function *function) {
         out_ << type_str;
         // 一维数组
         auto dimension_size = arg->getArraySize();
-        for (int j = 0; j < dimension_size; j++) {
-            if (j == 0) {
-                out_ << "[]";
-            } else {
-                out_ << "[" << arg->getDimensionByIdx(j) << "]";
+        if (dimension_size > 1) {
+            for (int j = 0; j < dimension_size; j++) {
+                if (j == 0) {
+                    out_ << "[]";
+                } else {
+                    out_ << "[" << arg->getDimensionByIdx(j) << "]";
+                }
             }
+        } else {
+            out_ << "*";
         }
         out_ << " %" << arg->getName();
         if (i != argument_size - 1) {
@@ -311,7 +316,7 @@ void IrDumper::dump(UnaryOpInstruction *uinst) {
 }
 
 void IrDumper::dump(StoreInstruction *inst) {
-    out_ << "store " << dumpValue(inst->getBasicType(), inst->getValue()) << ", " << dumpValue(inst->getBasicType(), inst->getPtr());
+    out_ << "store " << getBasicType(inst->getBasicType()) <<  inst->getValue() << ", " << dumpValue(inst->getBasicType(), inst->getPtr());
     out_ << '\n';
 }
 

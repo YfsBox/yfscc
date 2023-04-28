@@ -66,10 +66,14 @@ void IrBuilder::addLibFunctions(const SemanticCheck::FuncDefineMap &libfunc_map)
         for (int i = 0; i < formals->getFormalSize(); ++i) {
             auto formal = formals->getFuncFormal(i);
             Argument *argument = nullptr;
-            if (formal->getFormalId()->getDimensionSize()) {    // 数组类型
-                argument = dynamic_cast<Argument *>(IrFactory::createArrayArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, new_function, formal->getFormalId()->getFormalDimensionNumbers()));
-            } else {        // 非数组类型
+            auto formal_dimension_size = formal->getFormalId()->getDimensionSize();
+            if (formal_dimension_size == 0) {    // 普通的值语义类型
                 argument = dynamic_cast<Argument *>(IrFactory::createArgument(formal->getBtype(), new_function));
+            } else if (formal_dimension_size == 1) {
+                argument = dynamic_cast<Argument *>(IrFactory::createPtrArgument(formal->getBtype(), new_function));
+            } else {
+                std::vector<int32_t> dimension_vec = formal->getFormalId()->getFormalDimensionNumbers();
+                argument = dynamic_cast<Argument *>(IrFactory::createArrayPtrArgument(formal->getBtype(), new_function, std::vector<int32_t>(dimension_vec.begin() + 1, dimension_vec.end())));
             }
             new_function->addArgument(std::unique_ptr<Argument>(argument));
         }
@@ -476,8 +480,10 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
         param_dimensions.emplace_back(dimension);
         if (dimension.empty()) {        // 目前的function首先设置为nullptr
             arguments.push_back(IrFactory::createArgument(formal->getBtype(), nullptr, formal_name));
+        } else if (dimension.size() == 1) {
+            arguments.push_back(IrFactory::createPtrArgument(formal->getBtype(), nullptr));
         } else {
-            arguments.push_back(IrFactory::createArrayArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, nullptr, dimension, formal_name));
+            arguments.push_back(IrFactory::createArrayPtrArgument(formal->getBtype(), nullptr, std::vector<int32_t>(dimension.begin() + 1, dimension.end())));
         }
     }
 
@@ -509,33 +515,31 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     function->addBasicBlock(new_bb);
     // 还需要给参数中对应的变量分配空间????
     for (int i = 0; i < formal_size; ++i) {
-        auto dimension_size = param_dimensions[i].size();
+        auto argument = dynamic_cast<Argument *>(arguments[i]);
         Value *alloca_ptr = nullptr;
         Value *store_inst_value = nullptr;
-        if (dimension_size == 0) {      // 普通变量
+        if (!argument->isPtr()) {      // 普通变量
             alloca_ptr = param_types[i] == BasicType::INT_BTYPE ?
                     IrFactory::createIAllocaInstruction() : IrFactory::createFAllocaInstruction();
-            store_inst_value = param_types[i] == BasicType::INT_BTYPE ?
-                    IrFactory::createIStoreInstruction(function->getArgument(i), alloca_ptr)
-                    : IrFactory::createFStoreInstruction(function->getArgument(i), alloca_ptr);
-            /*IrSymbolEntry new_entry(false, param_types[i] == BasicType::FLOAT_BTYPE ?
-                                           BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, alloca_ptr, param_names[i]);
-            var_symbol_table_.addIdent(new_entry);*/
-        } else if (dimension_size == 1) {   // 一维数组
-            alloca_ptr = param_types[i] == BasicType::INT_BTYPE ?
-                    IrFactory::createIArrayAllocaInstruction(param_dimensions[i], param_names[i])
-                    :IrFactory::createFArrayAllocaInstruction(param_dimensions[i], param_names[i]);
-            store_inst_value = param_types[i] == BasicType::INT_BTYPE ?
-                    IrFactory::createIStoreInstruction(function->getArgument(i), alloca_ptr):
-                    IrFactory::createFStoreInstruction(function->getArgument(i), alloca_ptr);
-        } else {    // 多维数组
-
+        } else {
+            if (!argument->getArraySize()) {   // 一维数组
+                alloca_ptr = param_types[i] == BasicType::INT_BTYPE ?
+                             IrFactory::createIPtrAllocaInstruction():
+                             IrFactory::createFPtrAllocaInstruction();
+            } else {    // 多维数组
+                alloca_ptr = param_types[i] == BasicType::INT_BTYPE ?
+                             IrFactory::createIArrayPtrAllocaInstruction(std::vector<int32_t>(param_dimensions[i].begin() + 1, param_dimensions[i].end())) :
+                             IrFactory::createFArrayPtrAllocaInstruction(std::vector<int32_t>(param_dimensions[i].begin() + 1, param_dimensions[i].end()));
+            }
         }
+        store_inst_value = param_types[i] == BasicType::INT_BTYPE ?
+                           IrFactory::createIStoreInstruction(function->getArgument(i), alloca_ptr)
+                           : IrFactory::createFStoreInstruction(function->getArgument(i), alloca_ptr);
         IrSymbolEntry new_entry(false, param_types[i] == BasicType::FLOAT_BTYPE ?
                                        BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, alloca_ptr, param_names[i]);
         var_symbol_table_.addIdent(new_entry);
-        new_bb->addInstruction(alloca_ptr);
-        new_bb->addInstruction(store_inst_value);
+        addInstruction(alloca_ptr);
+        addInstruction(store_inst_value);
     }
     // 处理函数体
     visit(def->getBlock());

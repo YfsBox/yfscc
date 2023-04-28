@@ -12,10 +12,6 @@ void Function::addArgument(ArgumentPtr argument) {
     arguments_.emplace_back(std::move(argument));
 }
 
-void Function::addArgument(BasicType basic_type, const std::string &argument_name) {
-    arguments_.push_back(std::make_unique<Argument>(basic_type, this, argument_name));
-}
-
 void Function::addBasicBlock(Value *block) {
     blocks_.push_back(std::unique_ptr<BasicBlock>(dynamic_cast<BasicBlock *>(block)));
 }

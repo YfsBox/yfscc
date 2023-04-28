@@ -29,8 +29,6 @@ public:
 
     void addArgument(ArgumentPtr argument);
 
-    void addArgument(BasicType basic_type, const std::string &argument_name);
-
     void addBasicBlock(Value *block);
 
     void removeEmptyBasicBlock();

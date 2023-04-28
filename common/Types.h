@@ -9,6 +9,7 @@ enum BasicType {
     INT_BTYPE,
     FLOAT_BTYPE,
     VOID_BTYPE,
+    VOIDPTR_BTYPE,
     UNVALID_BTYPE,
 };
 

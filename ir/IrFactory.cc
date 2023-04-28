@@ -17,14 +17,17 @@ void IrFactory::InitContext(IrContext *context) {
 
 IrFactory::ValuePtr IrFactory::createArgument(BasicType basic_type, Function *function, const std::string &name) {
     context_->ssa_no_++;
-    return new Argument(basic_type, function, std::to_string(context_->ssa_no_));
+    return new Argument(basic_type, function, false, std::to_string(context_->ssa_no_));
 }
 
-IrFactory::ValuePtr IrFactory::createArrayArgument(bool is_float, Function *function, const std::vector<int32_t> &dimension,
-                                                   const std::string &name) {
+IrFactory::ValuePtr IrFactory::createPtrArgument(BasicType basic_type, Function *function) {
     context_->ssa_no_++;
-    return new Argument(is_float ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE,
-                        dimension, function, std::to_string(context_->ssa_no_));
+    return new Argument(basic_type, function, true, std::to_string(context_->ssa_no_));
+}
+
+IrFactory::ValuePtr IrFactory::createArrayPtrArgument(BasicType basic_type, Function *function,  const std::vector<int32_t> &dimension) {
+    context_->ssa_no_++;
+    return new Argument(basic_type, dimension, function, true, std::to_string(context_->ssa_no_));
 }
 
 
@@ -224,34 +227,54 @@ IrFactory::ValuePtr IrFactory::createXorInstruction(Value *left, Value *right, B
 
 IrFactory::ValuePtr IrFactory::createFAllocaInstruction(const std::string &name) {      // 返回的都是指针
     context_->ssa_no_++;
-    return new AllocaInstruction (context_->curr_bb_, BasicType::FLOAT_BTYPE, std::to_string(context_->ssa_no_));
+    return new AllocaInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, false, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createFAllocaInstruction() {
     context_->ssa_no_++;
-    return new AllocaInstruction (context_->curr_bb_, BasicType::FLOAT_BTYPE, std::to_string(context_->ssa_no_));
+    return new AllocaInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, false, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createIAllocaInstruction() {
     context_->ssa_no_++;
-    return new AllocaInstruction (context_->curr_bb_, BasicType::INT_BTYPE, std::to_string(context_->ssa_no_));
+    return new AllocaInstruction (context_->curr_bb_, BasicType::INT_BTYPE, false, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createIAllocaInstruction(const std::string &name) {
     context_->ssa_no_++;
-    return new AllocaInstruction (context_->curr_bb_, BasicType::INT_BTYPE, std::to_string(context_->ssa_no_));
+    return new AllocaInstruction (context_->curr_bb_, BasicType::INT_BTYPE, false,std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createIArrayAllocaInstruction(const std::vector<int32_t> &dimensions,
                                                              const std::string &name) {
     context_->ssa_no_++;
-    return new AllocaInstruction(context_->curr_bb_, BasicType::INT_BTYPE, dimensions, std::to_string(context_->ssa_no_));
+    return new AllocaInstruction(context_->curr_bb_, BasicType::INT_BTYPE, false, dimensions, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createFArrayAllocaInstruction(const std::vector<int32_t> &dimensions,
                                                              const std::string &name) {
     context_->ssa_no_++;
-    return new AllocaInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, dimensions, std::to_string(context_->ssa_no_));
+    return new AllocaInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE,  false, dimensions, std::to_string(context_->ssa_no_));
+}
+
+IrFactory::ValuePtr IrFactory::createIPtrAllocaInstruction() {
+    context_->ssa_no_++;
+    return new AllocaInstruction(context_->curr_bb_, BasicType::INT_BTYPE, true, std::to_string(context_->ssa_no_));
+}
+
+IrFactory::ValuePtr IrFactory::createFPtrAllocaInstruction() {
+    context_->ssa_no_++;
+    return new AllocaInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, true, std::to_string(context_->ssa_no_));
+}
+
+IrFactory::ValuePtr IrFactory::createIArrayPtrAllocaInstruction(const std::vector<int32_t> &dimensions) {
+    context_->ssa_no_++;
+    return new AllocaInstruction(context_->curr_bb_, BasicType::INT_BTYPE, true, dimensions, std::to_string(context_->ssa_no_));
+}
+
+IrFactory::ValuePtr IrFactory::createFArrayPtrAllocaInstruction(const std::vector<int32_t> &dimensions) {
+    context_->ssa_no_++;
+    return new AllocaInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, true, dimensions, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createILoadInstruction(Value *ptr) {

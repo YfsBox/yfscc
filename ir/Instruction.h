@@ -120,9 +120,9 @@ private:
 
 class AllocaInstruction: public Instruction {
 public:
-    AllocaInstruction(BasicBlock *block, BasicType type, const std::string &name = "");
+    AllocaInstruction(BasicBlock *block, BasicType type, bool isptrptr, const std::string &name = "");
 
-    AllocaInstruction(BasicBlock *block, BasicType type, const std::vector<int32_t> &dimension, const std::string &name = "");
+    AllocaInstruction(BasicBlock *block, BasicType type, bool isptrptr, const std::vector<int32_t> &dimension, const std::string &name = "");
 
     ~AllocaInstruction();
 
@@ -151,6 +151,7 @@ public:
     }
 
 private:
+    bool is_ptr_ptr_;
     std::vector<int32_t> array_dimension_size_;
 };
 

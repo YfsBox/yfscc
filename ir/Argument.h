@@ -16,11 +16,15 @@ public:
 
     static constexpr const int32_t ArrayArgumentNullIdx = -1;
 
-    Argument(BasicType basic_type, Function *func, const std::string &name);
+    Argument(BasicType basic_type, Function *func, bool isptr, const std::string &name);
 
-    Argument(BasicType basic_type, const std::vector<int32_t> &dimension, Function *func, const std::string &name);
+    Argument(BasicType basic_type, const std::vector<int32_t> &dimension, Function *func, bool isptr, const std::string &name);
 
     ~Argument();
+
+    bool isPtrPtr() const {
+        return is_ptr_;
+    }
 
     Function *getParent() const {
         return parent_;
@@ -47,6 +51,7 @@ public:
     }
 
 private:
+    bool is_ptr_;
     BasicType basic_type_;      // 参数类型
     Function *parent_;
     std::vector<int32_t> dimensions_;

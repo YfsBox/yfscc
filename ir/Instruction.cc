@@ -61,13 +61,15 @@ Value *LoadInstruction::getPtr() const {
     return getOperand(0);
 }
 
-AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, const std::string &name):
-        Instruction(InstructionType::AllocaType, type, true, false, block, name){
+AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, bool isptrptr, const std::string &name):
+        Instruction(InstructionType::AllocaType, type, true, false, block, name),
+        is_ptr_ptr_(isptrptr){
 
 }
 
-AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, const std::vector<int32_t> &dimension, const std::string &name):
+AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, bool isptrptr, const std::vector<int32_t> &dimension, const std::string &name):
         Instruction(InstructionType::AllocaType, type, true, false, block, name),
+        is_ptr_ptr_(isptrptr),
         array_dimension_size_(dimension){
 
 }

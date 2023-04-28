@@ -23,7 +23,9 @@ public:
 
     static ValuePtr createArgument(BasicType basic_type, Function *function, const std::string &name = "");
 
-    static ValuePtr createArrayArgument(bool is_float, Function *function, const std::vector<int32_t> &dimension, const std::string &name = "");
+    static ValuePtr createPtrArgument(BasicType basic_type, Function *function);
+
+    static ValuePtr createArrayPtrArgument(BasicType basic_type, Function *function,  const std::vector<int32_t> &dimension);
 
     static ValuePtr createFConstantVar(float value);
 
@@ -78,6 +80,14 @@ public:
     static ValuePtr createIArrayAllocaInstruction(const std::vector<int32_t> &dimensions, const std::string &name);
 
     static ValuePtr createFArrayAllocaInstruction(const std::vector<int32_t> &dimensions, const std::string &name);
+
+    static ValuePtr createIPtrAllocaInstruction();
+
+    static ValuePtr createFPtrAllocaInstruction();
+
+    static ValuePtr createIArrayPtrAllocaInstruction(const std::vector<int32_t> &dimensions);
+
+    static ValuePtr createFArrayPtrAllocaInstruction(const std::vector<int32_t> &dimensions);
 
     static ValuePtr createILoadInstruction(Value *ptr);
 
