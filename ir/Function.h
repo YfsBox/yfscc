@@ -29,7 +29,7 @@ public:
 
     void addArgument(ArgumentPtr argument);
 
-    void addArgument(bool is_float, const std::string &argument_name);
+    void addArgument(BasicType basic_type, const std::string &argument_name);
 
     void addBasicBlock(Value *block);
 

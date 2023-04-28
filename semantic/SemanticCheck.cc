@@ -44,6 +44,7 @@ void SemanticCheck::addLibFunc() {
             {"putfarray", BasicType::VOID_BTYPE},
             {"starttime", BasicType::VOID_BTYPE},
             {"stoptime", BasicType::VOID_BTYPE},
+            {"memset", BasicType::VOIDPTR_BTYPE},
     };
 
     for (auto &[func_name, func_btype]: libmap) {
@@ -54,10 +55,18 @@ void SemanticCheck::addLibFunc() {
     // 对于其中一些有参数的处理，目前考虑用相同的对象，不知有没有问题
     auto empty_formal_ident = std::make_shared<Identifier>("");
     auto int_formal = std::make_shared<FuncFParam>(BasicType::INT_BTYPE, empty_formal_ident);
-
+    auto float_formal = std::make_shared<FuncFParam>(BasicType::FLOAT_BTYPE, empty_formal_ident);
+;
     auto int_array_formal_ident = std::make_shared<Identifier>("");
     int_array_formal_ident->addDimension(nullptr);      // 一个一维，表示的是int[]
     auto int_array_formal = std::make_shared<FuncFParam>(BasicType::INT_BTYPE, int_array_formal_ident);
+
+    auto float_array_formal_ident = std::make_shared<Identifier>("");
+    float_array_formal_ident->addDimension(nullptr);
+    auto float_array_formal = std::make_shared<FuncFParam>(BasicType::FLOAT_BTYPE, float_array_formal_ident);
+
+    auto voidptr_formal = std::make_shared<FuncFParam>(BasicType::VOIDPTR_BTYPE, empty_formal_ident);
+
     // 补充其中的参数
     lib_func_map_["getarray"]->getFormals()->addFuncFormal(int_array_formal);
 
@@ -68,6 +77,16 @@ void SemanticCheck::addLibFunc() {
     lib_func_map_["putarray"]->getFormals()->addFuncFormal(int_formal);
     lib_func_map_["putarray"]->getFormals()->addFuncFormal(int_array_formal);
 
+    lib_func_map_["getfarray"]->getFormals()->addFuncFormal(float_array_formal);
+    lib_func_map_["putfloat"]->getFormals()->addFuncFormal(float_formal);
+
+    lib_func_map_["putfarray"]->getFormals()->addFuncFormal(int_formal);
+    lib_func_map_["putfarray"]->getFormals()->addFuncFormal(float_array_formal);
+
+    lib_func_map_["memset"]->getFormals()->addFuncFormal(voidptr_formal);
+    lib_func_map_["memset"]->getFormals()->addFuncFormal(int_formal);
+    lib_func_map_["memset"]->getFormals()->addFuncFormal(int_formal);
+    // 这里的formal只是起到一个形式上的作用，所以直接用shared_ptr也可以
 }
 
 bool SemanticCheck::isRedefinedCurrScope(const std::string &id) {

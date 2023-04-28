@@ -3,15 +3,15 @@
 //
 #include "Argument.h"
 
-Argument::Argument(bool is_float, Function *func, const std::string &name):
+Argument::Argument(BasicType basic_type, Function *func, const std::string &name):
     Value(ValueType::ArgumentValue, false, false, name),
-    is_float_(is_float),
+    basic_type_(basic_type),
     parent_(func) {}
 
-Argument::Argument(bool is_float, const std::vector<int32_t> &dimension, Function *func,
+Argument::Argument(BasicType basic_type, const std::vector<int32_t> &dimension, Function *func,
                    const std::string &name):
         Value(ValueType::ArgumentValue, true, false, name),
-        is_float_(is_float),
+        basic_type_(basic_type),
         parent_(func),
         dimensions_(dimension){
 

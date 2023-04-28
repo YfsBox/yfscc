@@ -21,7 +21,8 @@ IrBuilder::IrBuilder(std::ostream &out, const SemanticCheck::FuncDefineMap &libf
     dumper_(std::make_unique<IrDumper>(out)),
     curr_decl_(nullptr),
     curr_value_(nullptr),
-    curr_local_array_(nullptr){
+    curr_local_array_(nullptr),
+    memset_function_(nullptr) {
     IrFactory::InitContext(context_.get());
     addLibFunctions(libfunc_map);
 }
@@ -55,8 +56,10 @@ void IrBuilder::addLibFunctions(const SemanticCheck::FuncDefineMap &libfunc_map)
             new_function = dynamic_cast<Function *>(IrFactory::createIntFunction(func_name));
         } else if (libfunc->getReturnType() == BasicType::FLOAT_BTYPE) {
             new_function = dynamic_cast<Function *>(IrFactory::createFloatFunction(func_name));
-        } else {
+        } else if (libfunc->getReturnType() == BasicType::VOID_BTYPE) {
             new_function = dynamic_cast<Function *>(IrFactory::createVoidFunction(func_name));
+        } else {
+            new_function = dynamic_cast<Function *>(IrFactory::createVoidPtrFunction(func_name));
         }
         // 设置参数
         auto formals = libfunc->getFormals();
@@ -66,13 +69,31 @@ void IrBuilder::addLibFunctions(const SemanticCheck::FuncDefineMap &libfunc_map)
             if (formal->getFormalId()->getDimensionSize()) {    // 数组类型
                 argument = dynamic_cast<Argument *>(IrFactory::createArrayArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, new_function, formal->getFormalId()->getFormalDimensionNumbers()));
             } else {        // 非数组类型
-                argument = dynamic_cast<Argument *>(IrFactory::createArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, new_function));
+                argument = dynamic_cast<Argument *>(IrFactory::createArgument(formal->getBtype(), new_function));
             }
             new_function->addArgument(std::unique_ptr<Argument>(argument));
         }
         // context_->curr_module_->addFunction(std::unique_ptr<Function>(new_function));
+        if (func_name == "memset") {
+            memset_function_ = new_function;
+        }
         context_->curr_module_->addFunctionDecl(std::unique_ptr<Function>(new_function));
     }
+    assert(memset_function_);
+}
+
+std::vector<Value *> IrBuilder::arrayIndex2IndexVec(int32_t index) const {
+    std::vector<Value *> index_vecs;
+    auto array_value = dynamic_cast<AllocaInstruction *>(curr_local_array_);
+    assert(array_value);
+    int dimension_size = array_value->getDimensionSize();
+    index_vecs.resize(dimension_size);
+    int dimension_product = 1;
+    for (int i = dimension_size - 1; i >= 0; --i) {
+        dimension_product *= array_value->getDimensionSize(i);
+        index_vecs[i] = IrFactory::createIConstantVar(index % dimension_product);
+    }
+    return index_vecs;
 }
 
 void IrBuilder::visit(const std::shared_ptr<Declare> &decl) {
@@ -454,7 +475,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
         }
         param_dimensions.emplace_back(dimension);
         if (dimension.empty()) {        // 目前的function首先设置为nullptr
-            arguments.push_back(IrFactory::createArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, nullptr, formal_name));
+            arguments.push_back(IrFactory::createArgument(formal->getBtype(), nullptr, formal_name));
         } else {
             arguments.push_back(IrFactory::createArrayArgument(formal->getBtype() == BasicType::FLOAT_BTYPE, nullptr, dimension, formal_name));
         }
@@ -881,7 +902,7 @@ void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
                     IrFactory::createILoadInstruction(actual_value) : IrFactory::createFLoadInstruction(actual_value);
             addInstruction(actual_value);
         }
-        BasicType formal_basic_type = formal->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE;
+        BasicType formal_basic_type = formal->getBasicType();
         if (actual->expr_type_ != formal_basic_type) {
             actual_value = formal_basic_type == BasicType::INT_BTYPE?
                     IrFactory::createF2ICastInstruction(actual_value) : IrFactory::createI2FCastInstruction(actual_value);
@@ -923,8 +944,8 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
         BasicType basic_type = curr_decl_->type_;
         auto const_offset = IrFactory::createIConstantVar(arrayval->array_idx_);
         auto gep_inst_value = basic_type == BasicType::INT_BTYPE ?
-                IrFactory::createIGEPInstruction(curr_local_array_, const_offset)
-                :IrFactory::createFGEPInstruction(curr_local_array_, const_offset);
+                IrFactory::createIGEPInstruction(curr_local_array_, arrayIndex2IndexVec(arrayval->array_idx_))
+                :IrFactory::createFGEPInstruction(curr_local_array_, arrayIndex2IndexVec(arrayval->array_idx_));
         addInstruction(gep_inst_value);
         visit(arrayval->value_);
         Value *init_value = curr_value_;
@@ -959,15 +980,11 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
                 auto offset_const_value = IrFactory::createIConstantVar(start);
                 auto size_const_value = IrFactory::createIConstantVar(len);
                 auto gep_start_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
-                                            IrFactory::createIGEPInstruction(curr_local_array_, offset_const_value) :
-                                            IrFactory::createFGEPInstruction(curr_local_array_,
-                                                                             offset_const_value);        // 获取start指针
+                                            IrFactory::createIGEPInstruction(curr_local_array_, arrayIndex2IndexVec(start)) :
+                                            IrFactory::createFGEPInstruction(curr_local_array_,arrayIndex2IndexVec(start));        // 获取start指针
                 addInstruction(gep_start_inst_value);
-                auto memset_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
-                                         IrFactory::createIMemSetInstruction(gep_start_inst_value, size_const_value,
-                                                                             zero_const_value) :
-                                         IrFactory::createFMemSetInstruction(gep_start_inst_value, size_const_value,
-                                                                             zero_const_value);
+
+                auto memset_inst_value = IrFactory::createCallInstruction({gep_start_inst_value, offset_const_value, size_const_value}, memset_function_);
                 addInstruction(memset_inst_value);
             }
         }

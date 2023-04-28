@@ -187,6 +187,8 @@ private:
 
     void addLibFunctions(const SemanticCheck::FuncDefineMap &libfunc_map);
 
+    std::vector<Value *> arrayIndex2IndexVec(int32_t index) const;
+
     void initJumpMap();
 
     bool is_deal_cond_;
@@ -208,6 +210,8 @@ private:
     Value *curr_value_;
 
     Value *curr_local_array_;
+
+    Function *memset_function_;
 
     CondJumpMap true_jump_map_;     // key表示的是一个条件表达式，value是一个由instruction组成的集合,该条件表达式中包含的指令
 

@@ -15,15 +15,16 @@ void IrFactory::InitContext(IrContext *context) {
     context_ = context;
 }
 
-IrFactory::ValuePtr IrFactory::createArgument(bool is_float, Function *function, const std::string &name) {
+IrFactory::ValuePtr IrFactory::createArgument(BasicType basic_type, Function *function, const std::string &name) {
     context_->ssa_no_++;
-    return new Argument(is_float, function, std::to_string(context_->ssa_no_));
+    return new Argument(basic_type, function, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createArrayArgument(bool is_float, Function *function, const std::vector<int32_t> &dimension,
                                                    const std::string &name) {
     context_->ssa_no_++;
-    return new Argument(is_float, dimension, function, std::to_string(context_->ssa_no_));
+    return new Argument(is_float ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE,
+                        dimension, function, std::to_string(context_->ssa_no_));
 }
 
 
@@ -69,6 +70,10 @@ IrFactory::ValuePtr IrFactory::createIntFunction(const std::string &name) {
 
 IrFactory::ValuePtr IrFactory::createVoidFunction(const std::string &name) {
     return new Function(BasicType::VOID_BTYPE, context_->curr_module_, name);
+}
+
+IrFactory::ValuePtr IrFactory::createVoidPtrFunction(const std::string &name) {
+    return new Function(BasicType::VOIDPTR_BTYPE, context_->curr_module_, name);
 }
 
 IrFactory::ValuePtr IrFactory::createAddInstruction(Value *left, Value *right, BasicType btype) {

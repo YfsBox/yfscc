@@ -7,6 +7,7 @@
 
 #include <vector>
 #include "Value.h"
+#include "../common/Types.h"
 
 class Function;
 
@@ -15,9 +16,9 @@ public:
 
     static constexpr const int32_t ArrayArgumentNullIdx = -1;
 
-    Argument(bool is_float, Function *func, const std::string &name);
+    Argument(BasicType basic_type, Function *func, const std::string &name);
 
-    Argument(bool is_float, const std::vector<int32_t> &dimension, Function *func, const std::string &name);
+    Argument(BasicType basic_type, const std::vector<int32_t> &dimension, Function *func, const std::string &name);
 
     ~Argument();
 
@@ -25,8 +26,8 @@ public:
         return parent_;
     }
 
-    bool isFloat() const {
-        return is_float_;
+    BasicType getBasicType() const {
+        return basic_type_;
     }
 
     bool isArray() const {
@@ -46,7 +47,7 @@ public:
     }
 
 private:
-    bool is_float_;      // 参数类型
+    BasicType basic_type_;      // 参数类型
     Function *parent_;
     std::vector<int32_t> dimensions_;
 };

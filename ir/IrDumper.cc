@@ -26,8 +26,10 @@ std::string IrDumper::getBasicType(BasicType basic_type) const {
         return "i32";
     } else if (basic_type == BasicType::FLOAT_BTYPE) {
         return "float";
-    } else {
+    } else if (basic_type == BasicType::VOID_BTYPE) {
         return "void";
+    } else {
+        return "i32*";
     }
 }
 
@@ -74,7 +76,10 @@ std::string IrDumper::getArrayType(const std::vector<int32_t> &dimension, BasicT
         return array_type;
     }
     if (dimension[0] == Argument::ArrayArgumentNullIdx) {
-        array_type += "*";
+        array_type += getBasicType(basic_type);
+        if (basic_type != BasicType::VOIDPTR_BTYPE) {
+            array_type += "*";
+        }
     } else {
         array_type += " ";
         for (int i = 0; i < dimension.size(); ++i) {
@@ -89,9 +94,7 @@ std::string IrDumper::getArrayType(const std::vector<int32_t> &dimension, BasicT
 }
 
 std::string IrDumper::getVarType(BasicType btype, Value *value, bool isptr) {
-
-
-
+    return "";
 }
 
 std::string IrDumper::getOptype(Instruction *inst, BasicType basic_type) const {
@@ -115,7 +118,7 @@ std::string IrDumper::getOptype(Instruction *inst, BasicType basic_type) const {
             break;
     }
     if (basic_type == BasicType::INT_BTYPE && inst_type == InstructionType::DivType) {
-        optype = "s" + optype + " nsw ";
+        optype = "s" + optype;
     } else if (basic_type == BasicType::FLOAT_BTYPE) {
         optype = "f" + optype;
     }
@@ -128,9 +131,9 @@ void IrDumper::dump(Module *module) {
         for (int i = 0; i < decl->getArgumentSize(); ++i) {
             auto argument = decl->getArgument(i);
             if (argument->isArray()) {      // 获取该formal的类型
-                out_ << getArrayType(argument->getDimension(), argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE) << " " << dumpValue(argument);
+                out_ << getArrayType(argument->getDimension(), argument->getBasicType()) << " " << dumpValue(argument);
             } else {
-                out_ << dumpValue(argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, argument);
+                out_ << dumpValue(argument->getBasicType(), argument);
             }
             if (i != decl->getArgumentSize() - 1) {
                 out_ << ", ";
@@ -178,7 +181,7 @@ void IrDumper::dump(Function *function) {
     auto argument_size = function->getArgumentSize();
     for (int i = 0; i < argument_size; ++i) {
         auto arg = function->getArgument(i);
-        std::string type_str = arg->isFloat() ? "float" : "i32";
+        std::string type_str = getBasicType(arg->getBasicType());
         out_ << type_str;
         // 一维数组
         auto dimension_size = arg->getArraySize();
@@ -319,13 +322,14 @@ void IrDumper::dump(LoadInstruction *inst) {
 
 void IrDumper::dump(AllocaInstruction *inst) {
     out_ << "%" << inst->getName() << " = alloca ";
-    if (inst->getBasicType() == BasicType::INT_BTYPE) {
-        out_ << "i32";
-    } else {
-        out_ << "float";
-    }
     if (inst->isArray()) {
         out_ << getArrayType(inst->getArrayDimensionSize(), inst->getBasicType());
+    } else {
+        if (inst->getBasicType() == BasicType::INT_BTYPE) {
+            out_ << "i32";
+        } else {
+            out_ << "float";
+        }
     }
     out_ << '\n';
 }
@@ -376,17 +380,36 @@ void IrDumper::dump(MemSetInstruction *inst) {
 
 void IrDumper::dump(GEPInstruction *inst) {
     assert(inst && inst->getPtr());
-    out_ << "%" << inst->getName() << " = getelemptr " << getBasicType(inst->getBasicType())
-     << " %" << inst->getPtr()->getName() << " offset:";
-    if (inst->isUseOffset()) {
-        out_ << dumpValue(inst->getOffset()) << " * 4";
-    } else {
-        out_ << "[";
+    out_ << "%" << inst->getName() << " = getelementptr ";
+    if (!inst->isUseOffset()) {
+        std::vector<int32_t> dimension_numbers;
+        Value *array_var = nullptr;
+        auto array_base = dynamic_cast<AllocaInstruction *>(inst->getPtr());
+        if (array_base) {
+            dimension_numbers = array_base->getArrayDimensionSize();
+            array_var = array_base;
+        } else {
+            auto global_var = dynamic_cast<GlobalVariable *>(inst->getPtr());
+            auto var_array = dynamic_cast<ConstantArray *>(global_var->getConstInit());
+            if (var_array) {
+                dimension_numbers = var_array->getDimensionNumbers();
+                array_var = global_var;
+            }
+        }
+        out_ << getArrayType(dimension_numbers, inst->getBasicType()) << ","
+             << getArrayType(dimension_numbers, inst->getBasicType()) << "* "
+             << dumpValue(array_var);
+        out_ << ", i32 0, ";
+
         for (int i = 0; i < inst->getIndexSize(); i++) {
             auto index_value = inst->getIndexValue(i);
-            out_ << dumpValue(index_value) << " ";
+            out_ << dumpValue(BasicType::INT_BTYPE, index_value);
+            if (i != inst->getIndexSize() - 1) {
+                out_ << ", ";
+            }
         }
-        out_ << "]";
+    } else {
+        out_ << getBasicType(inst->getBasicType()) << ", " << getBasicType(inst->getBasicType()) << "* " << dumpValue(inst->getPtr()) << ", i32 " << dumpValue(inst->getOffset());
     }
     out_ << "\n";
 }
@@ -421,9 +444,9 @@ void IrDumper::dump(CallInstruction *inst) {
         auto actual = inst->getActual(i);
         auto argument = call_function->getArgument(i);
         if (argument->isArray()) {      // 获取该formal的类型
-            out_ << getArrayType(argument->getDimension(), argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE) <<  " " << dumpValue(actual);;
+            out_ << getArrayType(argument->getDimension(), argument->getBasicType()) <<  " " << dumpValue(actual);;
         } else {
-            out_ << dumpValue(argument->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, actual);
+            out_ << getBasicType(argument->getBasicType()) << " " << dumpValue(actual);
         }
         if (i != actual_size - 1) {
             out_ << ", ";

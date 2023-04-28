@@ -21,7 +21,7 @@ public:
 
     ~IrFactory() = default;
 
-    static ValuePtr createArgument(bool is_float, Function *function, const std::string &name = "");
+    static ValuePtr createArgument(BasicType basic_type, Function *function, const std::string &name = "");
 
     static ValuePtr createArrayArgument(bool is_float, Function *function, const std::vector<int32_t> &dimension, const std::string &name = "");
 
@@ -48,6 +48,8 @@ public:
     static ValuePtr createIntFunction(const std::string &name);
 
     static ValuePtr createVoidFunction(const std::string &name);
+
+    static ValuePtr createVoidPtrFunction(const std::string &name);
 
     static ValuePtr createAddInstruction(Value *left, Value *right, BasicType btype);
 

@@ -12,8 +12,8 @@ void Function::addArgument(ArgumentPtr argument) {
     arguments_.emplace_back(std::move(argument));
 }
 
-void Function::addArgument(bool is_float, const std::string &argument_name) {
-    arguments_.push_back(std::make_unique<Argument>(is_float, this, argument_name));
+void Function::addArgument(BasicType basic_type, const std::string &argument_name) {
+    arguments_.push_back(std::make_unique<Argument>(basic_type, this, argument_name));
 }
 
 void Function::addBasicBlock(Value *block) {
