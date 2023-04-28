@@ -152,7 +152,8 @@ void IrBuilder::dealExprAsCond(const std::shared_ptr<Expression> &expr) {
     auto unary_expr = std::dynamic_pointer_cast<UnaryExpr>(expr);
     auto lval_epxr = std::dynamic_pointer_cast<LvalExpr>(expr);
     auto call_expr = std::dynamic_pointer_cast<CallFuncExpr>(expr);
-    if ((binary_expr && binary_expr->getOpType() != AND_OPTYPE && binary_expr->getOpType() != OR_OPTYPE) || unary_expr || lval_epxr || call_expr) {
+    auto number_expr = std::dynamic_pointer_cast<Number>(expr);
+    if ((binary_expr && binary_expr->getOpType() != AND_OPTYPE && binary_expr->getOpType() != OR_OPTYPE) || unary_expr || lval_epxr || call_expr || number_expr) {
         auto expr_value = curr_value_;
         if (expr_value->isPtr()) {
             auto load_inst_value = expr->expr_type_ == BasicType::INT_BTYPE ?
@@ -477,11 +478,6 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     for (const auto argument: arguments) {
         auto to_arg = dynamic_cast<Argument *>(argument);
         function->addArgument(std::unique_ptr<Argument>(to_arg));
-        /*
-        IrSymbolEntry new_entry(false, to_arg->isFloat() ?
-                    BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, to_arg, param_names[idx++]);
-        var_symbol_table_.addIdent(new_entry);*/
-        // printf("add %s to function %s, after that the size is %lu\n", argument->getName().c_str(), function->getName().c_str(), function->getArgumentSize());
     }
     // 在一个函数开始的地方,应该有新的basic block
     module_->addFunction(std::unique_ptr<Function>(function));
@@ -501,14 +497,22 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
             store_inst_value = param_types[i] == BasicType::INT_BTYPE ?
                     IrFactory::createIStoreInstruction(function->getArgument(i), alloca_ptr)
                     : IrFactory::createFStoreInstruction(function->getArgument(i), alloca_ptr);
-            IrSymbolEntry new_entry(false, param_types[i] == BasicType::FLOAT_BTYPE ?
+            /*IrSymbolEntry new_entry(false, param_types[i] == BasicType::FLOAT_BTYPE ?
                                            BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, alloca_ptr, param_names[i]);
-            var_symbol_table_.addIdent(new_entry);
+            var_symbol_table_.addIdent(new_entry);*/
         } else if (dimension_size == 1) {   // 一维数组
-
+            alloca_ptr = param_types[i] == BasicType::INT_BTYPE ?
+                    IrFactory::createIArrayAllocaInstruction(param_dimensions[i], param_names[i])
+                    :IrFactory::createFArrayAllocaInstruction(param_dimensions[i], param_names[i]);
+            store_inst_value = param_types[i] == BasicType::INT_BTYPE ?
+                    IrFactory::createIStoreInstruction(function->getArgument(i), alloca_ptr):
+                    IrFactory::createFStoreInstruction(function->getArgument(i), alloca_ptr);
         } else {    // 多维数组
 
         }
+        IrSymbolEntry new_entry(false, param_types[i] == BasicType::FLOAT_BTYPE ?
+                                       BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, alloca_ptr, param_names[i]);
+        var_symbol_table_.addIdent(new_entry);
         new_bb->addInstruction(alloca_ptr);
         new_bb->addInstruction(store_inst_value);
     }
@@ -868,16 +872,17 @@ void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
         if (dynamic_cast<GEPInstruction *>(actual_value)) {
             // 要区分是取值还是指针类型
             if (!formal->isArray()) {
-                actual_value = expr->expr_type_ == BasicType::INT_BTYPE ?
+                actual_value = actual->expr_type_ == BasicType::INT_BTYPE ?
                         IrFactory::createILoadInstruction(actual_value) : IrFactory::createFLoadInstruction(actual_value);
+                addInstruction(actual_value);
             }
         } else if (actual_value->isPtr()) {
-            actual_value = expr->expr_type_ == BasicType::INT_BTYPE ?
+            actual_value = actual->expr_type_ == BasicType::INT_BTYPE ?
                     IrFactory::createILoadInstruction(actual_value) : IrFactory::createFLoadInstruction(actual_value);
             addInstruction(actual_value);
         }
         BasicType formal_basic_type = formal->isFloat() ? BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE;
-        if (expr->expr_type_ != formal_basic_type) {
+        if (actual->expr_type_ != formal_basic_type) {
             actual_value = formal_basic_type == BasicType::INT_BTYPE?
                     IrFactory::createF2ICastInstruction(actual_value) : IrFactory::createI2FCastInstruction(actual_value);
             addInstruction(actual_value);

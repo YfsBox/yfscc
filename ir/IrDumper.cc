@@ -74,15 +74,9 @@ std::string IrDumper::getArrayType(const std::vector<int32_t> &dimension, BasicT
         return array_type;
     }
     if (dimension[0] == Argument::ArrayArgumentNullIdx) {
-        for (int i = 1; i < dimension.size(); ++i) {
-            array_type += "[" + std::to_string(dimension[i]) + " x ";
-        }
-        array_type += getBasicType(basic_type);
-        for (int i = 1; i < dimension.size(); ++i) {
-            array_type += "]";
-        }
         array_type += "*";
     } else {
+        array_type += " ";
         for (int i = 0; i < dimension.size(); ++i) {
             array_type += "[" + std::to_string(dimension[i]) + " x ";
         }
@@ -94,25 +88,38 @@ std::string IrDumper::getArrayType(const std::vector<int32_t> &dimension, BasicT
     return array_type;
 }
 
-std::string IrDumper::getOptype(Instruction *inst) const {
+std::string IrDumper::getVarType(BasicType btype, Value *value, bool isptr) {
+
+
+
+}
+
+std::string IrDumper::getOptype(Instruction *inst, BasicType basic_type) const {
     auto inst_type = inst->getInstType();
+    std::string optype;
     switch (inst_type) {
         case InstructionType::AddType:
-            return "add";
+            optype = "add";
+            break;
         case InstructionType::SubType:
-            return "sub";
+            optype = "sub";
+            break;
         case InstructionType::MulType:
-            return "mul";
+            optype = "mul";
+            break;
         case InstructionType::DivType:
-            return "sdiv";
+            optype = "div";
+            break;
         case InstructionType::ModType:
-            return "srem";
-        case InstructionType::NegType:
-            return "neg";
-        case InstructionType::NotType:
-            return "not";
+            optype = "srem";
+            break;
     }
-    return "";
+    if (basic_type == BasicType::INT_BTYPE && inst_type == InstructionType::DivType) {
+        optype = "s" + optype + " nsw ";
+    } else if (basic_type == BasicType::FLOAT_BTYPE) {
+        optype = "f" + optype;
+    }
+    return optype;
 }
 
 void IrDumper::dump(Module *module) {
@@ -270,6 +277,7 @@ void IrDumper::dump(Instruction *inst) {
             return;
         case ZextType:
             dump(dynamic_cast<ZextInstruction *>(inst));
+            return;
     }
     if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
         dump(binary_inst);
@@ -281,7 +289,7 @@ void IrDumper::dump(Instruction *inst) {
 }
 
 void IrDumper::dump(BinaryOpInstruction *binst) {
-    out_ << dumpValue(binst) << " = " << getOptype(binst) <<
+    out_ << dumpValue(binst) << " = " << getOptype(binst, binst->getBasicType()) <<
         " " << dumpValue(binst->getBasicType(), binst->getLeft())
         << ", " << dumpValue( binst->getRight()) << '\n';
 }
@@ -293,9 +301,9 @@ void IrDumper::dump(UnaryOpInstruction *uinst) {
     } else if (uinst->getInstType() == NotType) {
         out_ << dumpValue(uinst) << " = xor i1 " << dumpValue(uinst->getValue()) << ", true\n";
     } else {
-        out_ << dumpValue(uinst) << " = " << getOptype(uinst) <<
+        /*out_ << dumpValue(uinst) << " = " << getOptype(uinst) <<
              " " << dumpValue(uinst->getBasicType(), uinst->getValue())
-             << "\n";
+             << "\n";*/
     }
 }
 
@@ -317,7 +325,7 @@ void IrDumper::dump(AllocaInstruction *inst) {
         out_ << "float";
     }
     if (inst->isArray()) {
-        out_ << " " << getArrayType(inst->getArrayDimensionSize(), inst->getBasicType());
+        out_ << getArrayType(inst->getArrayDimensionSize(), inst->getBasicType());
     }
     out_ << '\n';
 }
@@ -384,7 +392,6 @@ void IrDumper::dump(GEPInstruction *inst) {
 }
 
 void IrDumper::dump(BranchInstruction *inst) {
-
     out_ << "br ";
     if (inst->isCondBranch()) {
         out_ << "i1 " << dumpValue(inst->getCond()) << ", label " << dumpValue(inst->getTrueLabel()) << ", label "

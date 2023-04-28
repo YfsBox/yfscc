@@ -77,11 +77,13 @@ private:
 
     std::string dumpValue(Value *value) const;
 
-    std::string getOptype(Instruction *inst) const;
+    std::string getOptype(Instruction *inst, BasicType basic_type) const;
 
     std::string getCmpCondType(SetCondInstruction *inst) const;
 
     std::string getArrayType(const std::vector<int32_t> &dimension, BasicType basic_type);
+
+    std::string getVarType(BasicType btype, Value *value, bool isptr);
 
     std::ostream &out_;
 };
