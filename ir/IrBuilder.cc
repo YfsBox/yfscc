@@ -942,6 +942,9 @@ void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
                             IrFactory::createIGEPInstruction(actual_value, index_vec):
                             IrFactory::createFGEPInstruction(actual_value, index_vec);
                     addInstruction(actual_value);
+                } else if (arg_type == Argument::ArrayPtrType) {
+                    std::vector<int32_t> array_ptr_dimensions = formal->getDimension();
+
                 }
             }
         }

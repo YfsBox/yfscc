@@ -511,11 +511,18 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
     }
     // 之后分析block部分的代码
     visit(def->getBlock());
+    auto block_items = std::dynamic_pointer_cast<BlockItems>(def->getBlock());
+    std::shared_ptr<BlockItem> return_block_item;
     if (def->getReturnType() == BasicType::VOID_BTYPE) {        // 在void类型中,末尾保证有一个return
-        auto block_items = std::dynamic_pointer_cast<BlockItems>(def->getBlock());
-        auto void_return_block_item = std::make_shared<BlockItem>(std::make_shared<ReturnStatement>());
-        block_items->addItem(void_return_block_item);
+        return_block_item = std::make_shared<BlockItem>(std::make_shared<ReturnStatement>());
+    } else if (def->getReturnType() == BasicType::INT_BTYPE) {
+        auto int_zero_value = std::make_shared<Number>(0);
+        return_block_item = std::make_shared<BlockItem>(std::make_shared<ReturnStatement>(int_zero_value));
+    } else {
+        auto float_zero_value = std::make_shared<Number>(static_cast<float>(0.0));
+        return_block_item = std::make_shared<BlockItem>(std::make_shared<ReturnStatement>(float_zero_value));
     }
+    block_items->addItem(return_block_item);
     curr_func_scope_ = nullptr;
     // SymbolTable();
     ident_systable_.exitScope();
@@ -720,6 +727,7 @@ void SemanticCheck::visit(const std::shared_ptr<ReturnStatement> &stmt) {
         /*if (ret_type != BasicType::VOID_BTYPE && !ret_expr) {    // 返回类型为int或者double时，表达式不应该为null
             appendError("#The function " + func_name + " can't have a return statement with null\n");
         } else*/
+        visit(stmt->getExpr());
         if (ret_type == BasicType::VOID_BTYPE && ret_expr) {
             appendError(stmt.get(), "The function(VOID) can't have a return statement(expr)\n");
         }
