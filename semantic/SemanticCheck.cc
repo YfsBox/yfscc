@@ -511,6 +511,11 @@ void SemanticCheck::visit(const std::shared_ptr<FuncDefine> &def) {
     }
     // 之后分析block部分的代码
     visit(def->getBlock());
+    if (def->getReturnType() == BasicType::VOID_BTYPE) {        // 在void类型中,末尾保证有一个return
+        auto block_items = std::dynamic_pointer_cast<BlockItems>(def->getBlock());
+        auto void_return_block_item = std::make_shared<BlockItem>(std::make_shared<ReturnStatement>());
+        block_items->addItem(void_return_block_item);
+    }
     curr_func_scope_ = nullptr;
     // SymbolTable();
     ident_systable_.exitScope();

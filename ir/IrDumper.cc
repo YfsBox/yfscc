@@ -36,8 +36,15 @@ std::string IrDumper::getBasicType(BasicType basic_type) const {
 std::string IrDumper::dumpValue(Value *value) const {
     auto to_const = dynamic_cast<ConstantVar *>(value);
     if (to_const) {
-        return to_const->isFloat() ?
-               std::to_string(to_const->getFValue()) : std::to_string(to_const->getIValue());
+        std::string value_str;
+        if (to_const->isFloat()) {
+            char dstr[20];
+            snprintf(dstr, 20, "%.8lf", to_const->getFValue());
+            value_str.assign(dstr);
+        } else {
+            value_str = std::to_string(to_const->getIValue());
+        }
+        return value_str;
     } else if (dynamic_cast<GlobalVariable *>(value)) {
         return "@" + value->getName();
     } else if (value != nullptr) {
@@ -309,9 +316,9 @@ void IrDumper::dump(Constant *constant) {
         assert(const_value);
         basic_type = constant->getBasicType();
         if (basic_type == BasicType::INT_BTYPE) {
-            out_ << "i32 " << const_value->getIValue();
+            out_ << "i32 " << dumpValue(const_value);
         } else {
-            out_ << "float " << const_value->getFValue();
+            out_ << "float " << dumpValue(const_value);
         }
     }
 }
@@ -415,6 +422,8 @@ void IrDumper::dump(RetInstruction *inst) {
     out_ << "ret ";
     if (!inst->isRetVoid()) {
         out_ << dumpValue(inst->getBasicType(), inst->getRetValue());
+    } else {
+        out_ << "void";
     }
     out_ << '\n';
 }
