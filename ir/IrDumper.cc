@@ -80,7 +80,7 @@ std::string IrDumper::getCmpCondType(SetCondInstruction *inst) const {
 std::string IrDumper::getArrayType(const std::vector<int32_t> &dimension, BasicType basic_type) {
     std::string array_type;
     if (dimension.empty()) {
-        return array_type;
+        return getBasicType(basic_type);
     }
     if (dimension[0] == Argument::ArrayArgumentNullIdx) {
         array_type += getBasicType(basic_type);
@@ -468,7 +468,7 @@ void IrDumper::dump(GEPInstruction *inst) {
     assert(inst && inst->getPtr());
     out_ << "%" << inst->getName() << " = getelementptr ";
     if (!inst->isUseOffset()) {
-        std::string strtype = getStrTypeAsOperand(inst->getPtr());
+        std::string strtype = getArrayType(inst->getArrayDimension(), inst->getBasicType());
         out_ << strtype << ","
              << strtype << "* "
              << dumpValue(inst->getPtr());

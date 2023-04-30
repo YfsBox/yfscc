@@ -94,6 +94,10 @@ public:
         return value_;
     }
 
+    size_t getArrayDimensionSize() const {
+        return array_dimension_.size();
+    }
+
 private:
     bool is_const_;
     std::string name_;
@@ -225,6 +229,8 @@ private:
     std::deque<WhileBasicBlockPair> while_stack_;
 
     LibFunctionMap libfunction_map_;
+
+    std::vector<Value *> array_lval_index_vec_;
 };
 
 

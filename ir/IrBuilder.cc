@@ -128,10 +128,10 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有�
         // 对其各唯独的参数
         Value *dimension_value = nullptr;
         std::vector<Value *> dimension_numbers;
-        dimension_numbers.reserve(dimension_size);
+        dimension_numbers.reserve(expr->getId()->getDimensionSize());
         // printf("the dimension size is %ld\n", dimension_size);
-        for (size_t i = 0; i < dimension_size; ++i) {
-            visit(lval_ident->getDimensionExpr(i));
+        for (size_t i = 0; i < expr->getId()->getDimensionSize(); ++i) {
+            visit(expr->getId()->getDimensionExpr(i));
             dimension_value = curr_value_;
             if (dimension_value->isPtr()) {
                 dimension_value = IrFactory::createILoadInstruction(dimension_value);
@@ -148,11 +148,35 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有�
                     IrFactory::createFLoadInstruction(base_ptr);
             addInstruction(base_ptr);
         }
-        auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
-                IrFactory::createIGEPInstruction(base_ptr, dimension_numbers):
-                IrFactory::createFGEPInstruction(base_ptr, dimension_numbers);
-        addInstruction(gep_inst_value);
-        setCurrValue(gep_inst_value);
+        std::vector<Value *> gep_insts_vec;
+        // printf("the %s findentry dimension size is %lu, but dimension size is %lu\n", find_entry->getName().c_str(),
+               // find_entry->getArrayDimensionSize(), dimension_numbers.size());
+        if (find_entry->getArrayDimensionSize() == dimension_numbers.size()) {
+            auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
+                                  IrFactory::createIGEPInstruction(base_ptr, dimension_numbers):
+                                  IrFactory::createFGEPInstruction(base_ptr, dimension_numbers);
+            gep_insts_vec.push_back(gep_inst_value);
+        } else {
+            std::vector<Value *> dimension_index = {nullptr};
+            auto curr_base_ptr = base_ptr;
+            for (auto dimension: dimension_numbers) {
+                dimension_index[0] = dimension;
+                auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
+                                IrFactory::createIGEPInstruction(curr_base_ptr, dimension_index):
+                                IrFactory::createFGEPInstruction(curr_base_ptr, dimension_index);
+                gep_insts_vec.push_back(gep_inst_value);
+                curr_base_ptr = gep_inst_value;
+            }
+            dimension_index[0] = IrFactory::createIConstantVar(0);
+            auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
+                                IrFactory::createIGEPInstruction(curr_base_ptr, dimension_index):
+                                IrFactory::createFGEPInstruction(curr_base_ptr, dimension_index);
+            gep_insts_vec.push_back(gep_inst_value);
+        }
+        for (auto gep_inst: gep_insts_vec) {
+            addInstruction(gep_inst);
+            setCurrValue(gep_inst);
+        }
     } else {
         Value *entry_value = find_entry->getValue();
         assert(find_entry);
@@ -250,7 +274,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             // printf("add const global to module %s\n", globalvar_ptr->getName().c_str());
             context_->curr_module_->addGlobalVariable(std::unique_ptr<GlobalVariable>(globalvar_ptr));
             assert(globalvar_ptr);
-            IrSymbolEntry new_entry(true, def_basic_type, new_global_array, var_name);
+            IrSymbolEntry new_entry(true, def_basic_type, dimension_number, new_global_array, var_name);
             var_symbol_table_.addIdent(new_entry);
         } else {
             auto array_len = getArrayLen(dimension_number);
@@ -263,7 +287,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
                 visit(def->getInitExpr());
             }
             setCurrValue(allac_inst_value);
-            IrSymbolEntry new_entry(true, def_basic_type, allac_inst_value, var_name);
+            IrSymbolEntry new_entry(true, def_basic_type, dimension_number, allac_inst_value, var_name);
             var_symbol_table_.addIdent(new_entry);
         }
     } else {
@@ -367,7 +391,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             setGlobalArrayInitValue(array_init_value_expr, const_array);
             // printf("add global to module %s\n", globalvar_ptr->getName().c_str());
             context_->curr_module_->addGlobalVariable(std::unique_ptr<GlobalVariable>(globalvar_ptr));
-            IrSymbolEntry new_entry(false, def_basic_type, new_global_array, var_name);
+            IrSymbolEntry new_entry(false, def_basic_type, dimension_number, new_global_array, var_name);
             var_symbol_table_.addIdent(new_entry);
         } else {
             auto array_len = getArrayLen(dimension_number);
@@ -380,7 +404,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
                 visit(def->getInitExpr());
             }
             setCurrValue(allac_inst_value);
-            IrSymbolEntry new_entry(false, def_basic_type, allac_inst_value, var_name);
+            IrSymbolEntry new_entry(false, def_basic_type, dimension_number, allac_inst_value, var_name);
             var_symbol_table_.addIdent(new_entry);
         }
     } else {        // 不是数组

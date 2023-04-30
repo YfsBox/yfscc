@@ -5,6 +5,7 @@
 #include "Function.h"
 #include "BasicBlock.h"
 #include "Instruction.h"
+#include "GlobalVariable.h"
 
 Instruction::Instruction(InstructionType type, BasicType basic_type, bool isptr, bool isbool, BasicBlock *block, const std::string &name):
         User(ValueType::InstructionValue, isptr, isbool, name),
@@ -186,9 +187,29 @@ GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *base, 
     for (auto value : indexes) {
         addOperand(value);
     }
+    setArrayDimension();
 }
 
 GEPInstruction::~GEPInstruction() = default;
+
+void GEPInstruction::setArrayDimension() {
+    auto ptr_value = getPtr();
+    auto ptr_gep_inst = dynamic_cast<GEPInstruction *>(ptr_value);
+    if (ptr_gep_inst) {
+        auto tmp_dimension = ptr_gep_inst->getArrayDimension();
+        if (!tmp_dimension.empty()) {
+            array_dimension_numbers_ = std::vector<int32_t>(tmp_dimension.begin() + 1, tmp_dimension.end());
+        }
+    } else if (dynamic_cast<AllocaInstruction *>(ptr_value)) {
+        auto alloca_inst_value = dynamic_cast<AllocaInstruction *>(ptr_value);
+        array_dimension_numbers_ = alloca_inst_value->getArrayDimensionSize();
+    } else if (dynamic_cast<GlobalVariable *>(ptr_value)) {
+        auto global_value = dynamic_cast<GlobalVariable *>(ptr_value);
+        auto global_const_value = dynamic_cast<ConstantArray *>(global_value->getConstInit());
+        assert(global_const_value);
+        array_dimension_numbers_ = global_const_value->getDimensionNumbers();
+    }
+}
 
 MemSetInstruction::MemSetInstruction(BasicBlock *block, BasicType btype, Value *base, Value *size, Value *value):
         Instruction(InstructionType::MemSetType, btype, false, false, block){

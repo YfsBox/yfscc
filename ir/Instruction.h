@@ -384,8 +384,15 @@ public:
         return nullptr;
     }
 
+    void setArrayDimension();
+
+    const std::vector<int32_t> &getArrayDimension() const {
+        return array_dimension_numbers_;
+    }
+
 private:
     bool use_offset_;
+    std::vector<int32_t> array_dimension_numbers_;
 };
 
 class MemSetInstruction: public Instruction {
