@@ -51,9 +51,9 @@ StoreInstruction::StoreInstruction(BasicBlock *block, BasicType basic_type, Valu
 StoreInstruction::~StoreInstruction() = default;
 
 LoadInstruction::LoadInstruction(BasicBlock *block, BasicType basic_type, Value *ptr, BasicType type, const std::string &name):
-        Instruction(InstructionType::LoadType, basic_type, false, false, block, name),
-        value_type_(type) {
+        Instruction(InstructionType::LoadType, basic_type, false, false, block, name){
     addOperand(ptr);
+    setArrayDimension();
 }
 
 LoadInstruction::~LoadInstruction() = default;
@@ -62,8 +62,20 @@ Value *LoadInstruction::getPtr() const {
     return getOperand(0);
 }
 
-std::vector<int32_t> LoadInstruction::getArrayDimensionSize() const {
-    return dynamic_cast<AllocaInstruction *>(getPtr())->getArrayDimensionSize();
+const std::vector<int32_t> &LoadInstruction::getArrayDimensionSize() const {
+    return array_dimension_number_;
+}
+
+void LoadInstruction::setArrayDimension() {
+    auto alloca_inst_value = dynamic_cast<AllocaInstruction *>(getPtr());
+    if (alloca_inst_value) {
+        array_dimension_number_ = alloca_inst_value->getArrayDimensionSize();
+        return;
+    }
+    auto gep_inst_value = dynamic_cast<GEPInstruction *>(getPtr());
+    if (gep_inst_value) {
+        array_dimension_number_ = gep_inst_value->getArrayDimension();
+    }
 }
 
 AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, bool isptrptr, const std::string &name):
@@ -203,6 +215,9 @@ void GEPInstruction::setArrayDimension() {
     } else if (dynamic_cast<AllocaInstruction *>(ptr_value)) {
         auto alloca_inst_value = dynamic_cast<AllocaInstruction *>(ptr_value);
         array_dimension_numbers_ = alloca_inst_value->getArrayDimensionSize();
+    } else if (dynamic_cast<LoadInstruction *>(ptr_value)) {
+        auto load_inst_value = dynamic_cast<LoadInstruction *>(ptr_value);
+        array_dimension_numbers_ = load_inst_value->getArrayDimensionSize();
     } else if (dynamic_cast<GlobalVariable *>(ptr_value)) {
         auto global_value = dynamic_cast<GlobalVariable *>(ptr_value);
         auto global_const_value = dynamic_cast<ConstantArray *>(global_value->getConstInit());

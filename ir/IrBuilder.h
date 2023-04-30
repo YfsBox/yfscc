@@ -52,6 +52,8 @@ struct IrContext {
 
 class IrSymbolEntry {
 public:
+    IrSymbolEntry() = default;
+
     IrSymbolEntry(bool is_const, BasicType basic_type, Value *value, const std::string &name):
             is_const_(is_const),
             basic_type_(basic_type),

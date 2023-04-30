@@ -28,7 +28,7 @@ public:
 
     ~Argument();
 
-    bool isPtrPtr() const {
+    bool isPtrArg() const {
         return is_ptr_;
     }
 

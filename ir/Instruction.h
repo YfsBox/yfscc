@@ -115,10 +115,12 @@ public:
 
     Value *getPtr() const;
 
-    std::vector<int32_t> getArrayDimensionSize() const;
+    const std::vector<int32_t> &getArrayDimensionSize() const;
+
+    void setArrayDimension();
 
 private:
-    BasicType value_type_;
+    std::vector<int32_t> array_dimension_number_;
 };
 
 class AllocaInstruction: public Instruction {

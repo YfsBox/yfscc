@@ -74,6 +74,7 @@ void IrBuilder::addLibFunctions(const SemanticCheck::FuncDefineMap &libfunc_map)
             auto formal = formals->getFuncFormal(i);
             Argument *argument = nullptr;
             auto formal_dimension_size = formal->getFormalId()->getDimensionSize();
+            // printf("the %s lib func argument's num is %lu\n", new_function->getName().c_str(), formal_dimension_size);
             if (formal_dimension_size == 0) {    // 普通的值语义类型
                 argument = dynamic_cast<Argument *>(IrFactory::createArgument(formal->getBtype(), new_function));
             } else if (formal_dimension_size == 1) {
@@ -150,7 +151,7 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有�
         }
         std::vector<Value *> gep_insts_vec;
         // printf("the %s findentry dimension size is %lu, but dimension size is %lu\n", find_entry->getName().c_str(),
-               // find_entry->getArrayDimensionSize(), dimension_numbers.size());
+        //     find_entry->getArrayDimensionSize(), dimension_numbers.size());
         if (find_entry->getArrayDimensionSize() == dimension_numbers.size()) {
             auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
                                   IrFactory::createIGEPInstruction(base_ptr, dimension_numbers):
@@ -556,7 +557,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
         auto argument = dynamic_cast<Argument *>(arguments[i]);
         Value *alloca_ptr = nullptr;
         Value *store_inst_value = nullptr;
-        if (!argument->isPtrPtr()) {      // 普通变量
+        if (!argument->isPtrArg()) {      // 普通变量
             alloca_ptr = param_types[i] == BasicType::INT_BTYPE ?
                     IrFactory::createIAllocaInstruction() : IrFactory::createFAllocaInstruction();
         } else {
@@ -573,8 +574,12 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
         store_inst_value = param_types[i] == BasicType::INT_BTYPE ?
                            IrFactory::createIStoreInstruction(function->getArgument(i), alloca_ptr)
                            : IrFactory::createFStoreInstruction(function->getArgument(i), alloca_ptr);
-        IrSymbolEntry new_entry(false, param_types[i] == BasicType::FLOAT_BTYPE ?
-                                       BasicType::FLOAT_BTYPE : BasicType::INT_BTYPE, alloca_ptr, param_names[i]);
+        IrSymbolEntry new_entry;
+        if (param_dimensions[i].empty()) {
+            new_entry = IrSymbolEntry(false, param_types[i], alloca_ptr, param_names[i]);
+        } else {
+            new_entry = IrSymbolEntry(false, param_types[i], param_dimensions[i], alloca_ptr, param_names[i]);
+        }
         var_symbol_table_.addIdent(new_entry);
         addInstruction(alloca_ptr);
         addInstruction(store_inst_value);

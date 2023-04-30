@@ -183,7 +183,7 @@ std::string IrDumper::getStrTypeAsOperand(Argument *argument) {
     } else {
         operand_str += getBasicType(argument->getBasicType());
     }
-    if (argument->isPtrPtr()) {
+    if (argument->isPtrArg()) {
         operand_str += "*";
     }
     return operand_str;
@@ -207,11 +207,7 @@ void IrDumper::dump(Module *module) {
         out_ << "declare " << getBasicType(decl->getRetType()) << " @" << decl->getName() << "(";
         for (int i = 0; i < decl->getArgumentSize(); ++i) {
             auto argument = decl->getArgument(i);
-            if (argument->isArray()) {      // 获取该formal的类型
-                out_ << getArrayType(argument->getDimension(), argument->getBasicType()) << " " << dumpValue(argument);
-            } else {
-                out_ << dumpValue(argument->getBasicType(), argument);
-            }
+            out_ << getStrTypeAsOperand(argument);
             if (i != decl->getArgumentSize() - 1) {
                 out_ << ", ";
             }
@@ -264,7 +260,7 @@ void IrDumper::dump(Function *function) {
         } else {
             out_ << getArrayType(arg->getDimension(), arg->getBasicType());
         }
-        if (arg->isPtrPtr()) {
+        if (arg->isPtrArg()) {
             out_ << "*";
         }
 
