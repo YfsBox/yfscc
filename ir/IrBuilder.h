@@ -26,13 +26,13 @@ struct IrContext {
         ssa_no_(-1),
         curr_function_(nullptr),
         curr_bb_(nullptr),
-        curr_bb_has_ret_(false){}
+        curr_bb_has_branch_(false){}
         
     int ssa_no_{-1};
 
     int block_no_{-1};
 
-    bool curr_bb_has_ret_;
+    bool curr_bb_has_branch_;
 
     Module *curr_module_;
 
@@ -41,11 +41,18 @@ struct IrContext {
     BasicBlock *curr_bb_;
 
     void ResetSSA() {
+        curr_bb_has_branch_ = false;
         ssa_no_ = -1;
     }
 
     void ResetBlockNo() {
         block_no_ = -1;
+    }
+
+    void ssaAdd() {
+        if (!curr_bb_has_branch_) {
+            ssa_no_++;
+        }
     }
 
 };

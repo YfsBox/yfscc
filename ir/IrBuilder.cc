@@ -45,7 +45,7 @@ bool IrBuilder::isSecondaryPtr(Value *ptr) const {
 }
 
 void IrBuilder::addInstruction(Value *inst) {
-    if (!context_->curr_bb_has_ret_) {
+    if (!context_->curr_bb_has_branch_) {
         context_->curr_bb_->addInstruction(inst);
     }
 }
@@ -1068,6 +1068,7 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
 
 void IrBuilder::visit(const std::shared_ptr<BreakStatement> &stmt) {
     addInstruction(IrFactory::createBrInstruction(while_stack_.back().second));
+    context_->curr_bb_has_branch_ = true;
 }
 
 void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
@@ -1260,11 +1261,12 @@ void IrBuilder::visit(const std::shared_ptr<ReturnStatement> &stmt) {
     } else {
         addInstruction(IrFactory::createVoidRetInstruction());
     }
-    context_->curr_bb_has_ret_ = true;
+    context_->curr_bb_has_branch_ = true;
 }
 
 void IrBuilder::visit(const std::shared_ptr<ContinueStatement> &stmt) {
     addInstruction(IrFactory::createBrInstruction(while_stack_.back().first));
+    context_->curr_bb_has_branch_ = true;
 }
 
 void IrBuilder::dump() const {
@@ -1276,6 +1278,6 @@ void IrBuilder::setCurrValue(Value *value) {
 }
 
 void IrBuilder::setCurrBasicBlock(Value *bb) {
-    context_->curr_bb_has_ret_ = false;
+    context_->curr_bb_has_branch_ = false;
     context_->curr_bb_ = dynamic_cast<BasicBlock *>(bb);
 }

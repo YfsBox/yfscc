@@ -724,10 +724,9 @@ void SemanticCheck::visit(const std::shared_ptr<ReturnStatement> &stmt) {
         auto ret_type = curr_func_scope_->getReturnType();
         std::string func_name = curr_func_scope_->getId()->getId();
         auto ret_expr = stmt->getExpr();
-        /*if (ret_type != BasicType::VOID_BTYPE && !ret_expr) {    // 返回类型为int或者double时，表达式不应该为null
-            appendError("#The function " + func_name + " can't have a return statement with null\n");
-        } else*/
-        visit(stmt->getExpr());
+        if (ret_expr) {
+            visit(stmt->getExpr());
+        }
         if (ret_type == BasicType::VOID_BTYPE && ret_expr) {
             appendError(stmt.get(), "The function(VOID) can't have a return statement(expr)\n");
         }
