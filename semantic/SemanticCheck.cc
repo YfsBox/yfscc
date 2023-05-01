@@ -671,10 +671,8 @@ void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
         if (find_libfunc == lib_func_map_.end()) {
             appendError(expr.get(), "#Call a function " + func_name + " not exist.\n");
             return;
-            // 表明lib函数中也没有
         }
-        // 说明属于lib函数,需要作出lib函数的处理，不同于一般定义的函数
-        return;
+        find_func = find_libfunc;
     }
     // 首先检查参数的数量是否是匹配的
     auto func_def = find_func->second;

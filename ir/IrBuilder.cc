@@ -640,7 +640,7 @@ void IrBuilder::visit(const std::shared_ptr<UnaryExpr> &expr) {
     if (value->isPtr()) {
         to_global = dynamic_cast<GlobalVariable *>(value);
         if (to_global && to_global->isConst()) {
-            to_const = dynamic_cast<ConstantVar *>(value);
+            to_const = dynamic_cast<ConstantVar *>(to_global->getConstInit());
             value = basic_type == BasicType::INT_BTYPE ?
                     IrFactory::createIConstantVar(to_const->getIValue()) : IrFactory::createFConstantVar(to_const->getFValue());
         } else {
@@ -960,13 +960,15 @@ void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
         } else {
             auto gep_inst_value = dynamic_cast<GEPInstruction *>(actual_value);
             if (!gep_inst_value) {
+                bool is_from_secondry_ptr = false;
                 if (isSecondaryPtr(actual_value)) {
                     actual_value = actual->expr_type_ == BasicType::INT_BTYPE ?
                             IrFactory::createILoadInstruction(actual_value): IrFactory::createFLoadInstruction(actual_value);
                     LoadInstruction *load_inst_value = dynamic_cast<LoadInstruction *>(actual_value);
                     addInstruction(actual_value);
+                    is_from_secondry_ptr = true;
                 }
-                if (arg_type == Argument::ValuePtrType || arg_type == Argument::ArrayPtrType) {
+                if ((arg_type == Argument::ValuePtrType || arg_type == Argument::ArrayPtrType) && !is_from_secondry_ptr) {
                     std::vector<Value *> index_vec;
                     index_vec.push_back(IrFactory::createIConstantVar(0));
                     actual_value = actual->expr_type_ == BasicType::INT_BTYPE ?

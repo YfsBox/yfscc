@@ -6,6 +6,7 @@
 #define YFSCC_IRDUMPER_H
 
 #include <iostream>
+#include <unordered_map>
 
 class Module;
 class GlobalVariable;
@@ -96,6 +97,10 @@ private:
     std::string getStrTypeAsOperand(GlobalVariable *global);
 
     std::string getStrTypeAsOperand(Argument *argument);
+
+    void setGlobalArrayInitListMap(ConstantArray *const_array, std::vector<int32_t> &init_list_map);
+
+    void dumpGlobalArrayInitListMap(BasicType btype, std::vector<int32_t> dimension, std::vector<int32_t>& init_list_map, int l, int r);
 
     std::ostream &out_;
 };

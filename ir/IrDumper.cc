@@ -39,7 +39,8 @@ std::string IrDumper::dumpValue(Value *value) const {
         std::string value_str;
         if (to_const->isFloat()) {
             char dstr[20];
-            snprintf(dstr, 20, "%.8lf", to_const->getFValue());
+            float fvalue = to_const->getFValue();
+            snprintf(dstr, 20, "%.8f", fvalue);
             value_str.assign(dstr);
         } else {
             value_str = std::to_string(to_const->getIValue());
@@ -60,21 +61,37 @@ std::string IrDumper::dumpValue(BasicType basic_type, Value *value) const {
 }
 
 std::string IrDumper::getCmpCondType(SetCondInstruction *inst) const {
+    std::string cmp_cond_type;
     switch (inst->getCmpType()) {
         case SetCondInstruction::SetGT:
-            return "sgt";
+            cmp_cond_type = "gt";
+            break;
         case SetCondInstruction::SetLT:
-            return "slt";
+            cmp_cond_type = "lt";
+            break;
         case SetCondInstruction::SetGE:
-            return "sge";
+            cmp_cond_type = "ge";
+            break;
         case SetCondInstruction::SetLE:
-            return "sle";
+            cmp_cond_type = "le";
+            break;
         case SetCondInstruction::SetNE:
-            return "ne";
+            cmp_cond_type = "ne";
+            break;
         case SetCondInstruction::SetEQ:
-            return "eq";
+            cmp_cond_type = "eq";
+            break;
     }
-    return "";
+    std::string cmp_flag;
+    if (inst->isFloatCmp()) {
+        cmp_flag = "u";
+    } else {
+        if (inst->getCmpType() == SetCondInstruction::SetEQ || inst->getCmpType() == SetCondInstruction::SetNE) {
+            return cmp_cond_type;
+        }
+        cmp_flag = "s";
+    }
+    return cmp_flag + cmp_cond_type;
 }
 
 std::string IrDumper::getArrayType(const std::vector<int32_t> &dimension, BasicType basic_type) {
@@ -176,6 +193,35 @@ std::string IrDumper::getStrTypeAsOperand(Instruction *inst) {
     return operand_str;
 }
 
+void IrDumper::setGlobalArrayInitListMap(ConstantArray *const_array, std::vector<int32_t> &init_list_map) {
+    init_list_map.resize(const_array->getArrayLen(), 0);
+    for (auto &[key, value]: const_array->getInitValueMap()) {
+        init_list_map[key] = dynamic_cast<ConstantVar *>(value.get())->getIValue();
+    }
+}
+
+void IrDumper::dumpGlobalArrayInitListMap(BasicType btype, std::vector<int32_t> dimension, std::vector<int32_t> &init_list_map, int l, int r) {
+    if (l + 1 == r) {
+        std::string type_str = btype == BasicType::INT_BTYPE ? "i32" : "float";
+        out_ << type_str << " " << init_list_map[l];
+        return;
+    } else if (!dimension.empty()) {
+        int step = (r - l + 1) / dimension.front();
+        std::vector<int32_t> next_dimension = std::vector<int32_t>(dimension.begin() + 1, dimension.end());
+        if (step != 1) {
+            out_ << getArrayType(next_dimension, btype);
+        }
+        out_ << " [";
+        for (int i = l; i < r; i += step) {
+            dumpGlobalArrayInitListMap(btype, next_dimension, init_list_map, l, l + step);
+            if (i + step != r) {
+                out_ << ",";
+            }
+        }
+        out_ << "]";
+    }
+}
+
 std::string IrDumper::getStrTypeAsOperand(Argument *argument) {
     std::string operand_str;
     if (argument->isArray()) {
@@ -194,7 +240,7 @@ std::string IrDumper::getStrTypeAsOperand(GlobalVariable *global) {
     auto global_value = global->getConstInit();
     auto value_array = dynamic_cast<ConstantArray *>(global_value);
     if (value_array) {
-        operand_str += getArrayType(value_array->getDimensionNumbers(), global->getBasicType());
+        operand_str += getArrayType(value_array->getDimensionSizeNumbers(), global->getBasicType());
     } else {
         operand_str += getBasicType(global->getBasicType());
     }
@@ -212,7 +258,7 @@ void IrDumper::dump(Module *module) {
                 out_ << ", ";
             }
         }
-        out_ << ") #1\n\n";
+        out_ << ")\n";
     }
 
     for (const auto &global: module->global_variables_) {
@@ -282,31 +328,8 @@ void IrDumper::dump(Constant *constant) {
     BasicType basic_type;
     auto const_array = dynamic_cast<ConstantArray *>(constant);
     if (const_array) {
-        out_ << getArrayType(const_array->getDimensionNumbers(), const_array->getBasicType()) << "zeroinitializer\n";
-        /*
-        out_ << "[";
-        auto &initvalue_map = const_array->getInitValueMap();
-        basic_type = const_array->getBasicType();
-        int32_t last_idx = -1;
-        for (auto &[key, value]: initvalue_map) {
-            if (key - last_idx != 1) {
-                out_ << "zero init:[" << last_idx + 1 << ", " << key << ") ";
-            } else {
-                out_ << getBasicType(basic_type) << " %" << key << ": ";
-                if (value->isFloat()) {
-                    out_ << value->getFValue();
-                } else {
-                    out_ << value->getIValue();
-                }
-                out_ << " ";
-            }
-            last_idx = key;
-        }
-        size_t array_len = const_array->getArrayLen();
-        if (last_idx != array_len - 1) {
-            out_ << "zero init:[" << last_idx + 1 << ", " << array_len << ") ";
-        }
-        out_ << "]";*/
+        out_ << getArrayType(const_array->getDimensionNumbers(), const_array->getBasicType()) << " zeroinitializer";
+        std::vector<int32_t> array_init_list;
     } else {
         auto const_value = dynamic_cast<ConstantVar *>(constant);
         assert(const_value);
