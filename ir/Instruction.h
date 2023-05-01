@@ -349,9 +349,8 @@ private:
 
 class GEPInstruction: public Instruction {
 public:
-    GEPInstruction(BasicBlock *block, BasicType btype, Value *ptr, Value *offset, const std::string &name = "");
 
-    GEPInstruction(BasicBlock *block, BasicType btype, Value *base, const std::vector<Value *> &indexes, const std::string &name = "");
+    GEPInstruction(BasicBlock *block, BasicType btype, Value *base, bool ptr_offset, const std::vector<Value *> &indexes, const std::string &name = "");
 
     GEPInstruction() = default;
 
@@ -362,28 +361,28 @@ public:
     }
 
     Value *getOffset() const {
-        if (use_offset_) {
+        // if (is_ptr_offset_) {
             return getOperand(1);
-        }
-        return nullptr;
+        //}
+        //return nullptr;
     }
 
-    bool isUseOffset() const {
-        return use_offset_;
+    bool isPtrOffset() const {
+        return is_ptr_offset_;
     }
 
     size_t getIndexSize() const {
-        if (!use_offset_) {
+        // if (!is_ptr_offset_) {
            return getOperandNum() - 1;
-        }
-        return 0;
+        //}
+        // return 0;
     }
 
     Value *getIndexValue(int idx) const {
-        if (!use_offset_) {
+        // if (!is_ptr_offset_) {
             return getOperand(idx + 1);
-        }
-        return nullptr;
+        //}
+        // return nullptr;
     }
 
     void setArrayDimension();
@@ -393,7 +392,7 @@ public:
     }
 
 private:
-    bool use_offset_;
+    bool is_ptr_offset_;       // 如果是指向数组的指针或者普通指针
     std::vector<int32_t> array_dimension_numbers_;
 };
 

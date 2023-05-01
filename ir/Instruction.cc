@@ -184,17 +184,10 @@ BasicBlock *PhiInstruction::getBasicBlock(int idx) const {
     return dynamic_cast<BasicBlock*> (value);
 }
 
-GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *ptr, Value *offset, const std::string &name):
-        Instruction(InstructionType::GEPType, btype, true, false, block, name),
-        use_offset_(true){
-    addOperand(ptr);
-    addOperand(offset);
-}
-
-GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *base, const std::vector<Value *> &indexes,
+GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *base, bool ptr_offset, const std::vector<Value *> &indexes,
                                const std::string &name):
         Instruction(InstructionType::GEPType, btype, true, false, block, name),
-        use_offset_(false){
+        is_ptr_offset_(ptr_offset){
     addOperand(base);
     for (auto value : indexes) {
         addOperand(value);

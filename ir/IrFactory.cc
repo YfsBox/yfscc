@@ -307,24 +307,14 @@ IrFactory::ValuePtr IrFactory::createFRetInstruction(Value *value) {
     return new RetInstruction (context_->curr_bb_, BasicType::FLOAT_BTYPE, value);
 }
 
-IrFactory::ValuePtr IrFactory::createFGEPInstruction(Value *ptr, Value *offset) {
+IrFactory::ValuePtr IrFactory::createIGEPInstruction(Value *base, bool ptr_offset, const std::vector<Value *> &indexes) {
     context_->ssaAdd();
-    return new GEPInstruction (context_->curr_bb_, BasicType::FLOAT_BTYPE, ptr, offset, std::to_string(context_->ssa_no_));
+    return new GEPInstruction(context_->curr_bb_, BasicType::INT_BTYPE, base, ptr_offset, indexes, std::to_string(context_->ssa_no_));
 }
 
-IrFactory::ValuePtr IrFactory::createIGEPInstruction(Value *ptr, Value *offset) {
+IrFactory::ValuePtr IrFactory::createFGEPInstruction(Value *base, bool ptr_offset, const std::vector<Value *> &indexes) {
     context_->ssaAdd();
-    return new GEPInstruction (context_->curr_bb_, BasicType::INT_BTYPE, ptr, offset, std::to_string(context_->ssa_no_));
-}
-
-IrFactory::ValuePtr IrFactory::createIGEPInstruction(Value *base, const std::vector<Value *> &indexes) {
-    context_->ssaAdd();
-    return new GEPInstruction(context_->curr_bb_, BasicType::INT_BTYPE, base, indexes, std::to_string(context_->ssa_no_));
-}
-
-IrFactory::ValuePtr IrFactory::createFGEPInstruction(Value *base, const std::vector<Value *> &indexes) {
-    context_->ssaAdd();
-    return new GEPInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, base, indexes, std::to_string(context_->ssa_no_));
+    return new GEPInstruction(context_->curr_bb_, BasicType::FLOAT_BTYPE, base, ptr_offset, indexes, std::to_string(context_->ssa_no_));
 }
 
 IrFactory::ValuePtr IrFactory::createConstIGlobalVar(int32_t initval, const std::string &name) {

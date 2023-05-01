@@ -143,19 +143,21 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有�
         }       // 求出每个维度idx的值
         // printf("begin gep inst value");
         Value *base_ptr = find_entry->getValue();
+        bool isptr_offset = false;
         if (isSecondaryPtr(base_ptr)) {
             base_ptr = find_entry->getBasicType() == BasicType::INT_BTYPE ?
                     IrFactory::createILoadInstruction(base_ptr):
                     IrFactory::createFLoadInstruction(base_ptr);
             addInstruction(base_ptr);
+            isptr_offset = true;
         }
         std::vector<Value *> gep_insts_vec;
         // printf("the %s findentry dimension size is %lu, but dimension size is %lu\n", find_entry->getName().c_str(),
         //     find_entry->getArrayDimensionSize(), dimension_numbers.size());
         if (find_entry->getArrayDimensionSize() == dimension_numbers.size()) {
             auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
-                                  IrFactory::createIGEPInstruction(base_ptr, dimension_numbers):
-                                  IrFactory::createFGEPInstruction(base_ptr, dimension_numbers);
+                                  IrFactory::createIGEPInstruction(base_ptr, isptr_offset, dimension_numbers):
+                                  IrFactory::createFGEPInstruction(base_ptr, isptr_offset, dimension_numbers);
             gep_insts_vec.push_back(gep_inst_value);
         } else {
             std::vector<Value *> dimension_index = {nullptr};
@@ -163,15 +165,15 @@ void IrBuilder::visit(const std::shared_ptr<LvalExpr> &expr) {          // 有�
             for (auto dimension: dimension_numbers) {
                 dimension_index[0] = dimension;
                 auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
-                                IrFactory::createIGEPInstruction(curr_base_ptr, dimension_index):
-                                IrFactory::createFGEPInstruction(curr_base_ptr, dimension_index);
+                                IrFactory::createIGEPInstruction(curr_base_ptr, false, dimension_index):
+                                IrFactory::createFGEPInstruction(curr_base_ptr, false, dimension_index);
                 gep_insts_vec.push_back(gep_inst_value);
                 curr_base_ptr = gep_inst_value;
             }
             dimension_index[0] = IrFactory::createIConstantVar(0);
             auto gep_inst_value = find_entry->getBasicType() == BasicType::INT_BTYPE ?
-                                IrFactory::createIGEPInstruction(curr_base_ptr, dimension_index):
-                                IrFactory::createFGEPInstruction(curr_base_ptr, dimension_index);
+                                IrFactory::createIGEPInstruction(curr_base_ptr, false, dimension_index):
+                                IrFactory::createFGEPInstruction(curr_base_ptr, false, dimension_index);
             gep_insts_vec.push_back(gep_inst_value);
         }
         for (auto gep_inst: gep_insts_vec) {
@@ -964,16 +966,13 @@ void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
                     LoadInstruction *load_inst_value = dynamic_cast<LoadInstruction *>(actual_value);
                     addInstruction(actual_value);
                 }
-                if (arg_type == Argument::ValuePtrType) {
+                if (arg_type == Argument::ValuePtrType || arg_type == Argument::ArrayPtrType) {
                     std::vector<Value *> index_vec;
                     index_vec.push_back(IrFactory::createIConstantVar(0));
                     actual_value = actual->expr_type_ == BasicType::INT_BTYPE ?
-                            IrFactory::createIGEPInstruction(actual_value, index_vec):
-                            IrFactory::createFGEPInstruction(actual_value, index_vec);
+                            IrFactory::createIGEPInstruction(actual_value, false, index_vec):
+                            IrFactory::createFGEPInstruction(actual_value, false, index_vec);
                     addInstruction(actual_value);
-                } else if (arg_type == Argument::ArrayPtrType) {
-                    std::vector<int32_t> array_ptr_dimensions = formal->getDimension();
-
                 }
             }
         }
@@ -1019,8 +1018,8 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
         BasicType basic_type = curr_decl_->type_;
         auto const_offset = IrFactory::createIConstantVar(arrayval->array_idx_);
         auto gep_inst_value = basic_type == BasicType::INT_BTYPE ?
-                IrFactory::createIGEPInstruction(array_base, arrayIndex2IndexVec(arrayval->array_idx_))
-                :IrFactory::createFGEPInstruction(array_base, arrayIndex2IndexVec(arrayval->array_idx_));
+                IrFactory::createIGEPInstruction(array_base, false, arrayIndex2IndexVec(arrayval->array_idx_))
+                :IrFactory::createFGEPInstruction(array_base, false, arrayIndex2IndexVec(arrayval->array_idx_));
         addInstruction(gep_inst_value);
         visit(arrayval->value_);
         Value *init_value = curr_value_;
@@ -1055,8 +1054,8 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
                 auto offset_const_value = IrFactory::createIConstantVar(start);
                 auto size_const_value = IrFactory::createIConstantVar(len);
                 auto gep_start_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
-                                            IrFactory::createIGEPInstruction(array_base, arrayIndex2IndexVec(start)) :
-                                            IrFactory::createFGEPInstruction(array_base,arrayIndex2IndexVec(start));        // 获取start指针
+                                            IrFactory::createIGEPInstruction(array_base, false, arrayIndex2IndexVec(start)):
+                                            IrFactory::createFGEPInstruction(array_base, false, arrayIndex2IndexVec(start));        // 获取start指针
                 addInstruction(gep_start_inst_value);
 
                 auto memset_inst_value = IrFactory::createCallInstruction({gep_start_inst_value, offset_const_value, size_const_value}, memset_function_);

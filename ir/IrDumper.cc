@@ -463,25 +463,23 @@ void IrDumper::dump(MemSetInstruction *inst) {
 void IrDumper::dump(GEPInstruction *inst) {
     assert(inst && inst->getPtr());
     out_ << "%" << inst->getName() << " = getelementptr ";
-    if (!inst->isUseOffset()) {
-        std::string strtype = getArrayType(inst->getArrayDimension(), inst->getBasicType());
-        out_ << strtype << ","
-             << strtype << "* "
-             << dumpValue(inst->getPtr());
-        out_ << ", ";
-        if (strtype != "i32" && strtype != "float") {
-            out_ << "i32 0, ";
-        }
-        for (int i = 0; i < inst->getIndexSize(); i++) {
-            auto index_value = inst->getIndexValue(i);
-            out_ << dumpValue(BasicType::INT_BTYPE, index_value);
-            if (i != inst->getIndexSize() - 1) {
-                out_ << ", ";
-            }
-        }
-    } else {
-        out_ << getBasicType(inst->getBasicType()) << ", " << getBasicType(inst->getBasicType()) << "* " << dumpValue(inst->getPtr()) << ", i32 " << dumpValue(inst->getOffset());
+
+    std::string strtype = getArrayType(inst->getArrayDimension(), inst->getBasicType());
+    out_ << strtype << ","
+    << strtype << "* "
+    << dumpValue(inst->getPtr());
+    out_ << ", ";
+    if (strtype != "i32" && strtype != "float" && !inst->isPtrOffset()) {
+        out_ << "i32 0, ";
     }
+    for (int i = 0; i < inst->getIndexSize(); i++) {
+        auto index_value = inst->getIndexValue(i);
+        out_ << dumpValue(BasicType::INT_BTYPE, index_value);
+        if (i != inst->getIndexSize() - 1) {
+            out_ << ", ";
+        }
+    }
+
     out_ << "\n";
 }
 

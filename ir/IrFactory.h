@@ -139,13 +139,13 @@ public:
 
     static ValuePtr createF2ICastInstruction(Value *value);
 
-    static ValuePtr createFGEPInstruction(Value *ptr, Value *offset);
+/*  static ValuePtr createFGEPInstruction(Value *ptr, Value *offset);
 
-    static ValuePtr createIGEPInstruction(Value *ptr, Value *offset);
+    static ValuePtr createIGEPInstruction(Value *ptr, Value *offset);*/
 
-    static ValuePtr createIGEPInstruction(Value *base, const std::vector<Value *> &indexes);
+    static ValuePtr createIGEPInstruction(Value *base, bool ptr_offset, const std::vector<Value *> &indexes);
 
-    static ValuePtr createFGEPInstruction(Value *base, const std::vector<Value *> &indexes);
+    static ValuePtr createFGEPInstruction(Value *base, bool ptr_offset, const std::vector<Value *> &indexes);
 
     static ValuePtr createConstIGlobalVar(int32_t initval, const std::string &name);
 
