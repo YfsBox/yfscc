@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <memory>
 #include "Types.h"
 
 std::string getFileContent(const std::string& path);
@@ -21,5 +22,10 @@ std::string binaryType2Str(BinaryOpType type);
 std::string unaryType2Str(UnaryOpType type);
 
 std::string stmtType2Str(StatementType type);
+
+template<class TYPE>
+inline std::unique_ptr<TYPE> GET_UNIQUEPTR(TYPE *raw_ptr) {
+    return std::unique_ptr<TYPE>(raw_ptr);
+}
 
 #endif //YFSCC_UTILS_H

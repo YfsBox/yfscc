@@ -15,10 +15,10 @@ MachineInst::MachineInst(MachineInstType mtype, ValueType value_type, MachineBas
 MachineInst::~MachineInst() = default;
 
 MachineInst::ValueType MachineInst::getValueType(MachineOperand *operand) {
-    if (operand->getOperandType() == MachineOperand::Undef) {
+    if (operand->getValueType() == MachineOperand::Undef) {
         return ValueType::Undef;
     }
-    if (operand->getOperandType() == MachineOperand::Int) {
+    if (operand->getValueType() == MachineOperand::Int) {
         return ValueType::Int;
     }
     return ValueType::Float;
@@ -32,20 +32,12 @@ MoveInst::MoveInst(MachineBasicBlock *parent, MachineOperand *src, MachineOperan
     setValueType(getValueType(src_.get()));
 }
 
-std::string MoveInst::dump() {
-    return "";
-}
-
 MoveInst::~MoveInst() = default;
 
 ClzInst::ClzInst(MachineBasicBlock *parent, MachineOperand *dst):
     MachineInst(Clz, Undef, parent),
     dst_(GET_UNIQUEPTR(dst)){
     setValueType(getValueType(dst_.get()));
-}
-
-std::string ClzInst::dump() {
-    return "";
 }
 
 ClzInst::~ClzInst() = default;
@@ -58,10 +50,6 @@ BinaryInst::BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *d
     setValueType(getValueType(dst_.get()));
 }
 
-std::string BinaryInst::dump() {
-    return "";
-}
-
 BinaryInst::~BinaryInst() = default;
 
 CmpInst::CmpInst(MachineBasicBlock *parent, MachineOperand *lhs, MachineOperand *rhs):
@@ -69,10 +57,6 @@ CmpInst::CmpInst(MachineBasicBlock *parent, MachineOperand *lhs, MachineOperand 
     lhs_(GET_UNIQUEPTR(lhs)),
     rhs_(GET_UNIQUEPTR(rhs)){
     setValueType(getValueType(lhs));
-}
-
-std::string CmpInst::dump() {
-    return "";
 }
 
 CmpInst::~CmpInst() = default;
@@ -83,20 +67,12 @@ CallInst::CallInst(MachineBasicBlock *parent, Label *label):
 
 }
 
-std::string CallInst::dump() {
-    return "";
-}
-
 CallInst::~CallInst() = default;
 
 BranchInst::BranchInst(MachineBasicBlock *parent, Label *label):
     MachineInst(Branch, Undef, parent),
     br_label_(label){
 
-}
-
-std::string BranchInst::dump() {
-    return "";
 }
 
 BranchInst::~BranchInst() = default;
@@ -106,17 +82,9 @@ RetInst::RetInst(MachineBasicBlock *parent):
 
 }
 
-std::string RetInst::dump() {
-    return "";
-}
-
 PushInst::PushInst(MachineBasicBlock *parent):
     MachineInst(Push, Undef, parent){
 
-}
-
-std::string PushInst::dump() {
-    return "";
 }
 
 PopInst::PopInst(MachineBasicBlock *parent):
@@ -133,10 +101,6 @@ StoreInst::StoreInst(MemIndexType index_type, MachineBasicBlock *parent, Machine
 
 }
 
-std::string StoreInst::dump() {
-    return "";
-}
-
 StoreInst::~StoreInst() = default;
 
 LoadInst::LoadInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *base, MachineOperand *offset):
@@ -145,10 +109,6 @@ LoadInst::LoadInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperan
     base_(GET_UNIQUEPTR(base)),
     offset_(GET_UNIQUEPTR(offset)){
     setValueType(getValueType(dst));
-}
-
-std::string LoadInst::dump() {
-    return "";
 }
 
 LoadInst::~LoadInst() = default;

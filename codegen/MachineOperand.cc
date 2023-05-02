@@ -3,7 +3,8 @@
 //
 #include "MachineOperand.h"
 
-MachineOperand::MachineOperand(OperandType operand_type):
+MachineOperand::MachineOperand(ValueType value_type, OperandType operand_type):
+    value_type_(value_type),
     operand_type_(operand_type){
 
 }
@@ -11,61 +12,45 @@ MachineOperand::MachineOperand(OperandType operand_type):
 MachineOperand::~MachineOperand() = default;
 
 ImmNumber::ImmNumber(int32_t value):
-    MachineOperand(MachineOperand::Int),
+    MachineOperand(MachineOperand::Int, OperandType::ImmNumber),
     is_float_(false),
     ivalue_(value){
 
 }
 
 ImmNumber::ImmNumber(float value):
-    MachineOperand(MachineOperand::Float),
+    MachineOperand(MachineOperand::Float, OperandType::ImmNumber),
     is_float_(true),
     fvalue_(value){
 
 }
 
-std::string ImmNumber::dump() {
-    return "";
-}
-
 ImmNumber::~ImmNumber() = default;
 
-VirtualReg::VirtualReg(int reg_id, OperandType operand):
-    MachineOperand(operand),
+VirtualReg::VirtualReg(int reg_id, ValueType value_type):
+    MachineOperand(value_type, OperandType::VirtualReg),
     reg_id_(reg_id){
 
-}
-
-std::string VirtualReg::dump() {
-    return "";
 }
 
 VirtualReg::~VirtualReg() = default;
 
 Label::Label(const std::string &name):
-    MachineOperand(Undef),
+    MachineOperand(Undef, OperandType::Label),
     name_(name){
 
-}
-
-std::string Label::dump() {
-    return "";
 }
 
 Label::~Label() = default;
 
 MachineReg::MachineReg(Reg reg):
-    MachineOperand(Undef),
+    MachineOperand(Undef, OperandType::MachineReg),
     reg_(reg){
     if (reg_ >= r0 && reg_ <= r15) {
-        MachineOperand::operand_type_ = Int;
+        MachineOperand::value_type_ = Int;
     } else if (reg_ >= s0 && reg_ <= s31) {
-        MachineOperand::operand_type_ = Float;
+        MachineOperand::value_type_ = Float;
     }
-}
-
-std::string MachineReg::dump() {
-    return "";
 }
 
 MachineReg::~MachineReg() = default;

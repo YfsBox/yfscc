@@ -42,8 +42,6 @@ public:
 
     virtual ~MachineInst();
 
-    virtual std::string dump() = 0;
-
     MachineInstType getMachineInstType() const {
         return machine_inst_type_;
     }
@@ -81,7 +79,6 @@ public:
         return dst_.get();
     }
 
-    std::string dump() override;
 private:
     OperandPtr dst_;
     OperandPtr src_;
@@ -97,7 +94,7 @@ public:
         return dst_.get();
     }
 
-    std::string dump() override;
+
 private:
     OperandPtr dst_;
 };
@@ -134,7 +131,7 @@ public:
         return binary_op_type_;
     }
 
-    std::string dump() override;
+
 
 private:
     BinaryOp binary_op_type_;
@@ -148,7 +145,7 @@ public:
 
     ~CmpInst();
 
-    std::string dump() override;
+
 private:
     OperandPtr lhs_;
     OperandPtr rhs_;
@@ -164,7 +161,7 @@ public:
         return call_label_;
     }
 
-    std::string dump() override;
+
 private:
     Label *call_label_;
 };
@@ -175,7 +172,7 @@ public:
 
     ~BranchInst();
 
-    std::string dump() override;
+
 private:
     Label *br_label_;
 };
@@ -186,7 +183,7 @@ public:
 
     ~RetInst();
 
-    std::string dump() override;
+
 private:
 };
 
@@ -200,7 +197,7 @@ public:
 
     PushInst() = default;
 
-    std::string dump() override;
+
 
     void addReg(MachineReg *reg);
 
@@ -222,7 +219,7 @@ public:
 
     ~PopInst() = default;
 
-    std::string dump() override;
+
 private:
 
 };
@@ -254,7 +251,7 @@ public:
         return dst_.get();
     }
 
-    std::string dump() override;
+
 
 private:
     MemIndexType index_type_;
@@ -281,7 +278,6 @@ public:
         return offset_.get();
     }
 
-    std::string dump() override;
 private:
     MemIndexType index_type_;
     OperandPtr dst_;

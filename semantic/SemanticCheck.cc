@@ -864,20 +864,6 @@ void SemanticCheck::visit(const std::shared_ptr<ArrayValue> &arrayval) {
     // printf("the miss cnt is %d in depth %lu, the curr depth value num is %d\n",
            // miss_cnt, curr_array_list_info_.curr_list_depth_, curr_array_list_info_.curr_depth_value_num_);
     if (miss_cnt >= 0) {
-        /*printf("init number in array list from %d to %d\n",
-               curr_array_list_info_.total_value_num_, curr_array_list_info_.total_value_num_ + miss_cnt);
-        for (size_t i = 0; i < miss_cnt; ++i) {
-            std::shared_ptr<Number> number_value;
-            if (curr_array_list_info_.value_type_ == FLOAT_BTYPE) {
-                float number = 0.0;
-                number_value = std::make_shared<Number>(number);
-            } else {
-                int32_t number = 0;
-                number_value = std::make_shared<Number>(number);
-            }
-            // printf("add Implicit node to array init list in depth %lu, the miss cnt is %lu\n", curr_array_list_info_.curr_list_depth_, miss_cnt);
-            arrayval->valueList_.emplace_back(std::make_shared<ArrayValue>(true, number_value));
-        }*/
         curr_array_list_info_.curr_top_array_initlist_->addInitInterval(curr_array_list_info_.total_value_num_,
                                   curr_array_list_info_.total_value_num_ + miss_cnt);
         curr_array_list_info_.curr_depth_value_num_ += miss_cnt;

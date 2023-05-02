@@ -9,37 +9,45 @@
 
 class MachineOperand {
 public:
-    enum OperandType {
+    enum ValueType {
         Undef,
         Float,
         Int,
     };
 
-    MachineOperand(OperandType operand_type);
+    enum OperandType {
+        VirtualReg,
+        ImmNumber,
+        Label,
+        MachineReg,
+    };
+
+    MachineOperand(ValueType value_type, OperandType operand_type);
 
     virtual ~MachineOperand();
 
-    virtual std::string dump() = 0;
+    ValueType getValueType() const {
+        return value_type_;
+    }
 
     OperandType getOperandType() const {
         return operand_type_;
     }
 
 protected:
+    ValueType value_type_;
     OperandType operand_type_;
 };
 
 class VirtualReg: public MachineOperand {
 public:
-    VirtualReg(int reg_id, OperandType operand_type);
+    VirtualReg(int reg_id, ValueType value_type);
 
     ~VirtualReg();
 
     int getRegId() const {
         return reg_id_;
     }
-
-    std::string dump() override;
 
 private:
     int reg_id_;
@@ -65,8 +73,6 @@ public:
         return fvalue_;
     }
 
-    std::string dump() override;
-
 private:
     bool is_float_;
     union {
@@ -85,7 +91,6 @@ public:
         return name_;
     }
 
-    std::string dump() override;
 private:
     std::string name_;
 };
@@ -106,7 +111,6 @@ public:
         return reg_;
     }
 
-    std::string dump() override;
 private:
     Reg reg_;
 };

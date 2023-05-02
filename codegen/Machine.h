@@ -8,6 +8,7 @@
 #include <vector>
 #include <list>
 #include <memory>
+#include "MachineInst.h"
 
 class MachineInst;
 class MachineFunction;
@@ -23,8 +24,6 @@ public:
         return ir_module_;
     }
 
-    std::string dump();
-
 private:
     Module *ir_module_;
 };
@@ -39,7 +38,6 @@ public:
 
     void addInstruction(MachineInst *inst);
 
-    std::string dump();
 private:
     MachineFunction *parent_;
     std::list<MachineInstPtr> instructions_;
@@ -61,7 +59,6 @@ public:
         return basic_blocks_.size();
     }
 
-    std::string dump();
 private:
     MachineModule *module_;
     std::vector<MachineBasicBlockPtr> basic_blocks_;
