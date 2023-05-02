@@ -76,9 +76,13 @@ public:
         return dimension_number_;
     }
 
+    const std::vector<int32_t> &getDimensionSizeNumbers() const {
+        return dimension_size_number_;
+    }
+
 private:
     std::vector<int32_t> dimension_number_;
-    std::vector<size_t> dimension_size_number_;
+    std::vector<int32_t> dimension_size_number_;
     InitValueMap init_value_map_;
 };
 
