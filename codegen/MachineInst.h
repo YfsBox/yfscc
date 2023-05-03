@@ -183,7 +183,6 @@ public:
 
     ~RetInst();
 
-
 private:
 };
 

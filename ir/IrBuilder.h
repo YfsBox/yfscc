@@ -176,6 +176,10 @@ public:
 
     void dump() const;
 
+    Module *getIrModule() const {
+        return module_.get();
+    }
+
 private:
     void addValueCast(Value *left, Value *right);
 

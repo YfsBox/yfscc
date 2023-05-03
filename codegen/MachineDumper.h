@@ -76,6 +76,10 @@ public:
 
     void dump(const Label *operand);
 
+    void dump() {
+        dump(module_);
+    }
+
     std::string getFileName() const {
         return out_file_name_;
     }

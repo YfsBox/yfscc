@@ -4,6 +4,8 @@
 #include "common/Utils.h"
 #include "ir/IrBuilder.h"
 #include "semantic/SemanticCheck.h"
+#include "codegen/CodeGen.h"
+#include "codegen/MachineDumper.h"
 
 extern int yyparse();
 extern std::shared_ptr<CompUnit> root;
@@ -12,9 +14,15 @@ extern void scan_string(const char *str);
 int main(int argc, char **argv) {
     // 第一个参数为file name
     std::string source_file;
+    std::string target_file;
     if (argc > 1) {
         source_file = argv[1];
         // printf("the src file is: %s\n", source_file.c_str());
+    }
+    if (argc > 2) {
+        target_file.assign(argv[2]);
+    } else {
+        target_file = "a.s";
     }
 
     auto content = getFileContent(source_file);
@@ -30,7 +38,12 @@ int main(int argc, char **argv) {
 
     IrBuilder irbuilder(std::cout, checker->getLibFunctionsMap());
     irbuilder.visit(root);
-    irbuilder.dump();
+
+    CodeGen codegen(irbuilder.getIrModule());
+    codegen.codeGenerate();
+
+    MachineDumper mcdumper(codegen.getMCModule(), target_file);
+    mcdumper.dump();
     // yylex();
     return 0;
 }

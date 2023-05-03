@@ -82,6 +82,8 @@ RetInst::RetInst(MachineBasicBlock *parent):
 
 }
 
+RetInst::~RetInst() = default;
+
 PushInst::PushInst(MachineBasicBlock *parent):
     MachineInst(Push, Undef, parent){
 

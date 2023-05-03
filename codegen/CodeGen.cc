@@ -3,85 +3,84 @@
 //
 #include "CodeGen.h"
 
-CodeGen::CodeGen(std::ofstream &out, Module *ir_module):
-    out_stream_(out),
+CodeGen::CodeGen(Module *ir_module):
     module_(std::make_unique<MachineModule>(ir_module)){
 
 }
 
-void CodeGen::visit(Module *module) {
+void CodeGen::visit(const Module *module) {
 
 }
 
-void CodeGen::visit(BasicBlock *block) {
+void CodeGen::visit(const BasicBlock *block) {
 
 }
 
-void CodeGen::visit(Instruction *inst) {
+void CodeGen::visit(const Instruction *inst) {
 
 }
 
-void CodeGen::visit(Constant *constant) {
+void CodeGen::visit(const Constant *constant) {
 
 }
 
-void CodeGen::visit(Function *function) {
+void CodeGen::visit(const Function *function) {
 
 }
 
-void CodeGen::visit(GEPInstruction *inst) {
+void CodeGen::visit(const GEPInstruction *inst) {
 
 }
 
-void CodeGen::visit(RetInstruction *inst) {
+void CodeGen::visit(const RetInstruction *inst) {
 
 }
 
-void CodeGen::visit(CallInstruction *inst) {
+void CodeGen::visit(const CallInstruction *inst) {
 
 }
 
-void CodeGen::visit(CastInstruction *inst) {
+void CodeGen::visit(const CastInstruction *inst) {
 
 }
 
-void CodeGen::visit(LoadInstruction *inst) {
+void CodeGen::visit(const LoadInstruction *inst) {
 
 }
 
-void CodeGen::visit(ZextInstruction *inst) {
+void CodeGen::visit(const ZextInstruction *inst) {
 
 }
 
-void CodeGen::visit(GlobalVariable *global) {
+void CodeGen::visit(const GlobalVariable *global) {
 
 }
 
-void CodeGen::visit(StoreInstruction *inst) {
+void CodeGen::visit(const StoreInstruction *inst) {
 
 }
 
-void CodeGen::visit(AllocaInstruction *inst) {
+void CodeGen::visit(const AllocaInstruction *inst) {
 
 }
 
-void CodeGen::visit(BranchInstruction *inst) {
+void CodeGen::visit(const BranchInstruction *inst) {
 
 }
 
-void CodeGen::visit(MemSetInstruction *inst) {
+void CodeGen::visit(const MemSetInstruction *inst) {
 
 }
 
-void CodeGen::visit(SetCondInstruction *inst) {
+void CodeGen::visit(const SetCondInstruction *inst) {
 
 }
 
-void CodeGen::visit(UnaryOpInstruction *uinst) {
+void CodeGen::visit(const UnaryOpInstruction *uinst) {
 
 }
 
-void CodeGen::visit(BinaryOpInstruction *binst) {
+void CodeGen::visit(const BinaryOpInstruction *binst) {
 
 }
 

@@ -32,7 +32,7 @@ class CodeGen {
 public:
     using MachineModulePtr = std::unique_ptr<MachineModule>;
 
-    CodeGen(std::ofstream &out, Module *ir_module);
+    CodeGen(Module *ir_module);
 
     ~CodeGen() = default;
 
@@ -40,48 +40,54 @@ public:
         return module_.get();
     }
 
-    void visit(Module *module);
+    void visit(const Module *module);
 
-    void visit(GlobalVariable *global);
+    void visit(const GlobalVariable *global);
 
-    void visit(Function *function);
+    void visit(const Function *function);
 
-    void visit(Constant *constant);
+    void visit(const Constant *constant);
 
-    void visit(Instruction *inst);
+    void visit(const Instruction *inst);
 
-    void visit(BinaryOpInstruction *binst);
+    void visit(const BinaryOpInstruction *binst);
 
-    void visit(UnaryOpInstruction *uinst);
+    void visit(const UnaryOpInstruction *uinst);
 
-    void visit(StoreInstruction *inst);
+    void visit(const StoreInstruction *inst);
 
-    void visit(LoadInstruction *inst);
+    void visit(const LoadInstruction *inst);
 
-    void visit(AllocaInstruction *inst);
+    void visit(const AllocaInstruction *inst);
 
-    void visit(RetInstruction *inst);
+    void visit(const RetInstruction *inst);
 
-    void visit(BasicBlock *block);
+    void visit(const BasicBlock *block);
 
-    void visit(MemSetInstruction *inst);
+    void visit(const MemSetInstruction *inst);
 
-    void visit(GEPInstruction *inst);
+    void visit(const GEPInstruction *inst);
 
-    void visit(BranchInstruction *inst);
+    void visit(const BranchInstruction *inst);
 
-    void visit(SetCondInstruction *inst);
+    void visit(const SetCondInstruction *inst);
 
-    void visit(CallInstruction *inst);
+    void visit(const CallInstruction *inst);
 
-    void visit(ZextInstruction *inst);
+    void visit(const ZextInstruction *inst);
 
-    void visit(CastInstruction *inst);
+    void visit(const CastInstruction *inst);
+
+    void codeGenerate() {
+        visit(module_->getIRModule());
+    }
+
+    MachineModule *getMCModule() const {
+        return module_.get();
+    }
 
 private:
     MachineModulePtr module_;
-
-    std::ofstream &out_stream_;
 
 };
 
