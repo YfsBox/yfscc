@@ -22,6 +22,10 @@ void MachineBasicBlock::addInstruction(MachineInst *inst) {
     instructions_.push_back(GET_UNIQUEPTR(inst));
 }
 
+void MachineBasicBlock::addFrontInstruction(MachineInst *inst) {
+    instructions_.push_front(GET_UNIQUEPTR(inst));
+}
+
 MachineFunction::MachineFunction(MachineModule *module):
     module_(module){
 

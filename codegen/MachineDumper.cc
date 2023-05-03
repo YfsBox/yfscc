@@ -10,6 +10,7 @@
 #include "../ir/Constant.h"
 #include "../ir/GlobalVariable.h"
 #include "../ir/Module.h"
+#include "../common/Utils.h"
 
 MachineDumper::MachineDumper(MachineModule *module, const std::string &file_name):
     module_(module),
@@ -186,7 +187,7 @@ void MachineDumper::dumpGlobals() {
                     fout_ << value->getIValue();
                 } else {
                     float tmp_value = value->getFValue();
-                    fout_ << *(int *)(&tmp_value);
+                    fout_ << getFloat2IntForm(tmp_value);
                 }
                 fout_ << "\n";
                 last_index = index;

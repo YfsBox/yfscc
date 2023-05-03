@@ -13,6 +13,7 @@ class Value;
 class Module;
 class GlobalVariable;
 class Constant;
+class ConstantVar;
 class Function;
 class Instruction;
 class BinaryOpInstruction;
@@ -38,6 +39,8 @@ public:
     using MachineModulePtr = std::unique_ptr<MachineModule>;
 
     using GlobalVarLabelPtr = std::unique_ptr<Label>;
+
+    using Value2MachineRegMap = std::unordered_map<Value *, MachineOperand *>;
 
     CodeGen(Module *ir_module);
 
@@ -94,9 +97,18 @@ public:
     }
 
 private:
+
+    bool isImmNeedSplitMove(int32_t imm_value);
+
+    void addMachineInst(MachineInst *inst) {
+        curr_machine_basic_block_->addInstruction(inst);
+    }
+
     VirtualReg *createVirtualReg(MachineOperand::ValueType value_type);
 
     MoveInst *loadGlobalVarAddr(GlobalVariable *global);
+
+    MachineOperand *value2MachineOperand(Value *value);
 
     int virtual_reg_id_;
 
@@ -109,6 +121,8 @@ private:
     std::unordered_map<std::string, GlobalVarLabelPtr> global_var_map_;
 
     std::unordered_map<int, VirtualReg *> virtual_reg_map_;
+
+    Value2MachineRegMap value_machinereg_map_;
 };
 
 #endif //YFSCC_CODEGEN_H
