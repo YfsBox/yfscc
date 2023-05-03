@@ -174,6 +174,7 @@ void MachineDumper::dumpGlobals() {
             auto const_array = dynamic_cast<ConstantArray *>(global->getConstInit());
             auto &init_value_map = const_array->getInitValueMap();
             int last_index = -1;
+            size_t array_len = const_array->getArrayLen();
             for (auto &[index, value]: init_value_map) {
                 fout_ << "  ";
                 if (index == last_index + 1) {
@@ -190,6 +191,11 @@ void MachineDumper::dumpGlobals() {
                 }
                 last_index = index;
             }
+
+            if (array_len != last_index + 1) {
+                fout_ << "  .zero\t" << (array_len - last_index - 1) * 4 << "\n";
+            }
         }
+        fout_ << "\n";
     }
 }

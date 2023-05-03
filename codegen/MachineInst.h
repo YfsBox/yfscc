@@ -16,7 +16,7 @@ class Label;
 
 class MachineInst {
 public:
-    using OperandPtr = std::unique_ptr<MachineOperand>;
+    using OperandPtr = MachineOperand *;
 
     enum ValueType {
         Undef,
@@ -82,11 +82,11 @@ public:
     ~MoveInst();
 
     MachineOperand *getSrc() const {
-        return src_.get();
+        return src_;
     }
 
     MachineOperand *getDst() const {
-        return dst_.get();
+        return dst_;
     }
 
     MoveType getMoveType() const {
@@ -106,7 +106,7 @@ public:
     ~ClzInst();
 
     MachineOperand *getDst() const {
-        return dst_.get();
+        return dst_;
     }
     
 private:
@@ -134,11 +134,11 @@ public:
     ~BinaryInst();
 
     MachineOperand *getDst() const {
-        return dst_.get();
+        return dst_;
     }
 
     MachineOperand *getSrc() const {
-        return src_.get();
+        return src_;
     }
 
     BinaryOp getBinaryOp() const {
@@ -202,24 +202,24 @@ private:
 
 class PushInst: public MachineInst {
 public:
-    using RegPtr = std::unique_ptr<MachineReg>;
+    using RegPtr = MachineReg *;
 
     using PushRegsList = std::vector<RegPtr>;
 
     PushInst(MachineBasicBlock *parent);
 
-    PushInst() = default;
+    ~PushInst() = default;
 
-
-
-    void addReg(MachineReg *reg);
+    void addReg(MachineReg *reg) {
+        regs_list_.push_back(reg);
+    }
 
     int getRegsSize() const {
         return regs_list_.size();
     }
 
     MachineReg *getReg(int idx) const {
-        return regs_list_[idx].get();
+        return regs_list_[idx];
     }
 
 private:
@@ -232,9 +232,20 @@ public:
 
     ~PopInst() = default;
 
+    void addReg(MachineReg *reg) {
+        regs_list_.push_back(reg);
+    }
+
+    int getRegsSize() const {
+        return regs_list_.size();
+    }
+
+    MachineReg *getReg(int idx) const {
+        return regs_list_[idx];
+    }
 
 private:
-
+    std::vector<MachineReg *> regs_list_;
 };
 
 enum MemIndexType {
@@ -253,15 +264,15 @@ public:
     }
 
     MachineOperand *getBase() const {
-        return base_.get();
+        return base_;
     }
 
     MachineOperand *getOffset() const {
-        return offset_.get();
+        return offset_;
     }
 
     MachineOperand *getDst() const {
-        return dst_.get();
+        return dst_;
     }
 
 
@@ -280,15 +291,15 @@ public:
     ~LoadInst();
 
     MachineOperand *getDst() const {
-        return dst_.get();
+        return dst_;
     }
 
     MachineOperand *getBase() const {
-        return base_.get();
+        return base_;
     }
 
     MachineOperand *getOffset() const {
-        return offset_.get();
+        return offset_;
     }
 
 private:
