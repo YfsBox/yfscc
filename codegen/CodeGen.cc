@@ -140,8 +140,17 @@ void CodeGen::visit(GEPInstruction *inst) {
 }
 
 void CodeGen::visit(RetInstruction *inst) {
-
-
+    RetInst *ret_inst = new RetInst(curr_machine_basic_block_);
+    if (!inst->isRetVoid()) {
+        bool is_float = false;
+        MachineOperand *dst_operand = nullptr;
+        MoveInst *mov_inst = nullptr;
+        auto operand = value2MachineOperand(inst->getRetValue(), &is_float);
+        dst_operand = createVirtualReg(is_float ? MachineOperand::Float : MachineOperand::Int);
+        mov_inst = new MoveInst(curr_machine_basic_block_, is_float ? MoveInst::F2F : MoveInst::I2I, operand, dst_operand);
+        addMachineInst(mov_inst);
+    }
+    addMachineInst(ret_inst);
 }
 
 void CodeGen::visit(CallInstruction *inst) {
@@ -171,9 +180,10 @@ MoveInst *CodeGen::loadGlobalVarAddr(GlobalVariable *global) {
     return move_inst;
 }
 
-MachineOperand *CodeGen::value2MachineOperand(Value *value) {
+MachineOperand *CodeGen::value2MachineOperand(Value *value, bool *is_float) {
     auto find_value = value_machinereg_map_.find(value);
     if (find_value != value_machinereg_map_.end()) {
+        *is_float = find_value->second->getValueType() == MachineOperand::Float;
         return find_value->second;
     }
 
@@ -226,6 +236,8 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value) {
 
             addMachineInst(mov_i2i_inst);
             addMachineInst(mov_i2f_inst);
+
+            *is_float = true;
         }
     }
 
@@ -235,7 +247,6 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value) {
 void CodeGen::visit(GlobalVariable *global) {
     auto label = new Label(global->getName());
     global_var_map_[label->getName()] = GET_UNIQUEPTR(label);
-
 }
 
 void CodeGen::visit(StoreInstruction *inst) {

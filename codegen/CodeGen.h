@@ -108,7 +108,7 @@ private:
 
     MoveInst *loadGlobalVarAddr(GlobalVariable *global);
 
-    MachineOperand *value2MachineOperand(Value *value);
+    MachineOperand *value2MachineOperand(Value *value, bool *is_float);
 
     int virtual_reg_id_;
 

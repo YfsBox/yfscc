@@ -91,9 +91,6 @@ std::string stmtType2Str(StatementType type) {
     return "";
 }
 
-inline int32_t getFloat2IntForm(float value) {
-    return *(int32_t *)(&value);
-}
 
 
 
