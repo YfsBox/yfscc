@@ -26,7 +26,6 @@ public:
 
     ~GlobalVariable();
 
-
     Constant *getConstInit() const {
         return const_init_.get();
     }

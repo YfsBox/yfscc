@@ -7,7 +7,9 @@
 #include <fstream>
 #include <unordered_map>
 #include "Machine.h"
+#include "MachineOperand.h"
 
+class Value;
 class Module;
 class GlobalVariable;
 class Constant;
@@ -28,6 +30,8 @@ class CallInstruction;
 class ZextInstruction;
 class Argument;
 class CastInstruction;
+
+class VirtualReg;
 
 class CodeGen {
 public:
@@ -90,6 +94,10 @@ public:
     }
 
 private:
+    VirtualReg *createVirtualReg(MachineOperand::ValueType value_type);
+
+    MoveInst *loadGlobalVarAddr(GlobalVariable *global);
+
     int virtual_reg_id_;
 
     MachineModulePtr module_;
@@ -100,7 +108,7 @@ private:
 
     std::unordered_map<std::string, GlobalVarLabelPtr> global_var_map_;
 
-    std::unordered_map<int, Value *> virtual_reg_map_;
+    std::unordered_map<int, VirtualReg *> virtual_reg_map_;
 };
 
 #endif //YFSCC_CODEGEN_H

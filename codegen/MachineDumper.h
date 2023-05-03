@@ -6,6 +6,8 @@
 #define YFSCC_MACHINEDUMPER_H
 
 #include <fstream>
+#include <unordered_set>
+#include <vector>
 
 class MachineModule;
 class MachineFunction;
@@ -30,8 +32,12 @@ class ImmNumber;
 class Label;
 class MachineReg;
 
+class GlobalVariable;
+
 class MachineDumper {
 public:
+    using GlobalVarSet = std::vector<const GlobalVariable *>;
+
     MachineDumper(MachineModule *module, const std::string &file_name);
 
     ~MachineDumper();
@@ -78,7 +84,10 @@ public:
 
     void dump() {
         dump(module_);
+        dumpGlobals();
     }
+
+    void dumpGlobals();
 
     std::string getFileName() const {
         return out_file_name_;
@@ -90,6 +99,8 @@ private:
     std::string out_file_name_;
 
     std::ofstream fout_;
+
+    GlobalVarSet global_set_;
 };
 
 

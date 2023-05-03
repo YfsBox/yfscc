@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <memory>
+#include "Function.h"
 
 class GlobalVariable;
 class Function;
@@ -23,9 +24,7 @@ public:
 
     ~Module() = default;
 
-    void addGlobalVariable(GlobalVariablePtr var) {
-        global_variables_.emplace_back(std::move(var));
-    }
+    void addGlobalVariable(GlobalVariablePtr var);
 
     void addFunction(FunctionPtr func) {
         functions_.emplace_back(std::move(func));
@@ -33,6 +32,10 @@ public:
 
     void addFunctionDecl(FunctionPtr func) {
         lib_func_decl_.emplace_back(std::move(func));
+    }
+
+    size_t getGlobalSize() const {
+        return global_variables_.size();
     }
 
     size_t getFuncSize() const {
@@ -43,12 +46,25 @@ public:
         return lib_func_decl_.size();
     }
 
-    Function *getFunction(int idx) {
+    Function *getFunction(int idx) const {
         return functions_[idx].get();
     }
 
-    Function *getLibFunction(int idx) {
+    Function *getLibFunction(int idx) const {
         return lib_func_decl_[idx].get();
+    }
+
+    GlobalVariable *getGlobalVariable(int idx) const {
+        return global_variables_[idx].get();
+    }
+
+    std::vector<const GlobalVariable *> getGlobalSet() const {
+        std::vector<const GlobalVariable *> globals;
+        globals.reserve(global_variables_.size());
+        for (auto &global: global_variables_) {
+            globals.push_back(global.get());
+        }
+        return globals;
     }
 
 private:

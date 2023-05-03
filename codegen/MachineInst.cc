@@ -26,25 +26,25 @@ MachineInst::ValueType MachineInst::getValueType(MachineOperand *operand) {
 
 MoveInst::MoveInst(MachineBasicBlock *parent, MoveType movtype, MachineOperand *src, MachineOperand *dst):
     MachineInst(Move, Undef, parent),
-    dst_(GET_UNIQUEPTR(dst)),
-    src_(GET_UNIQUEPTR(src)),
+    dst_(dst),
+    src_(src),
     mov_type_(movtype){
-    setValueType(getValueType(dst_.get()));
+    setValueType(getValueType(dst_));
 }
 
 MoveInst::MoveInst(MachineBasicBlock *parent, MachineOperand *src, MachineOperand *dst):
     MachineInst(Move, Undef, parent),
-    dst_(GET_UNIQUEPTR(dst)),
-    src_(GET_UNIQUEPTR(src)){
-    setValueType(getValueType(dst_.get()));
+    dst_(dst),
+    src_(src){
+    setValueType(getValueType(dst_));
 }
 
 MoveInst::~MoveInst() = default;
 
 ClzInst::ClzInst(MachineBasicBlock *parent, MachineOperand *dst):
     MachineInst(Clz, Undef, parent),
-    dst_(GET_UNIQUEPTR(dst)){
-    setValueType(getValueType(dst_.get()));
+    dst_(dst){
+    setValueType(getValueType(dst_));
 }
 
 ClzInst::~ClzInst() = default;
@@ -52,17 +52,17 @@ ClzInst::~ClzInst() = default;
 BinaryInst::BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *src):
     MachineInst(Binary, Undef, parent),
     binary_op_type_(op),
-    dst_(GET_UNIQUEPTR(dst)),
-    src_(GET_UNIQUEPTR(src)){
-    setValueType(getValueType(dst_.get()));
+    dst_(dst),
+    src_(src){
+    setValueType(getValueType(dst_));
 }
 
 BinaryInst::~BinaryInst() = default;
 
 CmpInst::CmpInst(MachineBasicBlock *parent, MachineOperand *lhs, MachineOperand *rhs):
     MachineInst(Cmp, Undef, parent),
-    lhs_(GET_UNIQUEPTR(lhs)),
-    rhs_(GET_UNIQUEPTR(rhs)){
+    lhs_(lhs),
+    rhs_(rhs){
     setValueType(getValueType(lhs));
 }
 
@@ -104,9 +104,9 @@ PopInst::PopInst(MachineBasicBlock *parent):
 StoreInst::StoreInst(MemIndexType index_type, MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *base, MachineOperand *offset):
     MachineInst(Store, Undef, parent),
     index_type_(index_type),
-    dst_(GET_UNIQUEPTR(dst)),
-    base_(GET_UNIQUEPTR(base)),
-    offset_(GET_UNIQUEPTR(offset)){
+    dst_(dst),
+    base_(base),
+    offset_(offset){
 
 }
 
@@ -114,9 +114,9 @@ StoreInst::~StoreInst() = default;
 
 LoadInst::LoadInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *base, MachineOperand *offset):
     MachineInst(Load, Undef, parent),
-    dst_(GET_UNIQUEPTR(dst)),
-    base_(GET_UNIQUEPTR(base)),
-    offset_(GET_UNIQUEPTR(offset)){
+    dst_(dst),
+    base_(base),
+    offset_(offset){
     setValueType(getValueType(dst));
 }
 

@@ -2,13 +2,18 @@
 // Created by 杨丰硕 on 2023/5/3.
 //
 #include <cassert>
+#include <map>
 #include "MachineDumper.h"
 #include "Machine.h"
 #include "MachineInst.h"
 #include "MachineOperand.h"
+#include "../ir/Constant.h"
+#include "../ir/GlobalVariable.h"
+#include "../ir/Module.h"
 
 MachineDumper::MachineDumper(MachineModule *module, const std::string &file_name):
     module_(module),
+    global_set_(module_->getIRModule()->getGlobalSet()),
     out_file_name_(file_name),
     fout_(file_name){
     if (!fout_.is_open()) {
@@ -149,4 +154,42 @@ void MachineDumper::dump(const RetInst *inst) {
 
 void MachineDumper::dump(const PushInst *inst) {
 
+}
+
+void MachineDumper::dumpGlobals() {
+    fout_ << ".data\n.align2\n";
+    for (auto global: global_set_) {
+        fout_ << global->getName() << ":\n";
+        if (dynamic_cast<ConstantVar *>(global->getConstInit())) {
+            auto const_var = dynamic_cast<ConstantVar *>(global->getConstInit());
+            fout_ << "  .word\t";
+            if (global->getBasicType() == BasicType::INT_BTYPE) {
+                fout_ << const_var->getIValue();
+            } else {
+                float tmp_value = const_var->getFValue();
+                fout_ << *(int *)(&tmp_value);
+            }
+            fout_ << "\n";
+        } else {
+            auto const_array = dynamic_cast<ConstantArray *>(global->getConstInit());
+            auto &init_value_map = const_array->getInitValueMap();
+            int last_index = -1;
+            for (auto &[index, value]: init_value_map) {
+                fout_ << "  ";
+                if (index == last_index + 1) {
+                    fout_ << ".word\t";
+                    if (global->getBasicType() == BasicType::INT_BTYPE) {
+                        fout_ << value->getIValue();
+                    } else {
+                        float tmp_value = value->getFValue();
+                        fout_ << *(int *)(&tmp_value);
+                    }
+                    fout_ << "\n";
+                } else {
+                    fout_ << ".zero\t" << (index - last_index - 1) * 4 << "\n";
+                }
+                last_index = index;
+            }
+        }
+    }
 }

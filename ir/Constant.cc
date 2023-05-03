@@ -22,8 +22,6 @@ ConstantVar::ConstantVar(float val, const std::string &name):
 ConstantVar::ConstantVar(int32_t val, const std::string &name):
         Constant(false, name), ival_(val) {}
 
-ConstantVar::~ConstantVar() = default;
-
 ConstantArray::ConstantArray(bool isfloat, const std::vector<int32_t> &dimensions, const std::string &name):
         Constant(isfloat, name),
         dimension_number_(dimensions) {
@@ -39,8 +37,6 @@ ConstantArray::ConstantArray(bool isfloat, const std::vector<int32_t> &dimension
         dimension_size_number_[i] = total_size / dimension_number_[i];
     }
 }
-
-ConstantArray::~ConstantArray() = default;
 
 void ConstantArray::setInitValue(int32_t idx, float value) {
     init_value_map_.insert(std::make_pair(idx, std::make_unique<ConstantVar>(value)));

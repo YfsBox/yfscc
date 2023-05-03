@@ -3,6 +3,7 @@
 #include "common/Ast.h"
 #include "common/Utils.h"
 #include "ir/IrBuilder.h"
+#include "ir/Module.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"

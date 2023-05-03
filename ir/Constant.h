@@ -29,7 +29,7 @@ public:
 
     ConstantVar(int32_t val, const std::string &name = "");
 
-    ~ConstantVar();
+    ~ConstantVar() = default;
 
     bool isFloat() const {
         return is_float_;
@@ -58,7 +58,7 @@ public:
 
     ConstantArray(bool isfloat, const std::vector<int32_t>& dimensions, const std::string &name = "");
 
-    ~ConstantArray();
+    ~ConstantArray() = default;
 
     void setInitValue(int32_t idx, int32_t value);
 
