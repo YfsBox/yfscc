@@ -5,6 +5,7 @@
 #define YFSCC_CODEGEN_H
 
 #include <fstream>
+#include <unordered_map>
 #include "Machine.h"
 
 class Module;
@@ -32,6 +33,8 @@ class CodeGen {
 public:
     using MachineModulePtr = std::unique_ptr<MachineModule>;
 
+    using GlobalVarLabelPtr = std::unique_ptr<Label>;
+
     CodeGen(Module *ir_module);
 
     ~CodeGen() = default;
@@ -40,46 +43,46 @@ public:
         return module_.get();
     }
 
-    void visit(const Module *module);
+    void visit(Module *module);
 
-    void visit(const GlobalVariable *global);
+    void visit(GlobalVariable *global);
 
-    void visit(const Function *function);
+    void visit(Function *function);
 
-    void visit(const Constant *constant);
+    void visit(Constant *constant);
 
-    void visit(const Instruction *inst);
+    void visit(Instruction *inst);
 
-    void visit(const BinaryOpInstruction *binst);
+    void visit(BinaryOpInstruction *binst);
 
-    void visit(const UnaryOpInstruction *uinst);
+    void visit(UnaryOpInstruction *uinst);
 
-    void visit(const StoreInstruction *inst);
+    void visit(StoreInstruction *inst);
 
-    void visit(const LoadInstruction *inst);
+    void visit(LoadInstruction *inst);
 
-    void visit(const AllocaInstruction *inst);
+    void visit(AllocaInstruction *inst);
 
-    void visit(const RetInstruction *inst);
+    void visit(RetInstruction *inst);
 
-    void visit(const BasicBlock *block);
+    void visit(BasicBlock *block);
 
-    void visit(const MemSetInstruction *inst);
+    void visit(MemSetInstruction *inst);
 
-    void visit(const GEPInstruction *inst);
+    void visit(GEPInstruction *inst);
 
-    void visit(const BranchInstruction *inst);
+    void visit(BranchInstruction *inst);
 
-    void visit(const SetCondInstruction *inst);
+    void visit(SetCondInstruction *inst);
 
-    void visit(const CallInstruction *inst);
+    void visit(CallInstruction *inst);
 
-    void visit(const ZextInstruction *inst);
+    void visit(ZextInstruction *inst);
 
-    void visit(const CastInstruction *inst);
+    void visit(CastInstruction *inst);
 
     void codeGenerate() {
-        visit(module_->getIRModule());
+        visit(const_cast<Module *>(module_->getIRModule()));
     }
 
     MachineModule *getMCModule() const {
@@ -87,8 +90,17 @@ public:
     }
 
 private:
+    int virtual_reg_id_;
+
     MachineModulePtr module_;
 
+    MachineBasicBlock *curr_machine_basic_block_;
+
+    MachineFunction *curr_machine_function_;
+
+    std::unordered_map<std::string, GlobalVarLabelPtr> global_var_map_;
+
+    std::unordered_map<int, Value *> virtual_reg_map_;
 };
 
 #endif //YFSCC_CODEGEN_H

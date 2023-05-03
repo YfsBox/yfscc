@@ -16,6 +16,8 @@ class Module;
 
 class MachineModule {
 public:
+    using MachineFunctionPtr = std::unique_ptr<MachineFunction>;
+
     MachineModule(Module *irmodule);
 
     ~MachineModule() = default;
@@ -24,8 +26,12 @@ public:
         return ir_module_;
     }
 
+    void addMachineFunction(MachineFunction *function);
+
 private:
     Module *ir_module_;
+
+    std::vector<MachineFunctionPtr> machine_functions_;
 };
 
 class MachineBasicBlock {
@@ -58,6 +64,8 @@ public:
     int getBasicBlockSize() const {
         return basic_blocks_.size();
     }
+
+    void addBasicBlock(MachineBasicBlock *basic_block);
 
 private:
     MachineModule *module_;

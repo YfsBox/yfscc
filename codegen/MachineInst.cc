@@ -24,12 +24,19 @@ MachineInst::ValueType MachineInst::getValueType(MachineOperand *operand) {
     return ValueType::Float;
 }
 
+MoveInst::MoveInst(MachineBasicBlock *parent, MoveType movtype, MachineOperand *src, MachineOperand *dst):
+    MachineInst(Move, Undef, parent),
+    dst_(GET_UNIQUEPTR(dst)),
+    src_(GET_UNIQUEPTR(src)),
+    mov_type_(movtype){
+    setValueType(getValueType(dst_.get()));
+}
 
 MoveInst::MoveInst(MachineBasicBlock *parent, MachineOperand *src, MachineOperand *dst):
     MachineInst(Move, Undef, parent),
     dst_(GET_UNIQUEPTR(dst)),
     src_(GET_UNIQUEPTR(src)){
-    setValueType(getValueType(src_.get()));
+    setValueType(getValueType(dst_.get()));
 }
 
 MoveInst::~MoveInst() = default;

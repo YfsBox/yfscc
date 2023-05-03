@@ -67,6 +67,16 @@ protected:
 
 class MoveInst: public MachineInst {
 public:
+    enum MoveType {
+        I2I,
+        F2F,
+        L2I,
+        H2I,
+        F_I,
+    };
+
+    MoveInst(MachineBasicBlock *parent, MoveType movtype, MachineOperand *src, MachineOperand *dst);
+
     MoveInst(MachineBasicBlock *parent, MachineOperand *src, MachineOperand *dst);
 
     ~MoveInst();
@@ -79,7 +89,12 @@ public:
         return dst_.get();
     }
 
+    MoveType getMoveType() const {
+        return mov_type_;
+    }
+
 private:
+    MoveType mov_type_;
     OperandPtr dst_;
     OperandPtr src_;
 };
@@ -93,8 +108,7 @@ public:
     MachineOperand *getDst() const {
         return dst_.get();
     }
-
-
+    
 private:
     OperandPtr dst_;
 };
