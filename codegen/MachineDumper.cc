@@ -177,18 +177,18 @@ void MachineDumper::dumpGlobals() {
             size_t array_len = const_array->getArrayLen();
             for (auto &[index, value]: init_value_map) {
                 fout_ << "  ";
-                if (index == last_index + 1) {
-                    fout_ << ".word\t";
-                    if (global->getBasicType() == BasicType::INT_BTYPE) {
-                        fout_ << value->getIValue();
-                    } else {
-                        float tmp_value = value->getFValue();
-                        fout_ << *(int *)(&tmp_value);
-                    }
-                    fout_ << "\n";
-                } else {
+                if (index != last_index + 1) {
                     fout_ << ".zero\t" << (index - last_index - 1) * 4 << "\n";
+                    fout_ << "  ";
                 }
+                fout_ << ".word\t";
+                if (global->getBasicType() == BasicType::INT_BTYPE) {
+                    fout_ << value->getIValue();
+                } else {
+                    float tmp_value = value->getFValue();
+                    fout_ << *(int *)(&tmp_value);
+                }
+                fout_ << "\n";
                 last_index = index;
             }
 
