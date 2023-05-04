@@ -12,6 +12,12 @@
 #include "../ir/Module.h"
 #include "../common/Utils.h"
 
+// 库函数的调用
+// 头文件 
+// BSS
+// alloc
+
+
 MachineDumper::MachineDumper(MachineModule *module, const std::string &file_name):
     module_(module),
     global_set_(module_->getIRModule()->getGlobalSet()),
@@ -45,7 +51,7 @@ void MachineDumper::dump(const MachineInst *inst) {
     switch (inst_type) {
         case MachineInst::Move:
             dump(dynamic_cast<const MoveInst *>(inst));
-            return;
+            return; 
         case MachineInst::Clz:
             dump(dynamic_cast<const ClzInst *>(inst));
             return;
@@ -98,23 +104,26 @@ void MachineDumper::dump(const MachineOperand *operand) {
 }
 
 void MachineDumper::dump(const Label *operand) {
-
+    fout_ << operand->getName();
 }
 
 void MachineDumper::dump(const MachineReg *operand) {
-
+    fout_ << operand->getReg();
 }
 
 void MachineDumper::dump(const VirtualReg *operand) {
-
+    fout_ << operand->getRegId();
 }
 
 void MachineDumper::dump(const ImmNumber *operand) {
-
+    if(operand -> isFloat())
+        fout_ << "#" << operand->getFValue();
+    else fout_ << "#" << operand->getIValue();
 }
 
+//??? 如何得到label
 void MachineDumper::dump(const BranchInst *inst) {
-
+    //fout_ << "." << inst->
 }
 
 void MachineDumper::dump(const BinaryInst *inst) {
@@ -126,9 +135,14 @@ void MachineDumper::dump(const StoreInst *inst) {
 }
 
 void MachineDumper::dump(const MoveInst *inst) {
-
+    fout_ << "\tmov\t";
+    dump(inst->getDst());
+    fout_ << ", ";
+    dump(inst->getSrc());
+    fout_ << std::endl;
 }
 
+//无法确定load寻址的类型
 void MachineDumper::dump(const LoadInst *inst) {
 
 }
@@ -138,11 +152,22 @@ void MachineDumper::dump(const CallInst *inst) {
 }
 
 void MachineDumper::dump(const PopInst *inst) {
-
+    fout_ << "\tpop\t" << "{";
+    int i=0;
+    for(;i<inst->getRegsSize()-1;i++){
+        dump(inst->getReg(i));
+        fout_ <<",";
+    }
+    dump(inst->getReg(i));
+    fout_ << "}" << std::endl;
 }
 
 void MachineDumper::dump(const CmpInst *inst) {
-
+    fout_ << "\tmov\t";
+    dump(inst->getlhs());
+    fout_ << ", ";
+    dump(inst->getrhs());
+    fout_ << std::endl;
 }
 
 void MachineDumper::dump(const ClzInst *inst) {
@@ -150,11 +175,18 @@ void MachineDumper::dump(const ClzInst *inst) {
 }
 
 void MachineDumper::dump(const RetInst *inst) {
-
+    
 }
 
 void MachineDumper::dump(const PushInst *inst) {
-
+    fout_ << "\tpush\t" << "{";
+    int i=0;
+    for(;i<inst->getRegsSize()-1;i++){
+        dump(inst->getReg(i));
+        fout_ <<",";
+    }
+    dump(inst->getReg(i));
+    fout_ << "}" << std::endl;
 }
 
 void MachineDumper::dumpGlobals() {
