@@ -36,6 +36,7 @@ public:
         Pop,
         Load,
         Store,
+        Vneg,
     };
 
     MachineInst(MachineInstType mtype, ValueType value_type, MachineBasicBlock *parent);
@@ -75,6 +76,16 @@ public:
         F_I,
     };
 
+    enum MoveCond {
+        MoveNoCond,
+        MoveNe,
+        MoveEq,
+        MoveLt,
+        MoveGt,
+        MoveGe,
+        MoveLe,
+    };
+
     MoveInst(MachineBasicBlock *parent, MoveType movtype, MachineOperand *src, MachineOperand *dst);
 
     MoveInst(MachineBasicBlock *parent, MachineOperand *src, MachineOperand *dst);
@@ -93,7 +104,12 @@ public:
         return mov_type_;
     }
 
+    void setMoveCond(MoveCond mov_cond) {
+        mov_cond_ = mov_cond;
+    }
+
 private:
+    MoveCond mov_cond_;
     MoveType mov_type_;
     OperandPtr dst_;
     OperandPtr src_;
@@ -101,16 +117,21 @@ private:
 
 class ClzInst: public MachineInst {
 public:
-    ClzInst(MachineBasicBlock *parent, MachineOperand *dst);
+    ClzInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *src);
 
     ~ClzInst();
 
     MachineOperand *getDst() const {
         return dst_;
     }
+
+    MachineOperand *getSrc() const {
+        return src_;
+    }
     
 private:
     OperandPtr dst_;
+    OperandPtr src_;
 };
 
 class BinaryInst: public MachineInst {
@@ -127,9 +148,12 @@ public:
         Mod,
         ILsl,
         ILsr,
+        IAsl,
+        IAsr,
+        IRsb,
     };
 
-    BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *src);
+    BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *lhs, MachineOperand *rhs);
 
     ~BinaryInst();
 
@@ -137,8 +161,12 @@ public:
         return dst_;
     }
 
-    MachineOperand *getSrc() const {
-        return src_;
+    MachineOperand *getLeft() const {
+        return lhs_;
+    }
+
+    MachineOperand *getRight() const {
+        return rhs_;
     }
 
     BinaryOp getBinaryOp() const {
@@ -146,19 +174,26 @@ public:
     }
 
 
-
 private:
     BinaryOp binary_op_type_;
     OperandPtr dst_;
-    OperandPtr src_;
+    OperandPtr lhs_;
+    OperandPtr rhs_;
 };
 
 class CmpInst: public MachineInst {
 public:
-    CmpInst(MachineBasicBlock *parent, MachineOperand *lhs, MachineOperand *rhs);
+    CmpInst(MachineBasicBlock *parent, MachineOperand *lhs = nullptr, MachineOperand *rhs = nullptr);
 
     ~CmpInst();
 
+    void setLhs(OperandPtr lhs) {
+        lhs_ = lhs;
+    }
+
+    void setRhs(OperandPtr rhs) {
+        rhs_ = rhs;
+    }
 
 private:
     OperandPtr lhs_;
@@ -182,12 +217,30 @@ private:
 
 class BranchInst: public MachineInst {
 public:
+    enum BranchCond {
+        BrEq,
+        BrNe,
+        BrLe,
+        BrGe,
+        BrLt,
+        BrGt,
+    };
+
     BranchInst(MachineBasicBlock *parent, Label *label);
 
     ~BranchInst();
 
+    BranchCond getBranchCond() const {
+        return br_cond_;
+    }
+
+    void setBrCond(BranchCond cond) {
+        br_cond_ = cond;
+    }
 
 private:
+    BranchCond br_cond_;
+
     Label *br_label_;
 };
 
@@ -255,7 +308,9 @@ enum MemIndexType {
 
 class StoreInst: public MachineInst {
 public:
-    StoreInst(MemIndexType index_type, MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *base, MachineOperand *offset);
+    StoreInst(MemIndexType index_type, MachineBasicBlock *parent, MachineOperand *value, MachineOperand *base, MachineOperand *offset);
+
+    StoreInst(MachineBasicBlock *parent, MachineOperand *value, MachineOperand *base);
 
     ~StoreInst();
 
@@ -271,22 +326,20 @@ public:
         return offset_;
     }
 
-    MachineOperand *getDst() const {
-        return dst_;
+    MachineOperand *getValue() const {
+        return value_;
     }
-
-
 
 private:
     MemIndexType index_type_;
-    OperandPtr dst_;
+    OperandPtr value_;
     OperandPtr base_;
     OperandPtr offset_;
 };
 
 class LoadInst: public MachineInst {
 public:
-    LoadInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *base, MachineOperand *offset);
+    LoadInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *base, MachineOperand *offset = nullptr);
 
     ~LoadInst();
 
@@ -307,6 +360,25 @@ private:
     OperandPtr dst_;
     OperandPtr base_;
     OperandPtr offset_;
+};
+
+class VnegInst: public MachineInst {
+public:
+    VnegInst(MachineBasicBlock *parent, OperandPtr dst, OperandPtr src);
+
+    ~VnegInst();
+
+    MachineOperand *getSrc() const {
+        return src_;
+    }
+
+    MachineOperand *getDst() const {
+        return dst_;
+    }
+
+private:
+    OperandPtr src_;
+    OperandPtr dst_;
 };
 
 #endif //YFSCC_MACHINEINST_H

@@ -98,6 +98,15 @@ public:
 
 private:
 
+    int moveStackOffset(int offset) {
+        stack_offset_ += offset;
+        return stack_offset_;
+    }
+
+    void setCurrMachineOperand(MachineOperand *operand) {
+        curr_machine_operand_ = operand;
+    }
+
     bool isImmNeedSplitMove(int32_t imm_value);
 
     void addMachineInst(MachineInst *inst) {
@@ -108,15 +117,23 @@ private:
 
     MoveInst *loadGlobalVarAddr(GlobalVariable *global);
 
-    MachineOperand *value2MachineOperand(Value *value, bool *is_float);
+    MachineOperand *value2MachineOperand(Value *value, bool *is_float = nullptr);
 
     int virtual_reg_id_;
+
+    int stack_offset_;
+
+    MachineOperand *sp_reg_;
+
+    MachineOperand *fp_reg_;
 
     MachineModulePtr module_;
 
     MachineBasicBlock *curr_machine_basic_block_;
 
     MachineFunction *curr_machine_function_;
+
+    MachineOperand *curr_machine_operand_;
 
     std::unordered_map<std::string, GlobalVarLabelPtr> global_var_map_;
 

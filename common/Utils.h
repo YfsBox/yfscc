@@ -25,7 +25,7 @@ std::string stmtType2Str(StatementType type);
 
 template<class TYPE>
 inline std::unique_ptr<TYPE> GET_UNIQUEPTR(TYPE *raw_ptr) {
-    return std::unique_ptr<TYPE>(raw_ptr);
+    return std::move(std::unique_ptr<TYPE>(raw_ptr));
 }
 
 inline int32_t getFloat2IntForm(float value) {

@@ -7,6 +7,7 @@
 #include "../ir/BasicBlock.h"
 #include "../ir/Function.h"
 #include "../ir/GlobalVariable.h"
+#include "../ir/Instruction.h"
 #include "../common/Utils.h"
 
 static inline int32_t getHigh(int32_t value) {
@@ -17,11 +18,19 @@ static inline int32_t getLow(int32_t value) {
     return value & 0xffff;
 }
 
+static inline MachineOperand::ValueType basicType2ValueType(BasicType basic_type) {
+    return basic_type == BasicType::INT_BTYPE ? MachineOperand::Int : MachineOperand::Float;
+}
+
 CodeGen::CodeGen(Module *ir_module):
     virtual_reg_id_(-1),
+    stack_offset_(0),
+    sp_reg_(new MachineReg(MachineReg::sp)),
+    fp_reg_(new MachineReg(MachineReg::fp)),
     module_(std::make_unique<MachineModule>(ir_module)),
     curr_machine_basic_block_(nullptr),
-    curr_machine_function_(nullptr){
+    curr_machine_function_(nullptr),
+    curr_machine_operand_(nullptr){
 
 }
 
@@ -57,6 +66,7 @@ void CodeGen::visit(Module *module) {
 }
 
 void CodeGen::visit(BasicBlock *block) {
+    curr_machine_basic_block_ = new MachineBasicBlock(curr_machine_function_);
     for (auto &inst: block->getInstructionList()) {
         visit(inst.get());
     }
@@ -112,7 +122,9 @@ void CodeGen::visit(Instruction *inst) {
 }
 
 void CodeGen::visit(Constant *constant) {
-
+    bool imm_float = false;
+    auto const_reg = value2MachineOperand(constant, &imm_float);
+    setCurrMachineOperand(const_reg);
 }
 
 void CodeGen::visit(Function *function) {
@@ -149,6 +161,7 @@ void CodeGen::visit(RetInstruction *inst) {
         dst_operand = createVirtualReg(is_float ? MachineOperand::Float : MachineOperand::Int);
         mov_inst = new MoveInst(curr_machine_basic_block_, is_float ? MoveInst::F2F : MoveInst::I2I, operand, dst_operand);
         addMachineInst(mov_inst);
+        setCurrMachineOperand(dst_operand);
     }
     addMachineInst(ret_inst);
 }
@@ -162,7 +175,18 @@ void CodeGen::visit(CastInstruction *inst) {
 }
 
 void CodeGen::visit(LoadInstruction *inst) {
+    // load返回的要么是一个int、float值，要么是一个指针
+    MachineOperand::ValueType value_type;
+    if (inst->isFromSecondaryPtr()) {
+        value_type = MachineOperand::Int;
+    } else {
+        value_type = inst->getBasicType() == BasicType::INT_BTYPE ? MachineOperand::Int: MachineOperand::Float;
+    }
+    auto dst_reg = createVirtualReg(value_type);
+    auto value_reg = value2MachineOperand(inst->getPtr());
+    auto load_inst = new LoadInst(curr_machine_basic_block_, dst_reg, value_reg);
 
+    addMachineInst(load_inst);
 }
 
 void CodeGen::visit(ZextInstruction *inst) {
@@ -183,7 +207,9 @@ MoveInst *CodeGen::loadGlobalVarAddr(GlobalVariable *global) {
 MachineOperand *CodeGen::value2MachineOperand(Value *value, bool *is_float) {
     auto find_value = value_machinereg_map_.find(value);
     if (find_value != value_machinereg_map_.end()) {
-        *is_float = find_value->second->getValueType() == MachineOperand::Float;
+        if (is_float) {
+            *is_float = find_value->second->getValueType() == MachineOperand::Float;
+        }
         return find_value->second;
     }
 
@@ -236,8 +262,9 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool *is_float) {
 
             addMachineInst(mov_i2i_inst);
             addMachineInst(mov_i2f_inst);
-
-            *is_float = true;
+            if (is_float) {
+                *is_float = true;
+            }
         }
     }
 
@@ -250,30 +277,136 @@ void CodeGen::visit(GlobalVariable *global) {
 }
 
 void CodeGen::visit(StoreInstruction *inst) {
-
+    bool is_float = false;
+    auto store_addr_reg = value2MachineOperand(inst->getPtr(), &is_float);
+    auto value_operand = value2MachineOperand(inst->getValue(), &is_float);
+    auto store_inst = new StoreInst(curr_machine_basic_block_, value_operand, store_addr_reg);
+    store_inst->setValueType(!is_float ? MoveInst::ValueType::Int: MoveInst::ValueType::Float);
+    addMachineInst(store_inst);
 }
 
-void CodeGen::visit(AllocaInstruction *inst) {
-
+void CodeGen::visit(AllocaInstruction *inst) {      // 首先需要在栈上分配,然后将地址返回到一个dst寄存器上
+    int stack_move_offset = 1;
+    auto dst_reg = createVirtualReg(MachineOperand::Int);
+    if (inst->isArray() && !inst->isPtrPtr()) {
+        auto dimension_numbers = inst->getArrayDimensionSize();
+        for (auto dimension_number: dimension_numbers) {
+            stack_move_offset *= dimension_number;
+        }
+    }
+    stack_move_offset *= 4;
+    auto offset = new ImmNumber(moveStackOffset(stack_move_offset));
+    auto sub_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, dst_reg, fp_reg_, offset);
+    value_machinereg_map_[inst] = dst_reg;
+    setCurrMachineOperand(dst_reg);
+    addMachineInst(sub_inst);
 }
 
 void CodeGen::visit(BranchInstruction *inst) {
+    if (inst->isCondBranch()) {
+        Label *branch1, *branch2;
+        branch1 = new Label(inst->getTrueLabel()->getName());
+        branch2 = new Label(inst->getFalseLabel()->getName());
 
+        BranchInst *branch_inst1, *branch_inst2;
+        branch_inst1 = new BranchInst(curr_machine_basic_block_, branch1);
+        branch_inst2 = new BranchInst(curr_machine_basic_block_, branch2);
+
+        auto cmp_cond = dynamic_cast<SetCondInstruction *>(inst->getCond());
+        assert(cmp_cond);
+        auto cmp_type = cmp_cond->getCmpType();
+        BranchInst::BranchCond branch_cond;
+        switch (cmp_type) {
+            case SetCondInstruction::SetNE:
+                branch_cond = BranchInst::BrNe;
+                break;
+            case SetCondInstruction::SetEQ:
+                branch_cond = BranchInst::BrEq;
+                break;
+            case SetCondInstruction::SetLE:
+                branch_cond = BranchInst::BrLe;
+                break;
+            case SetCondInstruction::SetGE:
+                branch_cond = BranchInst::BrGe;
+                break;
+            case SetCondInstruction::SetLT:
+                branch_cond = BranchInst::BrLt;
+                break;
+            case SetCondInstruction::SetGT:
+                branch_cond = BranchInst::BrGt;
+                break;
+        }
+        branch_inst1->setBrCond(branch_cond);
+        addMachineInst(branch_inst1);
+        addMachineInst(branch_inst2);
+    } else {
+        Label *branch = new Label(inst->getLabel()->getName());
+        auto branch_inst = new BranchInst(curr_machine_basic_block_, branch);
+        addMachineInst(branch_inst);
+    }
 }
 
 void CodeGen::visit(MemSetInstruction *inst) {
 
 }
 
-void CodeGen::visit(SetCondInstruction *inst) {
+void CodeGen::visit(SetCondInstruction *inst) {     // 一般紧接着就是跳转语句
+    MachineInst::ValueType value_type = inst->isFloatCmp() ? MachineInst::Float: MachineInst::Int;
+    auto cmp_inst = new CmpInst(curr_machine_basic_block_);
+    cmp_inst->setValueType(value_type);
 
+    auto lhs = value2MachineOperand(inst->getLeft());
+    auto rhs = value2MachineOperand(inst->getRight());
+
+    cmp_inst->setLhs(lhs);
+    cmp_inst->setRhs(rhs);
+
+    addMachineInst(cmp_inst);
 }
 
-void CodeGen::visit(UnaryOpInstruction *uinst) {
+void CodeGen::visit(UnaryOpInstruction *uinst) {        // 一元操作
+    auto uinst_op = uinst->getInstType();
+    if (uinst_op == InstructionType::NotType) {
+        if (uinst->getBasicType() == BasicType::INT_BTYPE) {
+            bool is_float = false;
+            auto value = value2MachineOperand(uinst->getValue(), &is_float);
+            auto dst_reg = createVirtualReg(basicType2ValueType(uinst->getBasicType()));
+            auto clz_inst = new ClzInst(curr_machine_basic_block_, dst_reg, value);
+            auto lsr_dst_reg = createVirtualReg(MachineOperand::Int);
+            auto lsr_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ILsr, lsr_dst_reg, dst_reg,
+                                           new ImmNumber(5));
 
+            addMachineInst(clz_inst);
+            addMachineInst(lsr_inst);
+        } else {        // 对于float类型的数一般通过cmp ne来进行判断
+            float imm_number = 0.0;
+            auto cmp_inst = new CmpInst(curr_machine_basic_block_, value2MachineOperand(uinst->getValue()), new ImmNumber(imm_number));
+            auto mov_dst_vreg = createVirtualReg(MachineOperand::Int);
+            auto mov1_inst = new MoveInst(curr_machine_basic_block_, mov_dst_vreg, new ImmNumber(1));
+            mov1_inst->setMoveCond(MoveInst::MoveEq);       // 和0比较相等时,就是move 1生效
+            auto mov2_inst = new MoveInst(curr_machine_basic_block_, mov_dst_vreg, new ImmNumber(0));
+
+            addMachineInst(cmp_inst);
+            addMachineInst(mov1_inst);
+            addMachineInst(mov2_inst);
+        }
+    } else if (uinst_op == InstructionType::NegType) {
+        if (uinst->getBasicType() == BasicType::INT_BTYPE) {
+            auto rsb_dst = createVirtualReg(basicType2ValueType(uinst->getBasicType()));
+            auto rsb_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IRsb, rsb_dst,
+                                           value2MachineOperand(uinst->getValue()), new ImmNumber(0));
+            addMachineInst(rsb_inst);
+            setCurrMachineOperand(rsb_dst);
+        } else {
+            auto dst_vreg = createVirtualReg(MachineOperand::Float);
+            auto vneg_inst = new VnegInst(curr_machine_basic_block_, dst_vreg, value2MachineOperand(uinst->getValue()));
+            addMachineInst(vneg_inst);
+            setCurrMachineOperand(dst_vreg);
+        }
+    }
 }
 
-void CodeGen::visit(BinaryOpInstruction *binst) {
+void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
 
 }
 

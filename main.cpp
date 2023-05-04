@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
     if (argc > 2) {
         target_file.assign(argv[2]);
     } else {
-        target_file = "a.s";
+        target_file = "yfscc.s";
     }
 
     auto content = getFileContent(source_file);
@@ -39,6 +39,8 @@ int main(int argc, char **argv) {
 
     IrBuilder irbuilder(std::cout, checker->getLibFunctionsMap());
     irbuilder.visit(root);
+    irbuilder.dump();
+
 
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();

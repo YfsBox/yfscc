@@ -109,6 +109,8 @@ public:
 
     Value *getPtr() const;
 
+    bool isFromSecondaryPtr() const;
+
     const std::vector<int32_t> &getArrayDimensionSize() const;
 
     void setArrayDimension();
@@ -152,7 +154,6 @@ public:
     const std::vector<int32_t> &getArrayDimensionSize() const {
         return array_dimension_size_;
     }
-
 
 private:
     bool is_ptr_ptr_;
