@@ -129,7 +129,7 @@ public:
         ILsr,
     };
 
-    BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *src);
+    BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *src, MachineOperand *offset = nullptr);
 
     ~BinaryInst();
 
@@ -141,16 +141,20 @@ public:
         return src_;
     }
 
+    MachineOperand *getOffset() const {
+        return offset_;
+    }
+
     BinaryOp getBinaryOp() const {
         return binary_op_type_;
     }
-
 
 
 private:
     BinaryOp binary_op_type_;
     OperandPtr dst_;
     OperandPtr src_;
+    OperandPtr offset_;
 };
 
 class CmpInst: public MachineInst {
@@ -273,7 +277,9 @@ enum MemIndexType {
 
 class StoreInst: public MachineInst {
 public:
-    StoreInst(MemIndexType index_type, MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *base, MachineOperand *offset);
+    StoreInst(MemIndexType index_type, MachineBasicBlock *parent, MachineOperand *value, MachineOperand *base, MachineOperand *offset);
+
+    StoreInst(MachineBasicBlock *parent, MachineOperand *value, MachineOperand *base);
 
     ~StoreInst();
 
@@ -289,22 +295,20 @@ public:
         return offset_;
     }
 
-    MachineOperand *getDst() const {
-        return dst_;
+    MachineOperand *getValue() const {
+        return value_;
     }
-
-
 
 private:
     MemIndexType index_type_;
-    OperandPtr dst_;
+    OperandPtr value_;
     OperandPtr base_;
     OperandPtr offset_;
 };
 
 class LoadInst: public MachineInst {
 public:
-    LoadInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *base, MachineOperand *offset);
+    LoadInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *base, MachineOperand *offset = nullptr);
 
     ~LoadInst();
 

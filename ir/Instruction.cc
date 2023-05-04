@@ -62,6 +62,14 @@ Value *LoadInstruction::getPtr() const {
     return getOperand(0);
 }
 
+bool LoadInstruction::isFromSecondaryPtr() const {
+    auto alloac_inst = dynamic_cast<AllocaInstruction *>(getPtr());
+    if (!alloac_inst) {
+        return false;
+    }
+    return alloac_inst->isPtrPtr();
+}
+
 const std::vector<int32_t> &LoadInstruction::getArrayDimensionSize() const {
     return array_dimension_number_;
 }

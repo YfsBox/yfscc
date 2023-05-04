@@ -49,7 +49,7 @@ ClzInst::ClzInst(MachineBasicBlock *parent, MachineOperand *dst):
 
 ClzInst::~ClzInst() = default;
 
-BinaryInst::BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *src):
+BinaryInst::BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *src, MachineOperand *offset):
     MachineInst(Binary, Undef, parent),
     binary_op_type_(op),
     dst_(dst),
@@ -101,12 +101,20 @@ PopInst::PopInst(MachineBasicBlock *parent):
 
 }
 
-StoreInst::StoreInst(MemIndexType index_type, MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *base, MachineOperand *offset):
+StoreInst::StoreInst(MemIndexType index_type, MachineBasicBlock *parent, MachineOperand *value, MachineOperand *base, MachineOperand *offset):
     MachineInst(Store, Undef, parent),
     index_type_(index_type),
-    dst_(dst),
+    value_(value),
     base_(base),
     offset_(offset){
+
+}
+
+StoreInst::StoreInst(MachineBasicBlock *parent, MachineOperand *value, MachineOperand *base):
+    MachineInst(Store, Undef, parent),
+    value_(value),
+    base_(base),
+    offset_(nullptr){
 
 }
 

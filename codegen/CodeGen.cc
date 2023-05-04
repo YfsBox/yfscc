@@ -20,6 +20,9 @@ static inline int32_t getLow(int32_t value) {
 
 CodeGen::CodeGen(Module *ir_module):
     virtual_reg_id_(-1),
+    stack_offset_(0),
+    sp_reg_(new MachineReg(MachineReg::sp)),
+    fp_reg_(new MachineReg(MachineReg::fp)),
     module_(std::make_unique<MachineModule>(ir_module)),
     curr_machine_basic_block_(nullptr),
     curr_machine_function_(nullptr),
@@ -168,7 +171,18 @@ void CodeGen::visit(CastInstruction *inst) {
 }
 
 void CodeGen::visit(LoadInstruction *inst) {
+    // load返回的要么是一个int、float值，要么是一个指针
+    MachineOperand::ValueType value_type;
+    if (inst->isFromSecondaryPtr()) {
+        value_type = MachineOperand::Int;
+    } else {
+        value_type = inst->getBasicType() == BasicType::INT_BTYPE ? MachineOperand::Int: MachineOperand::Float;
+    }
+    auto dst_reg = createVirtualReg(value_type);
+    auto value_reg = value2MachineOperand(inst->getPtr());
+    auto load_inst = new LoadInst(curr_machine_basic_block_, dst_reg, value_reg);
 
+    addMachineInst(load_inst);
 }
 
 void CodeGen::visit(ZextInstruction *inst) {
@@ -189,7 +203,9 @@ MoveInst *CodeGen::loadGlobalVarAddr(GlobalVariable *global) {
 MachineOperand *CodeGen::value2MachineOperand(Value *value, bool *is_float) {
     auto find_value = value_machinereg_map_.find(value);
     if (find_value != value_machinereg_map_.end()) {
-        *is_float = find_value->second->getValueType() == MachineOperand::Float;
+        if (is_float) {
+            *is_float = find_value->second->getValueType() == MachineOperand::Float;
+        }
         return find_value->second;
     }
 
@@ -242,8 +258,9 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool *is_float) {
 
             addMachineInst(mov_i2i_inst);
             addMachineInst(mov_i2f_inst);
-
-            *is_float = true;
+            if (is_float) {
+                *is_float = true;
+            }
         }
     }
 
@@ -256,11 +273,29 @@ void CodeGen::visit(GlobalVariable *global) {
 }
 
 void CodeGen::visit(StoreInstruction *inst) {
-
+    bool is_float = false;
+    auto store_addr_reg = value2MachineOperand(inst->getPtr(), &is_float);
+    auto value_operand = value2MachineOperand(inst->getValue(), &is_float);
+    auto store_inst = new StoreInst(curr_machine_basic_block_, value_operand, store_addr_reg);
+    store_inst->setValueType(!is_float ? MoveInst::ValueType::Int: MoveInst::ValueType::Float);
+    addMachineInst(store_inst);
 }
 
-void CodeGen::visit(AllocaInstruction *inst) {
-
+void CodeGen::visit(AllocaInstruction *inst) {      // 首先需要在栈上分配,然后将地址返回到一个dst寄存器上
+    int stack_move_offset = 1;
+    auto dst_reg = createVirtualReg(MachineOperand::Int);
+    if (inst->isArray() && !inst->isPtrPtr()) {
+        auto dimension_numbers = inst->getArrayDimensionSize();
+        for (auto dimension_number: dimension_numbers) {
+            stack_move_offset *= dimension_number;
+        }
+    }
+    stack_move_offset *= 4;
+    auto offset = new ImmNumber(moveStackOffset(stack_move_offset));
+    auto sub_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, dst_reg, fp_reg_, offset);
+    value_machinereg_map_[inst] = dst_reg;
+    setCurrMachineOperand(dst_reg);
+    addMachineInst(sub_inst);
 }
 
 void CodeGen::visit(BranchInstruction *inst) {

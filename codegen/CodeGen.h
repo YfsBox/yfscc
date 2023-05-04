@@ -98,6 +98,11 @@ public:
 
 private:
 
+    int moveStackOffset(int offset) {
+        stack_offset_ += offset;
+        return stack_offset_;
+    }
+
     void setCurrMachineOperand(MachineOperand *operand) {
         curr_machine_operand_ = operand;
     }
@@ -112,9 +117,15 @@ private:
 
     MoveInst *loadGlobalVarAddr(GlobalVariable *global);
 
-    MachineOperand *value2MachineOperand(Value *value, bool *is_float);
+    MachineOperand *value2MachineOperand(Value *value, bool *is_float = nullptr);
 
     int virtual_reg_id_;
+
+    int stack_offset_;
+
+    MachineOperand *sp_reg_;
+
+    MachineOperand *fp_reg_;
 
     MachineModulePtr module_;
 
