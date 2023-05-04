@@ -15,7 +15,7 @@ MachineInst::MachineInst(MachineInstType mtype, ValueType value_type, MachineBas
 MachineInst::~MachineInst() = default;
 
 MachineInst::ValueType MachineInst::getValueType(MachineOperand *operand) {
-    if (operand->getValueType() == MachineOperand::Undef) {
+    if (operand == nullptr || operand->getValueType() == MachineOperand::Undef) {
         return ValueType::Undef;
     }
     if (operand->getValueType() == MachineOperand::Int) {
@@ -26,6 +26,7 @@ MachineInst::ValueType MachineInst::getValueType(MachineOperand *operand) {
 
 MoveInst::MoveInst(MachineBasicBlock *parent, MoveType movtype, MachineOperand *src, MachineOperand *dst):
     MachineInst(Move, Undef, parent),
+    mov_cond_(MoveNoCond),
     dst_(dst),
     src_(src),
     mov_type_(movtype){
@@ -34,6 +35,7 @@ MoveInst::MoveInst(MachineBasicBlock *parent, MoveType movtype, MachineOperand *
 
 MoveInst::MoveInst(MachineBasicBlock *parent, MachineOperand *src, MachineOperand *dst):
     MachineInst(Move, Undef, parent),
+    mov_cond_(MoveNoCond),
     dst_(dst),
     src_(src){
     setValueType(getValueType(dst_));
@@ -41,19 +43,21 @@ MoveInst::MoveInst(MachineBasicBlock *parent, MachineOperand *src, MachineOperan
 
 MoveInst::~MoveInst() = default;
 
-ClzInst::ClzInst(MachineBasicBlock *parent, MachineOperand *dst):
+ClzInst::ClzInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *src):
     MachineInst(Clz, Undef, parent),
-    dst_(dst){
+    dst_(dst),
+    src_(src){
     setValueType(getValueType(dst_));
 }
 
 ClzInst::~ClzInst() = default;
 
-BinaryInst::BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *src, MachineOperand *offset):
+BinaryInst::BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *lhs, MachineOperand *rhs):
     MachineInst(Binary, Undef, parent),
     binary_op_type_(op),
     dst_(dst),
-    src_(src){
+    lhs_(lhs),
+    rhs_(rhs){
     setValueType(getValueType(dst_));
 }
 
@@ -129,6 +133,17 @@ LoadInst::LoadInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperan
 }
 
 LoadInst::~LoadInst() = default;
+
+VnegInst::VnegInst(MachineBasicBlock *parent, OperandPtr dst, OperandPtr src):
+        MachineInst(Vneg, Float, parent),
+        dst_(dst),
+        src_(src){
+
+}
+
+VirtualReg::~VirtualReg() = default;
+
+
 
 
 
