@@ -98,6 +98,10 @@ public:
 
 private:
 
+    void setCurrMachineOperand(MachineOperand *operand) {
+        curr_machine_operand_ = operand;
+    }
+
     bool isImmNeedSplitMove(int32_t imm_value);
 
     void addMachineInst(MachineInst *inst) {
@@ -117,6 +121,8 @@ private:
     MachineBasicBlock *curr_machine_basic_block_;
 
     MachineFunction *curr_machine_function_;
+
+    MachineOperand *curr_machine_operand_;
 
     std::unordered_map<std::string, GlobalVarLabelPtr> global_var_map_;
 

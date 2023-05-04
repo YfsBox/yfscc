@@ -7,6 +7,7 @@
 #include "../ir/BasicBlock.h"
 #include "../ir/Function.h"
 #include "../ir/GlobalVariable.h"
+#include "../ir/Instruction.h"
 #include "../common/Utils.h"
 
 static inline int32_t getHigh(int32_t value) {
@@ -21,7 +22,8 @@ CodeGen::CodeGen(Module *ir_module):
     virtual_reg_id_(-1),
     module_(std::make_unique<MachineModule>(ir_module)),
     curr_machine_basic_block_(nullptr),
-    curr_machine_function_(nullptr){
+    curr_machine_function_(nullptr),
+    curr_machine_operand_(nullptr){
 
 }
 
@@ -57,6 +59,7 @@ void CodeGen::visit(Module *module) {
 }
 
 void CodeGen::visit(BasicBlock *block) {
+    curr_machine_basic_block_ = new MachineBasicBlock(curr_machine_function_);
     for (auto &inst: block->getInstructionList()) {
         visit(inst.get());
     }
@@ -112,7 +115,9 @@ void CodeGen::visit(Instruction *inst) {
 }
 
 void CodeGen::visit(Constant *constant) {
-
+    bool imm_float = false;
+    auto const_reg = value2MachineOperand(constant, &imm_float);
+    setCurrMachineOperand(const_reg);
 }
 
 void CodeGen::visit(Function *function) {
@@ -149,6 +154,7 @@ void CodeGen::visit(RetInstruction *inst) {
         dst_operand = createVirtualReg(is_float ? MachineOperand::Float : MachineOperand::Int);
         mov_inst = new MoveInst(curr_machine_basic_block_, is_float ? MoveInst::F2F : MoveInst::I2I, operand, dst_operand);
         addMachineInst(mov_inst);
+        setCurrMachineOperand(dst_operand);
     }
     addMachineInst(ret_inst);
 }
@@ -258,7 +264,47 @@ void CodeGen::visit(AllocaInstruction *inst) {
 }
 
 void CodeGen::visit(BranchInstruction *inst) {
+    if (inst->isCondBranch()) {
+        Label *branch1, *branch2;
+        branch1 = new Label(inst->getTrueLabel()->getName());
+        branch2 = new Label(inst->getFalseLabel()->getName());
 
+        BranchInst *branch_inst1, *branch_inst2;
+        branch_inst1 = new BranchInst(curr_machine_basic_block_, branch1);
+        branch_inst2 = new BranchInst(curr_machine_basic_block_, branch2);
+
+        auto cmp_cond = dynamic_cast<SetCondInstruction *>(inst->getCond());
+        assert(cmp_cond);
+        auto cmp_type = cmp_cond->getCmpType();
+        BranchInst::BranchCond branch_cond;
+        switch (cmp_type) {
+            case SetCondInstruction::SetNE:
+                branch_cond = BranchInst::BrNe;
+                break;
+            case SetCondInstruction::SetEQ:
+                branch_cond = BranchInst::BrEq;
+                break;
+            case SetCondInstruction::SetLE:
+                branch_cond = BranchInst::BrLe;
+                break;
+            case SetCondInstruction::SetGE:
+                branch_cond = BranchInst::BrGe;
+                break;
+            case SetCondInstruction::SetLT:
+                branch_cond = BranchInst::BrLt;
+                break;
+            case SetCondInstruction::SetGT:
+                branch_cond = BranchInst::BrGt;
+                break;
+        }
+        branch_inst1->setBrCond(branch_cond);
+        addMachineInst(branch_inst1);
+        addMachineInst(branch_inst2);
+    } else {
+        Label *branch = new Label(inst->getLabel()->getName());
+        auto branch_inst = new BranchInst(curr_machine_basic_block_, branch);
+        addMachineInst(branch_inst);
+    }
 }
 
 void CodeGen::visit(MemSetInstruction *inst) {

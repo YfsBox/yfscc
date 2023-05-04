@@ -182,12 +182,30 @@ private:
 
 class BranchInst: public MachineInst {
 public:
+    enum BranchCond {
+        BrEq,
+        BrNe,
+        BrLe,
+        BrGe,
+        BrLt,
+        BrGt,
+    };
+
     BranchInst(MachineBasicBlock *parent, Label *label);
 
     ~BranchInst();
 
+    BranchCond getBranchCond() const {
+        return br_cond_;
+    }
+
+    void setBrCond(BranchCond cond) {
+        br_cond_ = cond;
+    }
 
 private:
+    BranchCond br_cond_;
+
     Label *br_label_;
 };
 
