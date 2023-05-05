@@ -195,6 +195,14 @@ public:
         rhs_ = rhs;
     }
 
+    OperandPtr getLhs() const {
+        return lhs_;
+    }
+
+    OperandPtr getRhs() const {
+        return rhs_;
+    }
+
 private:
     OperandPtr lhs_;
     OperandPtr rhs_;

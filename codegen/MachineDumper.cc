@@ -163,10 +163,10 @@ void MachineDumper::dump(const PopInst *inst) {
 }
 
 void MachineDumper::dump(const CmpInst *inst) {
-    fout_ << "\tmov\t";
-    dump(inst->getlhs());
+    fout_ << "\tcmp\t";
+    dump(inst->getLhs());
     fout_ << ", ";
-    dump(inst->getrhs());
+    dump(inst->getRhs());
     fout_ << std::endl;
 }
 
@@ -180,13 +180,13 @@ void MachineDumper::dump(const RetInst *inst) {
 
 void MachineDumper::dump(const PushInst *inst) {
     fout_ << "\tpush\t" << "{";
-    int i=0;
-    for(;i<inst->getRegsSize()-1;i++){
+    int i = 0;
+    for(; i< inst->getRegsSize() - 1; i++) {
         dump(inst->getReg(i));
         fout_ <<",";
     }
     dump(inst->getReg(i));
-    fout_ << "}" << std::endl;
+    fout_ << "}" << "\n";
 }
 
 void MachineDumper::dumpGlobals() {
