@@ -169,6 +169,82 @@ void CodeGen::visit(RetInstruction *inst) {
 }
 
 void CodeGen::visit(CallInstruction *inst) {
+    int32_t int_args_cnt = 0, float_args_cnt = 0;
+    Function *function = inst->getFunction();
+    for (int i = 0; i < function->getArgumentSize(); ++i) {
+        auto arg = function->getArgument(i);
+        if (!arg->isPtrArg() && arg->getBasicType() == BasicType::FLOAT_BTYPE) {
+            float_args_cnt++;
+        } else {
+            int_args_cnt++;
+        }
+    }
+    int32_t stack_offset = 0;
+    if (int_args_cnt > 4) {
+        stack_offset += int_args_cnt - 4;
+    }
+    if (float_args_cnt > 16) {
+        stack_offset += float_args_cnt - 16;
+    }
+    stack_offset *= 4;
+    // 考虑内存对齐，对齐到8
+    if (stack_offset % 8) {
+        stack_offset += 4;
+    }
+
+    for (int i = 0; i < function->getArgumentSize(); ++i) {
+        auto arg = function->getArgument(i);
+        auto actual = inst->getActual(i);
+        auto actual_vreg = value2MachineOperand(actual, true);
+        if (!arg->isPtrArg() && arg->getBasicType() == BasicType::FLOAT_BTYPE) {
+            if (float_args_cnt <= 16) {
+                auto mreg = static_cast<MachineReg::Reg>(MachineReg::s16 - float_args_cnt);
+                auto dst_vreg = new MachineReg(mreg);
+                auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, actual_vreg, dst_vreg);
+                addMachineInst(mov_inst);
+            } else {
+                auto tmp_dst_reg = new MachineReg(MachineReg::s15);
+                auto tmp_mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, actual_vreg, tmp_dst_reg);
+                auto store_inst = new StoreInst(MemIndexType::NegativeIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset));
+
+                addMachineInst(tmp_mov_inst);
+                addMachineInst(store_inst);
+                stack_offset -= 4;
+            }
+            float_args_cnt--;
+        } else {
+            if (int_args_cnt <= 4) {
+                auto mreg = static_cast<MachineReg::Reg>(MachineReg::r4 - int_args_cnt);
+                auto dst_vreg = new MachineReg(mreg);
+                auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, actual_vreg, dst_vreg);
+                addMachineInst(mov_inst);
+            } else {
+                auto tmp_dst_reg = new MachineReg(MachineReg::r1);
+                auto tmp_mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, actual_vreg, tmp_dst_reg);
+                auto store_inst = new StoreInst(MemIndexType::NegativeIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset));
+
+                addMachineInst(tmp_mov_inst);
+                addMachineInst(store_inst);
+                stack_offset -= 4;
+            }
+            int_args_cnt--;
+        }
+    }
+
+    // 返回值保存在r0之中，需要增加一个move语句，将r0保存到某个寄存器里
+    MachineReg *ret_reg;
+    MoveInst *mov_inst;
+    auto ret_type = function->getRetType();
+    if (ret_type == BasicType::FLOAT_BTYPE) {
+        ret_reg = new MachineReg(MachineReg::s0);
+        auto dst_reg = createVirtualReg(MachineOperand::Float, inst);
+        mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, dst_reg, ret_reg);
+    } else if (ret_type != BasicType::VOID_BTYPE) {
+        ret_reg = new MachineReg(MachineReg::r0);
+        auto dst_reg = createVirtualReg(MachineOperand::Int, inst);
+        mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, dst_reg, ret_reg);
+    }
+    addMachineInst(mov_inst);
 
 }
 
