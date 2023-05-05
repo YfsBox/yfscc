@@ -192,6 +192,13 @@ void CodeGen::visit(CallInstruction *inst) {
         stack_offset += 4;
     }
 
+    ImmNumber *stack_offset_imm = new ImmNumber(stack_offset);
+
+    auto sub_stack_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, sp_reg_, sp_reg_, stack_offset_imm);
+    addMachineInst(sub_stack_inst);
+
+    int32_t old_stack_offset = stack_offset;
+
     for (int i = 0; i < function->getArgumentSize(); ++i) {
         auto arg = function->getArgument(i);
         auto actual = inst->getActual(i);
@@ -205,7 +212,7 @@ void CodeGen::visit(CallInstruction *inst) {
             } else {
                 auto tmp_dst_reg = new MachineReg(MachineReg::s15);
                 auto tmp_mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, actual_vreg, tmp_dst_reg);
-                auto store_inst = new StoreInst(MemIndexType::NegativeIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset));
+                auto store_inst = new StoreInst(MemIndexType::PostiveIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset));
 
                 addMachineInst(tmp_mov_inst);
                 addMachineInst(store_inst);
@@ -221,7 +228,7 @@ void CodeGen::visit(CallInstruction *inst) {
             } else {
                 auto tmp_dst_reg = new MachineReg(MachineReg::r1);
                 auto tmp_mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, actual_vreg, tmp_dst_reg);
-                auto store_inst = new StoreInst(MemIndexType::NegativeIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset));
+                auto store_inst = new StoreInst(MemIndexType::PostiveIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset));
 
                 addMachineInst(tmp_mov_inst);
                 addMachineInst(store_inst);
@@ -230,6 +237,12 @@ void CodeGen::visit(CallInstruction *inst) {
             int_args_cnt--;
         }
     }
+
+    auto branch_funciton_inst = new BranchInst(curr_machine_basic_block_, new Label(function->getName()));
+    addMachineInst(branch_funciton_inst);
+
+    auto add_stack_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, sp_reg_, sp_reg_, stack_offset_imm);
+    addMachineInst(add_stack_inst);     // 恢复stack
 
     // 返回值保存在r0之中，需要增加一个move语句，将r0保存到某个寄存器里
     MachineReg *ret_reg;
