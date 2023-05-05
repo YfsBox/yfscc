@@ -33,8 +33,6 @@ VirtualReg::VirtualReg(int reg_id, ValueType value_type):
 
 }
 
-VirtualReg::~VirtualReg() = default;
-
 Label::Label(const std::string &name):
     MachineOperand(Undef, OperandType::Label),
     name_(name){

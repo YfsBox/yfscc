@@ -113,11 +113,11 @@ private:
         curr_machine_basic_block_->addInstruction(inst);
     }
 
-    VirtualReg *createVirtualReg(MachineOperand::ValueType value_type);
+    VirtualReg *createVirtualReg(MachineOperand::ValueType value_type, Value *value = nullptr);
 
     MoveInst *loadGlobalVarAddr(GlobalVariable *global);
 
-    MachineOperand *value2MachineOperand(Value *value, bool *is_float = nullptr);
+    MachineOperand *value2MachineOperand(Value *value, bool can_be_imm, bool *is_float = nullptr);
 
     int virtual_reg_id_;
 

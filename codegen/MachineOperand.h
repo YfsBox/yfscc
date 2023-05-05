@@ -43,7 +43,7 @@ class VirtualReg: public MachineOperand {
 public:
     VirtualReg(int reg_id, ValueType value_type);
 
-    ~VirtualReg();
+    ~VirtualReg() = default;
 
     int getRegId() const {
         return reg_id_;

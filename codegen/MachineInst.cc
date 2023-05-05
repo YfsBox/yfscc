@@ -141,10 +141,7 @@ VnegInst::VnegInst(MachineBasicBlock *parent, OperandPtr dst, OperandPtr src):
 
 }
 
-VirtualReg::~VirtualReg() = default;
-
-
-
+VnegInst::~VnegInst() = default;
 
 
 

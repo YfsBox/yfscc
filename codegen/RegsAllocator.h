@@ -7,33 +7,5 @@
 
 #include "Machine.h"
 
-MachineModule::MachineModule(Module *irmodule):
-    ir_module_(irmodule){
-
-}
-
-std::string MachineModule::dump() {
-    return "";
-}
-
-MachineBasicBlock::MachineBasicBlock(MachineFunction *function):
-    parent_(function){
-
-}
-
-std::string MachineBasicBlock::dump() {
-    return "";
-}
-
-MachineFunction::MachineFunction(MachineModule *module):
-    module_(module){
-
-}
-
-std::string MachineFunction::dump() {
-    return "";
-}
-
-
 
 #endif //YFSCC_REGSALLOCATOR_H
