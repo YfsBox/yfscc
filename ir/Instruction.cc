@@ -6,6 +6,7 @@
 #include "BasicBlock.h"
 #include "Instruction.h"
 #include "GlobalVariable.h"
+#include "IrFactory.h"
 
 Instruction::Instruction(InstructionType type, BasicType basic_type, bool isptr, bool isbool, BasicBlock *block, const std::string &name):
         User(ValueType::InstructionValue, isptr, isbool, name),
@@ -197,33 +198,32 @@ GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *base, 
         Instruction(InstructionType::GEPType, btype, true, false, block, name),
         is_ptr_offset_(ptr_offset){
     addOperand(base);
+    setArrayDimension();
     for (auto value : indexes) {
         addOperand(value);
     }
-    setArrayDimension();
 }
 
 GEPInstruction::~GEPInstruction() = default;
 
 void GEPInstruction::setArrayDimension() {
     auto ptr_value = getPtr();
-    auto ptr_gep_inst = dynamic_cast<GEPInstruction *>(ptr_value);
-    if (ptr_gep_inst) {
+    if (auto ptr_gep_inst = dynamic_cast<GEPInstruction *>(ptr_value)) {
         auto tmp_dimension = ptr_gep_inst->getArrayDimension();
         if (!tmp_dimension.empty()) {
             array_dimension_numbers_ = std::vector<int32_t>(tmp_dimension.begin() + 1, tmp_dimension.end());
         }
-    } else if (dynamic_cast<AllocaInstruction *>(ptr_value)) {
-        auto alloca_inst_value = dynamic_cast<AllocaInstruction *>(ptr_value);
+    } else if (auto alloca_inst_value = dynamic_cast<AllocaInstruction *>(ptr_value)) {
         array_dimension_numbers_ = alloca_inst_value->getArrayDimensionSize();
-    } else if (dynamic_cast<LoadInstruction *>(ptr_value)) {
-        auto load_inst_value = dynamic_cast<LoadInstruction *>(ptr_value);
+    } else if (auto load_inst_value = dynamic_cast<LoadInstruction *>(ptr_value)) {
         array_dimension_numbers_ = load_inst_value->getArrayDimensionSize();
-    } else if (dynamic_cast<GlobalVariable *>(ptr_value)) {
-        auto global_value = dynamic_cast<GlobalVariable *>(ptr_value);
+    } else if (auto global_value = dynamic_cast<GlobalVariable *>(ptr_value)) {
         auto global_const_value = dynamic_cast<ConstantArray *>(global_value->getConstInit());
         assert(global_const_value);
         array_dimension_numbers_ = global_const_value->getDimensionNumbers();
+    }
+    if (!array_dimension_numbers_.empty() && !is_ptr_offset_) {
+        addOperand(IrFactory::createIConstantVar(0));
     }
 }
 

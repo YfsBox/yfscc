@@ -492,9 +492,9 @@ void IrDumper::dump(GEPInstruction *inst) {
     << strtype << "* "
     << dumpValue(inst->getPtr());
     out_ << ", ";
-    if (strtype != "i32" && strtype != "float" && !inst->isPtrOffset()) {
+    /*if (strtype != "i32" && strtype != "float" && !inst->isPtrOffset()) {           // 维度数组不是空的,并且不是基于offset的
         out_ << "i32 0, ";
-    }
+    }*/
     for (int i = 0; i < inst->getIndexSize(); i++) {
         auto index_value = inst->getIndexValue(i);
         out_ << dumpValue(BasicType::INT_BTYPE, index_value);
