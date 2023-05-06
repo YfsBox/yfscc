@@ -267,7 +267,7 @@ public:
 
     using PushRegsList = std::vector<RegPtr>;
 
-    PushInst(MachineBasicBlock *parent);
+    PushInst(MachineBasicBlock *parent, MachineInst::ValueType = Undef);
 
     ~PushInst() = default;
 
@@ -289,7 +289,7 @@ private:
 
 class PopInst: public MachineInst {
 public:
-    PopInst(MachineBasicBlock *parent);
+    PopInst(MachineBasicBlock *parent, MachineInst::ValueType value_type);
 
     ~PopInst() = default;
 

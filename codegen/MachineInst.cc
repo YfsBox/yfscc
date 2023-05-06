@@ -95,13 +95,14 @@ RetInst::RetInst(MachineBasicBlock *parent):
 
 RetInst::~RetInst() = default;
 
-PushInst::PushInst(MachineBasicBlock *parent):
-    MachineInst(Push, Undef, parent){
+
+PushInst::PushInst(MachineBasicBlock *parent, ValueType valuetype):
+    MachineInst(Push, valuetype, parent){
 
 }
 
-PopInst::PopInst(MachineBasicBlock *parent):
-    MachineInst(Pop, Undef, parent) {
+PopInst::PopInst(MachineBasicBlock *parent, ValueType valuetype):
+    MachineInst(Pop, valuetype, parent) {
 
 }
 

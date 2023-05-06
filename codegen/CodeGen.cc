@@ -21,6 +21,18 @@ static inline int32_t getLow(int32_t value) {
 static inline MachineOperand::ValueType basicType2ValueType(BasicType basic_type) {
     return basic_type == BasicType::INT_BTYPE ? MachineOperand::Int : MachineOperand::Float;
 }
+// 6000, 600, 30, 1
+// array[10][20][30] -> array[5][1][20],
+static void getDimensionBasesSize(const std::vector<int32_t> &dimension_number, std::vector<int32_t> &dimension_bases) {
+    auto dimension_size = dimension_number.size();
+    dimension_bases.resize(dimension_size + 1);
+    int32_t product = 1;
+    for (int i = 0; i < dimension_size; ++i) {
+        dimension_bases[dimension_size - i] = product;
+        product *= dimension_number[dimension_size - i - 1];
+    }
+    dimension_bases[0] = product;
+}
 
 CodeGen::CodeGen(Module *ir_module):
     virtual_reg_id_(-1),
@@ -131,25 +143,92 @@ void CodeGen::visit(Constant *constant) {
 
 void CodeGen::visit(Function *function) {
     curr_machine_function_ = new MachineFunction(module_.get());
+
+    int32_t old_stack_offset = stack_offset_;
+
     for (auto &basic_block: function->getBlocks()) {
         visit(basic_block.get());
         curr_machine_function_->addBasicBlock(curr_machine_basic_block_);
         // TODO,目前还不确定具体应该push或者pop哪些寄存器
         if (basic_block->getPreDecessorBlocks().empty()) {
             curr_machine_function_->setEnterBasicBlock(curr_machine_basic_block_);
-            auto push_inst = new PushInst(curr_machine_basic_block_);
-            curr_machine_basic_block_->addFrontInstruction(push_inst);
         }
 
         if (basic_block->getSuccessorBlocks().empty()) {
             curr_machine_function_->addExitBasicBlock(curr_machine_basic_block_);
-            auto pop_inst = new PopInst(curr_machine_basic_block_);
-            curr_machine_basic_block_->addInstruction(pop_inst);
+            /*auto pop_inst = new PopInst(curr_machine_basic_block_);
+            curr_machine_basic_block_->addInstruction(pop_inst);*/
         }
     }
+    // 一个函数在进入和退出时所需要的额外指令
+    int32_t mov_stack_offset = stack_offset_ - old_stack_offset;
+    MachineBasicBlock *enter_basicblock = curr_machine_function_->getEnterBasicBlock();
+    ImmNumber *offset_imm = new ImmNumber(mov_stack_offset);
+
+    enter_basicblock->addFrontInstruction(new BinaryInst(enter_basicblock, BinaryInst::ISub, sp_reg_, sp_reg_, offset_imm));
+    enter_basicblock->addFrontInstruction(new MoveInst(enter_basicblock, sp_reg_, fp_reg_));
+
+    auto push_intregs_inst = new PushInst(enter_basicblock, MachineInst::Int);
+    enter_basicblock->addFrontInstruction(push_intregs_inst);
+
+    auto push_floatregs_inst = new PushInst(enter_basicblock, MachineInst::Float);
+    enter_basicblock->addFrontInstruction(push_floatregs_inst);
+
+    for (int i = 0; i < curr_machine_function_->getExitBasicBlockSize(); ++i) {
+        auto exit_basicblock = curr_machine_function_->getExitBasicBlock(i);
+        exit_basicblock->addInstruction(new BinaryInst(exit_basicblock, BinaryInst::IAdd, sp_reg_, sp_reg_, offset_imm));
+        exit_basicblock->addInstruction(new MoveInst(exit_basicblock, fp_reg_, sp_reg_));
+
+        auto pop_intregs_inst = new PopInst(exit_basicblock, MachineInst::Int);
+        exit_basicblock->addInstruction(pop_intregs_inst);
+
+        auto pop_float_inst = new PopInst(exit_basicblock, MachineInst::Int);
+        exit_basicblock->addInstruction(pop_float_inst);
+    }
+
+
 }
 
 void CodeGen::visit(GEPInstruction *inst) {
+    auto base_ptr = inst->getPtr();
+    auto base_ptr_reg = value2MachineOperand(base_ptr, false);
+    auto dst_base_reg = createVirtualReg(MachineOperand::Int, inst);
+    auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, base_ptr_reg, dst_base_reg);
+    addMachineInst(mov_inst);
+
+    int index_size = inst->getIndexSize();
+    const std::vector<int32_t> &array_dimension = inst->getArrayDimension();
+    std::vector<int32_t> array_base_offsets;
+    getDimensionBasesSize(array_dimension, array_base_offsets);
+
+
+    for (int i = 0; i < index_size; ++i) {
+        auto index = inst->getIndexValue(i);
+        int32_t addbase_offset = array_base_offsets[i];
+        MachineOperand *tmp_mul_dst = nullptr;
+        if (auto const_index = dynamic_cast<ConstantVar *>(index)) {
+            int32_t const_index_number = const_index->getIValue();
+            if (const_index_number == 0) {
+                continue;
+            }
+            auto base_add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, dst_base_reg, dst_base_reg, new ImmNumber(addbase_offset * const_index_number * 4));
+            addMachineInst(base_add_inst);
+        } else {
+            auto const_index_reg = value2MachineOperand(index, false);
+            ImmNumber *index_base_imm = new ImmNumber(addbase_offset * 4);
+            if (tmp_mul_dst == nullptr) {
+                tmp_mul_dst = createVirtualReg(MachineOperand::Int);
+            }
+            auto mov_to_mul_dst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, index_base_imm, tmp_mul_dst);
+            addMachineInst(mov_to_mul_dst);
+
+            auto mul_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IMul, tmp_mul_dst, tmp_mul_dst, const_index_reg);
+            addMachineInst(mul_inst);
+
+            auto base_add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, dst_base_reg, dst_base_reg, tmp_mul_dst);
+            addMachineInst(base_add_inst);
+        }
+    }
 
 }
 

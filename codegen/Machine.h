@@ -78,6 +78,10 @@ public:
         exit_basic_block_.emplace_back(exit);
     }
 
+    int32_t getExitBasicBlockSize() const {
+        return exit_basic_block_.size();
+    }
+
     MachineBasicBlock *getEnterBasicBlock() const {
         return enter_basic_block_;
     }
