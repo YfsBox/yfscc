@@ -226,6 +226,7 @@ private:
 class BranchInst: public MachineInst {
 public:
     enum BranchCond {
+        BrNoCond,
         BrEq,
         BrNe,
         BrLe,
@@ -234,7 +235,7 @@ public:
         BrGt,
     };
 
-    BranchInst(MachineBasicBlock *parent, Label *label);
+    BranchInst(MachineBasicBlock *parent, Label *label, BranchCond cond = BrNoCond);
 
     ~BranchInst();
 

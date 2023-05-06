@@ -14,7 +14,8 @@ void MachineModule::addMachineFunction(MachineFunction *function) {
     machine_functions_.emplace_back(GET_UNIQUEPTR(function));
 }
 
-MachineBasicBlock::MachineBasicBlock(MachineFunction *function):
+MachineBasicBlock::MachineBasicBlock(MachineFunction *function, const std::string &name):
+    label_name_(name),
     parent_(function){
 
 }
@@ -25,10 +26,11 @@ void MachineBasicBlock::addInstruction(MachineInst *inst) {
 }
 
 void MachineBasicBlock::addFrontInstruction(MachineInst *inst) {
-    instructions_.emplace_back(GET_UNIQUEPTR(inst));
+    instructions_.push_front(GET_UNIQUEPTR(inst));
 }
 
-MachineFunction::MachineFunction(MachineModule *module):
+MachineFunction::MachineFunction(MachineModule *module, const std::string &name):
+    function_name_(name),
     module_(module){
 
 }

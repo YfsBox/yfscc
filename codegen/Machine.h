@@ -28,6 +28,10 @@ public:
 
     void addMachineFunction(MachineFunction *function);
 
+    const std::vector<MachineFunctionPtr> &getMachineFunctions() const {
+        return machine_functions_;
+    }
+
 private:
     Module *ir_module_;
 
@@ -38,7 +42,7 @@ class MachineBasicBlock {
 public:
     using MachineInstPtr = std::unique_ptr<MachineInst>;
 
-    MachineBasicBlock(MachineFunction *function);
+    MachineBasicBlock(MachineFunction *function, const std::string &name = "");
 
     ~MachineBasicBlock() = default;
 
@@ -46,7 +50,16 @@ public:
 
     void addFrontInstruction(MachineInst *inst);
 
+    const std::list<MachineInstPtr> &getInstructionList() const {
+        return instructions_;
+    }
+
+    std::string getLabelName() const {
+        return label_name_;
+    }
+
 private:
+    std::string label_name_;
     MachineFunction *parent_;
     std::list<MachineInstPtr> instructions_;
 };
@@ -55,7 +68,7 @@ class MachineFunction {
 public:
     using MachineBasicBlockPtr = std::unique_ptr<MachineBasicBlock>;
 
-    MachineFunction(MachineModule *module);
+    MachineFunction(MachineModule *module, const std::string &name = "");
 
     ~MachineFunction() = default;
 
@@ -65,6 +78,10 @@ public:
 
     int getBasicBlockSize() const {
         return basic_blocks_.size();
+    }
+
+    const std::vector<MachineBasicBlockPtr> &getMachineBasicBlock() const {
+        return basic_blocks_;
     }
 
     void addBasicBlock(MachineBasicBlock *basic_block);
@@ -90,7 +107,13 @@ public:
         return exit_basic_block_[idx];
     }
 
+    std::string getFunctionName() const {
+        return function_name_;
+    }
+
 private:
+    std::string function_name_;
+
     MachineModule *module_;
 
     MachineBasicBlock *enter_basic_block_;

@@ -80,8 +80,9 @@ CallInst::CallInst(MachineBasicBlock *parent, Label *label):
 
 CallInst::~CallInst() = default;
 
-BranchInst::BranchInst(MachineBasicBlock *parent, Label *label):
+BranchInst::BranchInst(MachineBasicBlock *parent, Label *label, BranchCond cond):
     MachineInst(Branch, Undef, parent),
+    br_cond_(cond),
     br_label_(label){
 
 }

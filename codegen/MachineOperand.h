@@ -111,6 +111,8 @@ public:
         return reg_;
     }
 
+    std::string machieReg2RegName() const;
+
 private:
     Reg reg_;
 };

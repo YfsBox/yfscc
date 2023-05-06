@@ -51,6 +51,27 @@ MachineReg::MachineReg(Reg reg):
     }
 }
 
+std::string MachineReg::machieReg2RegName() const {
+    if (reg_ >= r0 && reg_ <= r10) {
+        return "r" + std::to_string(reg_ - r0);   
+    } else if (reg_ >= s0 && reg_ <= s31) {
+        return "s" + std::to_string(reg_ - s0);
+    }
+    switch (reg_) {
+        case fp:
+            return "fp";
+        case ip:
+            return "ip";
+        case sp:
+            return "sp";
+        case lr:
+            return "lr";
+        case pc:
+            return "pc";
+    }
+    return "";
+}
+
 MachineReg::~MachineReg() = default;
 
 
