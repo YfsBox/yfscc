@@ -84,7 +84,6 @@ public:
 
     void dump() {
         dump(module_);
-        dumpGlobals();
     }
 
     void dumpGlobals();

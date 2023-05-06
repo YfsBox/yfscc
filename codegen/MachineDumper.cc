@@ -33,17 +33,29 @@ MachineDumper::~MachineDumper() {
 }
 
 void MachineDumper::dump(const MachineModule *module) {
-
+    fout_ << ".arch armv8-a\n.text\n.align 2\n.syntax unified\n.arm\n.global main\n\n";
+    const auto &functions = module->getMachineFunctions();
+    for (auto &function: functions) {
+        dump(function.get());
+    }
+    fout_ << "\n";
+    dumpGlobals();
 }
 
 void MachineDumper::dump(const MachineFunction *function) {
-
-
+    fout_ << function->getFunctionName() << ":\n";
+    const auto &basicblocks = function->getMachineBasicBlock();
+    for (auto &basicblock: basicblocks) {
+        dump(basicblock.get());
+    }
 }
 
 void MachineDumper::dump(const MachineBasicBlock *basicblock) {
-
-
+    fout_ << basicblock->getLabelName() << ":\n";
+    const auto &instructions = basicblock->getInstructionList();
+    for (auto &instruction: instructions) {
+        dump(instruction.get());
+    }
 }
 
 void MachineDumper::dump(const MachineInst *inst) {
@@ -86,6 +98,7 @@ void MachineDumper::dump(const MachineInst *inst) {
 }
 
 void MachineDumper::dump(const MachineOperand *operand) {
+    assert(operand);
     auto operand_type = operand->getOperandType();
     switch (operand_type) {
         case MachineOperand::MachineReg:
@@ -108,22 +121,24 @@ void MachineDumper::dump(const Label *operand) {
 }
 
 void MachineDumper::dump(const MachineReg *operand) {
-    fout_ << operand->getReg();
+    fout_ << operand->machieReg2RegName();
 }
 
 void MachineDumper::dump(const VirtualReg *operand) {
-    fout_ << operand->getRegId();
+    fout_ << "vreg" << operand->getRegId();
 }
 
 void MachineDumper::dump(const ImmNumber *operand) {
-    if(operand -> isFloat())
+    if(operand->isFloat()) {
         fout_ << "#" << operand->getFValue();
-    else fout_ << "#" << operand->getIValue();
+    } else {
+        fout_ << "#" << operand->getIValue();
+    }
 }
 
 //??? 如何得到label
 void MachineDumper::dump(const BranchInst *inst) {
-    //fout_ << "." << inst->
+    // fout_ << "." << inst->
 }
 
 void MachineDumper::dump(const BinaryInst *inst) {
@@ -135,7 +150,18 @@ void MachineDumper::dump(const StoreInst *inst) {
 }
 
 void MachineDumper::dump(const MoveInst *inst) {
-    fout_ << "\tmov\t";
+    fout_ << "\t";
+    auto move_type = inst->getMoveType();
+    if (move_type == MoveInst::F2F) {
+        fout_ << "v";
+    }
+    fout_ << "mov";
+    if (move_type == MoveInst::L2I) {
+        fout_ << "w";
+    } else if (move_type == MoveInst::H2I) {
+        fout_ << "t";
+    }
+    fout_ << "\t";
     dump(inst->getDst());
     fout_ << ", ";
     dump(inst->getSrc());
@@ -153,12 +179,13 @@ void MachineDumper::dump(const CallInst *inst) {
 
 void MachineDumper::dump(const PopInst *inst) {
     fout_ << "\tpop\t" << "{";
-    int i=0;
-    for(;i<inst->getRegsSize()-1;i++){
+    auto reg_size = inst->getRegsSize();
+    for(int i = 0; i < reg_size; i++){
         dump(inst->getReg(i));
-        fout_ <<",";
+        if (i != reg_size - 1) {
+            fout_ <<",";
+        }
     }
-    dump(inst->getReg(i));
     fout_ << "}" << std::endl;
 }
 
@@ -180,12 +207,13 @@ void MachineDumper::dump(const RetInst *inst) {
 
 void MachineDumper::dump(const PushInst *inst) {
     fout_ << "\tpush\t" << "{";
-    int i = 0;
-    for(; i< inst->getRegsSize() - 1; i++) {
+    auto reg_size = inst->getRegsSize();
+    for(int i = 0; i< reg_size; i++) {
         dump(inst->getReg(i));
-        fout_ <<",";
+        if (i != reg_size - 1) {
+            fout_ << ",";
+        }
     }
-    dump(inst->getReg(i));
     fout_ << "}" << "\n";
 }
 
