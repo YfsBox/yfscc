@@ -138,15 +138,108 @@ void MachineDumper::dump(const ImmNumber *operand) {
 
 //??? 如何得到label
 void MachineDumper::dump(const BranchInst *inst) {
-    // fout_ << "." << inst->
+    fout_ << "\t";
+    auto branch_type = inst->getBranchType();
+    switch (branch_type) {
+        case BranchInst::BranchType::B:
+            fout_ << "b";
+            break;
+        case BranchInst::BranchType::Bx:
+            fout_ << "bx";
+            break;
+        case BranchInst::BranchType::Bl:
+            fout_ << "bl";
+            break;
+    }
+    auto branch_cond = inst->getBranchCond();
+    switch (branch_cond) {
+        case BranchInst::BrGt:
+            fout_ << "gt";
+            break;
+        case BranchInst::BrLt:
+            fout_ << "lt";
+            break;
+        case BranchInst::BrGe:
+            fout_ << "ge";
+            break;
+        case BranchInst::BrLe:
+            fout_ << "le";
+            break;
+        case BranchInst::BrEq:
+            fout_ << "eq";
+            break;
+        case BranchInst::BrNe:
+            fout_ << "ne";
+            break;
+    }
+    fout_ << "\t";
+    dump(inst->getOperand());
+    fout_ << "\n";
 }
 
 void MachineDumper::dump(const BinaryInst *inst) {
-
+    BinaryInst::BinaryOp binary_type = inst->getBinaryOp();
+    fout_ << "\t";
+    switch (binary_type) {
+        case BinaryInst::BinaryOp::IAdd:
+            fout_ << "add";
+            break;
+        case BinaryInst::BinaryOp::ISub:
+            fout_ << "sub";
+            break;
+        case BinaryInst::BinaryOp::IMul:
+            fout_ << "mul";
+            break;
+        case BinaryInst::BinaryOp::IDiv:
+            fout_ << "div";
+            break;
+        case BinaryInst::BinaryOp::FAdd:
+            fout_ << "vadd.f32";
+            break;
+        case BinaryInst::BinaryOp::FSub:
+            fout_ << "vsub.f32";
+            break;
+        case BinaryInst::BinaryOp::FMul:
+            fout_ << "vmul.f32";
+            break;
+        case BinaryInst::BinaryOp::FDiv:
+            fout_ << "vdiv.f32";
+            break;
+        case BinaryInst::BinaryOp::ILsr:
+            fout_ << "lsr";
+            break;
+        case BinaryInst::BinaryOp::IRsb:
+            fout_ << "rsb";
+            break;
+        case BinaryInst::BinaryOp::IAsl:
+            fout_ << "asl";
+            break;
+        case BinaryInst::BinaryOp::ILsl:
+            fout_ << "lsl";
+            break;
+        case BinaryInst::BinaryOp::IAsr:
+            fout_ << "asr";
+            break;
+    }
+    fout_ << "\t";
+    dump(inst->getDst());
+    fout_ << ", ";
+    dump(inst->getLeft());
+    fout_ << ", ";
+    dump(inst->getRight());
+    fout_ << "\n";
 }
 
 void MachineDumper::dump(const StoreInst *inst) {
-
+    fout_ << "\tstr\t";
+    dump(inst->getValue());
+    fout_ << ", [";
+    dump(inst->getBase());
+    if (inst->getOffset()) {
+        fout_ << ", ";
+        dump(inst->getOffset());
+    }
+    fout_ << "]\n";
 }
 
 void MachineDumper::dump(const MoveInst *inst) {
@@ -164,13 +257,28 @@ void MachineDumper::dump(const MoveInst *inst) {
     fout_ << "\t";
     dump(inst->getDst());
     fout_ << ", ";
+    if (inst->getSrc()->getOperandType() == MachineOperand::Label) {
+        if (move_type == MoveInst::L2I) {
+            fout_ << "#:lower16:";
+        } else if (move_type == MoveInst::H2I) {
+            fout_ << "#:upper16:";
+        }
+    }
     dump(inst->getSrc());
-    fout_ << std::endl;
+    fout_ << "\n";
 }
 
 //无法确定load寻址的类型
 void MachineDumper::dump(const LoadInst *inst) {
-
+    fout_ << "\tldr\t";
+    dump(inst->getDst());
+    fout_ << ", [";
+    dump(inst->getBase());
+    if (inst->getOffset()) {
+        fout_ << ", ";
+        dump(inst->getOffset());
+    }
+    fout_ << "]\n";
 }
 
 void MachineDumper::dump(const CallInst *inst) {

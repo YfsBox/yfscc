@@ -235,7 +235,13 @@ public:
         BrGt,
     };
 
-    BranchInst(MachineBasicBlock *parent, Label *label, BranchCond cond = BrNoCond);
+    enum BranchType {
+        B,
+        Bl,
+        Bx,
+    };
+
+    BranchInst(MachineBasicBlock *parent, MachineOperand *operand, BranchCond cond = BrNoCond, BranchType branch_type = B);
 
     ~BranchInst();
 
@@ -247,10 +253,20 @@ public:
         br_cond_ = cond;
     }
 
+    BranchType getBranchType() const {
+        return br_type_;
+    }
+
+    MachineOperand *getOperand() const {
+        return br_operand_;
+    }
+
 private:
     BranchCond br_cond_;
 
-    Label *br_label_;
+    BranchType br_type_;
+
+    MachineOperand *br_operand_;
 };
 
 class RetInst: public MachineInst {

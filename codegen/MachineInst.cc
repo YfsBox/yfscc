@@ -80,10 +80,11 @@ CallInst::CallInst(MachineBasicBlock *parent, Label *label):
 
 CallInst::~CallInst() = default;
 
-BranchInst::BranchInst(MachineBasicBlock *parent, Label *label, BranchCond cond):
+BranchInst::BranchInst(MachineBasicBlock *parent, MachineOperand *operand, BranchCond cond, BranchType branch_type):
     MachineInst(Branch, Undef, parent),
     br_cond_(cond),
-    br_label_(label){
+    br_type_(branch_type),
+    br_operand_(operand){
 
 }
 
@@ -95,7 +96,6 @@ RetInst::RetInst(MachineBasicBlock *parent):
 }
 
 RetInst::~RetInst() = default;
-
 
 PushInst::PushInst(MachineBasicBlock *parent, ValueType valuetype):
     MachineInst(Push, valuetype, parent){

@@ -115,7 +115,7 @@ private:
 
     VirtualReg *createVirtualReg(MachineOperand::ValueType value_type, Value *value = nullptr);
 
-    MoveInst *loadGlobalVarAddr(GlobalVariable *global);
+    MachineOperand *loadGlobalVarAddr(GlobalVariable *global);
 
     MachineOperand *value2MachineOperand(Value *value, bool can_be_imm, bool *is_float = nullptr);
 
@@ -126,6 +126,8 @@ private:
     MachineOperand *sp_reg_;
 
     MachineOperand *fp_reg_;
+
+    MachineOperand *lr_reg_;
 
     MachineModulePtr module_;
 
