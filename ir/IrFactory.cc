@@ -118,7 +118,9 @@ IrFactory::ValuePtr IrFactory::createBasicBlock(const std::string &name) {
 IrFactory::ValuePtr IrFactory::createBrInstruction(Value *label) {
     // context_->ssaAdd();
     context_->curr_bb_->setHasJump(true);
-    return new BranchInstruction(context_->curr_bb_, label /*std::to_string(context_->ssa_no_)*/);
+    auto br_inst = new BranchInstruction(context_->curr_bb_, label /*std::to_string(context_->ssa_no_)*/);
+    BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(label));
+    return br_inst;
 }
 
 IrFactory::ValuePtr IrFactory::createCallInstruction(const std::vector<Value *> &actuals, Function *function) {
@@ -131,7 +133,14 @@ IrFactory::ValuePtr IrFactory::createCallInstruction(const std::vector<Value *> 
 IrFactory::ValuePtr IrFactory::createCondBrInstruction(Value *cond, Value *truelabel, Value *falselabel) {
     // context_->ssaAdd();
     context_->curr_bb_->setHasJump(true);
-    return new BranchInstruction(context_->curr_bb_, cond, truelabel, falselabel /*std::to_string(context_->ssa_no_)*/);
+    auto br_inst = new BranchInstruction(context_->curr_bb_, cond, truelabel, falselabel /*std::to_string(context_->ssa_no_)*/);
+    if (truelabel) {
+        BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(truelabel));
+    }
+    if (falselabel) {
+        BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(falselabel));
+    }
+    return br_inst;
 }
 
 IrFactory::ValuePtr IrFactory::createDivInstruction(Value *left, Value *right, BasicType btype) {

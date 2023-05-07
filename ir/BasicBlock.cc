@@ -1,6 +1,7 @@
 //
 // Created by 杨丰硕 on 2023/4/15.
 //
+#include <cassert>
 #include "BasicBlock.h"
 
 BasicBlock::BasicBlock(Function *func, const std::string &lebal):
@@ -10,6 +11,7 @@ BasicBlock::~BasicBlock() = default;
 
 void BasicBlock::bindBasicBlock(BasicBlock *pre, BasicBlock *succ) {
     pre->addSuccessorBlock(succ);
+    assert(succ);
     succ->addPredecessorBlock(pre);
 }
 

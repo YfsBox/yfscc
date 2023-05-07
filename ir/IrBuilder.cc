@@ -237,7 +237,7 @@ void IrBuilder::dealExprAsCond(const std::shared_ptr<Expression> &expr) {
         auto new_br_inst = IrFactory::createCondBrInstruction(expr_value, nullptr, nullptr);
         addInstruction(new_br_inst);
         auto new_block = IrFactory::createBasicBlock("lebal.");
-        BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(new_block));
+
         setCurrBasicBlock(new_block);
         addBasicBlock(new_block);
         // 设置回填用的map
@@ -1120,7 +1120,7 @@ void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
 
         if (!context_->curr_bb_->getHasJump()) {
             addInstruction(IrFactory::createBrInstruction(while_start_bb_value));
-            BasicBlock::bindBasicBlock(context_->curr_bb_, while_start_bb);
+            // BasicBlock::bindBasicBlock(context_->curr_bb_, while_start_bb);
         }
     }
 
