@@ -136,17 +136,184 @@ void MachineDumper::dump(const ImmNumber *operand) {
     }
 }
 
-//??? 如何得到label
 void MachineDumper::dump(const BranchInst *inst) {
-    // fout_ << "." << inst->
+    auto Cond_type = inst->getBranchCond();
+    switch (Cond_type) {
+        case BranchInst::BrNoCond:
+            fout_ << "\tb\t.";
+            dump(inst->getBranchLabel());
+            fout_ << "\n";
+            return ;
+        case BranchInst::BrEq:
+            fout_ << "\tbeq\t.";
+            dump(inst->getBranchLabel());
+            fout_ << "\n";
+            return ;
+        case BranchInst::BrNe:
+            fout_ << "\tbne\t.";
+            dump(inst->getBranchLabel());
+            fout_ << "\n";
+            return ;
+        case BranchInst::BrLe:
+            fout_ << "\tble\t.";
+            dump(inst->getBranchLabel());
+            fout_ << "\n";
+            return ;
+        case BranchInst::BrGe:
+            fout_ << "\tbge\t.";
+            dump(inst->getBranchLabel());
+            fout_ << "\n";
+            return ;
+        case BranchInst::BrLt:
+            fout_ << "\tblt\t.";
+            dump(inst->getBranchLabel());
+            fout_ << "\n";
+            return ;
+        case BranchInst::BrGt:
+            fout_ << "\tbgt\t.";
+            dump(inst->getBranchLabel());
+            fout_ << "\n";
+            return ;
+    }
 }
 
 void MachineDumper::dump(const BinaryInst *inst) {
-
+    //对状态寄存器的判断 所以没有写后缀S
+    //如果对状态寄存器有改变的话 指令之后要加s 加和减的相关指令都有可能改变
+    auto Op_type = inst->getBinaryOp();
+    switch (Op_type) {
+        case BinaryInst::IAdd:
+            fout_ << "\tadd\t";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        case BinaryInst::ISub:
+            fout_ << "\tsub\t";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        case BinaryInst::IMul:
+            fout_ << "\tmul\t";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        case BinaryInst::IDiv:
+            fout_ << "\tdiv\t";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        case BinaryInst::FAdd:
+            fout_ << "\tadd\t";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        case BinaryInst::FSub:
+            fout_ << "\tsub\t";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        case BinaryInst::FMul:
+            fout_ << "\tmul\t";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        case BinaryInst::Mod:
+            fout_ << "\tmul\t";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        //除了 mov 指令 其他的也可以将移位作为第二操作数
+        case BinaryInst::ILsl:
+            fout_ << "\tmov ";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", lsl ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        case BinaryInst::ILsr:
+            fout_ << "\tmov ";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", lsr ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        case BinaryInst::IAsl:
+            fout_ << "\tmov ";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", Asl ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        case BinaryInst::IAsr:
+            fout_ << "\tmov ";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", Asr ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+        case BinaryInst::IRsb:
+            fout_ << "\tsub\t";
+            dump(inst->getDst());
+            fout_ << ", ";
+            dump(inst->getLeft());
+            fout_ << ", ";
+            dump(inst->getRight());
+            fout_ << "\n";
+            return;
+    }
 }
 
 void MachineDumper::dump(const StoreInst *inst) {
-
+    //多寄存器寻址时STM 但是没有多寄存器就只写了STR
+    //前索引寻址：需要index_type
+    //后索引寻址
+    fout_ << "\tSTR\t";
+    dump(inst->getValue());
+    fout_ << ", [";
+    dump(inst->getBase());
+    fout_ << "], ";
+    dump(inst->getOffset());
+    fout_ << std::endl;
 }
 
 void MachineDumper::dump(const MoveInst *inst) {
@@ -161,7 +328,7 @@ void MachineDumper::dump(const MoveInst *inst) {
     } else if (move_type == MoveInst::H2I) {
         fout_ << "t";
     }
-    fout_ << "\t";
+     fout_ << "\t";
     dump(inst->getDst());
     fout_ << ", ";
     dump(inst->getSrc());
@@ -170,11 +337,23 @@ void MachineDumper::dump(const MoveInst *inst) {
 
 //无法确定load寻址的类型
 void MachineDumper::dump(const LoadInst *inst) {
-
+    //多寄存器寻址时LDM 但是没有多寄存器就只写了LDR
+    //前索引寻址：需要index_type
+    //后索引寻址
+    fout_ << "\tLDR\t";
+    dump(inst->getDst());
+    fout_ << ", [";
+    dump(inst->getBase());
+    fout_ << "], ";
+    dump(inst->getOffset());
+    fout_ << std::endl;
 }
 
 void MachineDumper::dump(const CallInst *inst) {
-
+    fout_ << "\tbl\t";
+    //输出函数的名字
+    dump(inst->getCallLabel());
+    fout_ << "\n";
 }
 
 void MachineDumper::dump(const PopInst *inst) {
@@ -183,7 +362,7 @@ void MachineDumper::dump(const PopInst *inst) {
     for(int i = 0; i < reg_size; i++){
         dump(inst->getReg(i));
         if (i != reg_size - 1) {
-            fout_ <<",";
+            fout_ <<", ";
         }
     }
     fout_ << "}" << std::endl;
@@ -198,11 +377,15 @@ void MachineDumper::dump(const CmpInst *inst) {
 }
 
 void MachineDumper::dump(const ClzInst *inst) {
-
+    fout_ << "\tclz\t";
+    dump(inst->getDst());
+    fout_ << ", ";
+    dump(inst->getSrc());
+    fout_ << "\n";
 }
 
 void MachineDumper::dump(const RetInst *inst) {
-    
+    fout_ << "\tret\t" << "\n";
 }
 
 void MachineDumper::dump(const PushInst *inst) {
@@ -211,7 +394,7 @@ void MachineDumper::dump(const PushInst *inst) {
     for(int i = 0; i< reg_size; i++) {
         dump(inst->getReg(i));
         if (i != reg_size - 1) {
-            fout_ << ",";
+            fout_ << ", ";
         }
     }
     fout_ << "}" << "\n";

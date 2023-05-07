@@ -144,7 +144,7 @@ public:
         FAdd,
         FSub,
         FMul,
-        FDiv,
+        FMul,
         Mod,
         ILsl,
         ILsr,
@@ -218,7 +218,6 @@ public:
         return call_label_;
     }
 
-
 private:
     Label *call_label_;
 };
@@ -241,6 +240,10 @@ public:
 
     BranchCond getBranchCond() const {
         return br_cond_;
+    }
+
+    Label* getBranchLabel() const {
+        return br_label_;
     }
 
     void setBrCond(BranchCond cond) {
