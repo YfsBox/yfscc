@@ -457,9 +457,6 @@ bool SemanticCheck::checkArrayVarDefine(const std::shared_ptr<Define> &def, Basi
         appendError(def.get(), "#The Const ArrayVal " + id_name + " not has a init expression\n");
         return false;
     }
-    /*if (def->init_expr_) {
-        visit(def->init_expr_);
-    }*/
     ident_systable_.addIdent(SymbolEntry(basic_type, false, 0, ident.get(), def->getDefType() == DefType::CONSTDEF));
     return true;
 }
