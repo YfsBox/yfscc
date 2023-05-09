@@ -29,6 +29,12 @@ void MachineBasicBlock::addFrontInstruction(MachineInst *inst) {
     instructions_.push_front(GET_UNIQUEPTR(inst));
 }
 
+void MachineBasicBlock::insertInstruction(MachineInstListIt it, MachineInst *inst) {
+    ++it;
+    instructions_.insert(it, GET_UNIQUEPTR(inst));
+    --it;
+}
+
 MachineFunction::MachineFunction(MachineModule *module, const std::string &name):
     function_name_(name),
     module_(module){

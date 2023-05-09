@@ -254,6 +254,28 @@ void MachineDumper::dump(const MoveInst *inst) {
     } else if (move_type == MoveInst::H2I) {
         fout_ << "t";
     }
+    auto move_cond = inst->getMoveCond();
+    switch (move_cond) {
+        case MoveInst::MoveNe:
+            fout_ << "ne";
+            break;
+        case MoveInst::MoveEq:
+            fout_ << "eq";
+            break;
+        case MoveInst::MoveLe:
+            fout_ << "le";
+            break;
+        case MoveInst::MoveGe:
+            fout_ << "ge";
+            break;
+        case MoveInst::MoveLt:
+            fout_ << "lt";
+            break;
+        case MoveInst::MoveGt:
+            fout_ << "gt";
+            break;
+    }
+
     fout_ << "\t";
     dump(inst->getDst());
     fout_ << ", ";

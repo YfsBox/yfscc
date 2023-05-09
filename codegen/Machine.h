@@ -8,6 +8,7 @@
 #include <vector>
 #include <list>
 #include <memory>
+#include <unordered_map>
 #include "MachineInst.h"
 
 class MachineInst;
@@ -42,6 +43,8 @@ class MachineBasicBlock {
 public:
     using MachineInstPtr = std::unique_ptr<MachineInst>;
 
+    using MachineInstListIt = std::list<MachineInstPtr>::iterator;
+
     MachineBasicBlock(MachineFunction *function, const std::string &name = "");
 
     ~MachineBasicBlock() = default;
@@ -49,6 +52,14 @@ public:
     void addInstruction(MachineInst *inst);
 
     void addFrontInstruction(MachineInst *inst);
+
+    void insertInstruction(MachineInstListIt it, MachineInst *inst);
+
+    MachineInstListIt getInstBackIt() {
+        MachineInstListIt back_it = instructions_.end();
+        --back_it;
+        return back_it;
+    }
 
     const std::list<MachineInstPtr> &getInstructionList() const {
         return instructions_;
@@ -121,6 +132,7 @@ private:
     std::vector<MachineBasicBlock *> exit_basic_block_;
 
     std::vector<MachineBasicBlockPtr> basic_blocks_;
+
 };
 
 #endif //YFSCC_MACHINE_H

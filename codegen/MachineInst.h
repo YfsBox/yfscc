@@ -108,6 +108,10 @@ public:
         mov_cond_ = mov_cond;
     }
 
+    MoveCond getMoveCond() const {
+        return mov_cond_;
+    }
+
 private:
     MoveCond mov_cond_;
     MoveType mov_type_;

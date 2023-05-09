@@ -113,6 +113,8 @@ private:
         curr_machine_basic_block_->addInstruction(inst);
     }
 
+    MachineOperand *getCmpReusltInOperand(SetCondInstruction *set_cond_inst);
+
     VirtualReg *createVirtualReg(MachineOperand::ValueType value_type, Value *value = nullptr);
 
     MachineOperand *constant2VirtualReg(int32_t const_value, bool can_be_imm);
@@ -140,6 +142,8 @@ private:
     MachineOperand *curr_machine_operand_;
 
     std::unordered_map<std::string, GlobalVarLabelPtr> global_var_map_;
+
+    std::unordered_map<SetCondInstruction *, MachineBasicBlock::MachineInstListIt> set_cond_it_map_;
 
     Value2MachineRegMap value_machinereg_map_;
 };

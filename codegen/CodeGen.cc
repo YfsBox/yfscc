@@ -430,10 +430,12 @@ void CodeGen::visit(LoadInstruction *inst) {
 }
 
 void CodeGen::visit(ZextInstruction *inst) {
-    auto set_cond_value = dynamic_cast<SetCondInstruction *>(inst);
-    assert(set_cond_value);
-
-    auto value_operand = value2MachineOperand(inst->getValue(), true);
+    MachineOperand *value_operand = nullptr;
+    if (auto set_cond_value = dynamic_cast<SetCondInstruction *>(inst)) {
+        value_operand = getCmpReusltInOperand(set_cond_value);
+    } else {
+        value_operand = value2MachineOperand(inst->getValue(), true);
+    }
     assert(value_operand);
     auto zext_dst = createVirtualReg(MachineOperand::Int, inst);
 
@@ -502,6 +504,40 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, boo
     return ret_operand;
 }
 
+MachineOperand *CodeGen::getCmpReusltInOperand(SetCondInstruction *set_cond_inst) {
+    MachineOperand *value;
+    auto find_setcond_it = set_cond_it_map_.find(set_cond_inst);
+    assert(find_setcond_it != set_cond_it_map_.end());
+    value = createVirtualReg(set_cond_inst->isFloatCmp() ? MachineOperand::ValueType::Float : MachineOperand::ValueType::Int);
+    auto cmp_type = set_cond_inst->getCmpType();
+    auto mov0_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, new ImmNumber(0), value);
+    auto mov1_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, new ImmNumber(1), value);
+    switch (cmp_type) {
+        case SetCondInstruction::SetGT:
+            mov1_inst->setMoveCond(MoveInst::MoveGt);
+            break;
+        case SetCondInstruction::SetLT:
+            mov1_inst->setMoveCond(MoveInst::MoveLt);
+            break;
+        case SetCondInstruction::SetGE:
+            mov1_inst->setMoveCond(MoveInst::MoveGe);
+            break;
+        case SetCondInstruction::SetLE:
+            mov1_inst->setMoveCond(MoveInst::MoveLe);
+            break;
+        case SetCondInstruction::SetEQ:
+            mov1_inst->setMoveCond(MoveInst::MoveEq);
+            break;
+        case SetCondInstruction::SetNE:
+            mov1_inst->setMoveCond(MoveInst::MoveNe);
+            break;
+    }
+    curr_machine_basic_block_->insertInstruction(find_setcond_it->second, mov1_inst);
+    curr_machine_basic_block_->insertInstruction(find_setcond_it->second, mov0_inst);
+
+    return value;
+}
+
 void CodeGen::visit(GlobalVariable *global) {
     auto label = new Label(global->getName());
     global_var_map_[label->getName()] = GET_UNIQUEPTR(label);
@@ -545,31 +581,37 @@ void CodeGen::visit(BranchInstruction *inst) {
         branch_inst1 = new BranchInst(curr_machine_basic_block_, branch1);
         branch_inst2 = new BranchInst(curr_machine_basic_block_, branch2);
 
-        auto cmp_cond = dynamic_cast<SetCondInstruction *>(inst->getCond());
-        assert(cmp_cond);
-        auto cmp_type = cmp_cond->getCmpType();
-        BranchInst::BranchCond branch_cond;
-        switch (cmp_type) {
-            case SetCondInstruction::SetNE:
-                branch_cond = BranchInst::BrNe;
-                break;
-            case SetCondInstruction::SetEQ:
-                branch_cond = BranchInst::BrEq;
-                break;
-            case SetCondInstruction::SetLE:
-                branch_cond = BranchInst::BrLe;
-                break;
-            case SetCondInstruction::SetGE:
-                branch_cond = BranchInst::BrGe;
-                break;
-            case SetCondInstruction::SetLT:
-                branch_cond = BranchInst::BrLt;
-                break;
-            case SetCondInstruction::SetGT:
-                branch_cond = BranchInst::BrGt;
-                break;
+        if (auto cmp_cond = dynamic_cast<SetCondInstruction *>(inst->getCond())) {
+            assert(cmp_cond);
+            auto cmp_type = cmp_cond->getCmpType();
+            BranchInst::BranchCond branch_cond;
+            switch (cmp_type) {
+                case SetCondInstruction::SetNE:
+                    branch_cond = BranchInst::BrNe;
+                    break;
+                case SetCondInstruction::SetEQ:
+                    branch_cond = BranchInst::BrEq;
+                    break;
+                case SetCondInstruction::SetLE:
+                    branch_cond = BranchInst::BrLe;
+                    break;
+                case SetCondInstruction::SetGE:
+                    branch_cond = BranchInst::BrGe;
+                    break;
+                case SetCondInstruction::SetLT:
+                    branch_cond = BranchInst::BrLt;
+                    break;
+                case SetCondInstruction::SetGT:
+                    branch_cond = BranchInst::BrGt;
+                    break;
+            }
+            branch_inst1->setBrCond(branch_cond);
+        } else {
+            auto cond_value_operand = value2MachineOperand(inst->getCond(), false);
+            auto cmp_inst = new CmpInst(curr_machine_basic_block_, cond_value_operand, new ImmNumber(1));
+            addMachineInst(cmp_inst);
+            branch_inst1->setBrCond(BranchInst::BrEq);
         }
-        branch_inst1->setBrCond(branch_cond);
         addMachineInst(branch_inst1);
         addMachineInst(branch_inst2);
     } else {
@@ -588,15 +630,22 @@ void CodeGen::visit(SetCondInstruction *inst) {     // 一般紧接着就是跳�
     auto cmp_inst = new CmpInst(curr_machine_basic_block_);
     cmp_inst->setValueType(value_type);
 
+    auto lhs_value = inst->getLeft();
+    auto rhs_value = inst->getRight();
+    if (dynamic_cast<ConstantVar *>(lhs_value) && !dynamic_cast<ConstantVar *>(rhs_value)) {
+        std::swap(lhs_value, rhs_value);
+    }
+
     auto lhs = value2MachineOperand(inst->getLeft(), false);
     assert(lhs);
-    auto rhs = value2MachineOperand(inst->getRight(), false);
+    auto rhs = value2MachineOperand(inst->getRight(), true);
     assert(rhs);
 
     cmp_inst->setLhs(lhs);
     cmp_inst->setRhs(rhs);
 
     addMachineInst(cmp_inst);
+    set_cond_it_map_[inst] = curr_machine_basic_block_->getInstBackIt();
 }
 
 void CodeGen::visit(UnaryOpInstruction *uinst) {        // 一元操作
@@ -604,8 +653,14 @@ void CodeGen::visit(UnaryOpInstruction *uinst) {        // 一元操作
     if (uinst_op == InstructionType::NotType) {
         if (uinst->getBasicType() == BasicType::INT_BTYPE) {
             bool is_float = false;
-            auto value = value2MachineOperand(uinst->getValue(), true,&is_float);
-            assert(value);
+
+            MachineOperand *value = nullptr;
+            if (auto set_cond_inst = dynamic_cast<SetCondInstruction *>(uinst->getValue())) {
+                value = getCmpReusltInOperand(set_cond_inst);
+            } else {
+                value = value2MachineOperand(uinst->getValue(), true,&is_float);
+            }
+            // assert(value);
             auto dst_reg = createVirtualReg(basicType2ValueType(uinst->getBasicType()));
             auto clz_inst = new ClzInst(curr_machine_basic_block_, dst_reg, value);
             auto lsr_dst_reg = createVirtualReg(MachineOperand::Int, uinst);
