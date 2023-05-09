@@ -144,7 +144,7 @@ public:
         FAdd,
         FSub,
         FMul,
-        FMul,
+        FDiv,
         Mod,
         ILsl,
         ILsr,
@@ -246,10 +246,6 @@ public:
 
     BranchCond getBranchCond() const {
         return br_cond_;
-    }
-
-    Label* getBranchLabel() const {
-        return br_label_;
     }
 
     void setBrCond(BranchCond cond) {

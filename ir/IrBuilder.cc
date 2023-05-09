@@ -95,15 +95,19 @@ void IrBuilder::addLibFunctions(const SemanticCheck::FuncDefineMap &libfunc_map)
 }
 
 std::vector<Value *> IrBuilder::arrayIndex2IndexVec(int32_t index) const {
+    // printf("the index is %d\n", index);
     std::vector<Value *> index_vecs;
     auto array_value = dynamic_cast<AllocaInstruction *>(curr_local_array_);
     assert(array_value);
     int dimension_size = array_value->getDimensionSize();
     index_vecs.resize(dimension_size);
-    int dimension_product = 1;
-    for (int i = dimension_size - 1; i >= 0; --i) {
+    int dimension_product = array_value->getDimensionSize(dimension_size - 1);
+    index_vecs[dimension_size - 1] = IrFactory::createIConstantVar(index % dimension_product);
+
+    for (int i = dimension_size - 2; i >= 0; --i) {
+        index_vecs[i] = IrFactory::createIConstantVar(index / dimension_product);
         dimension_product *= array_value->getDimensionSize(i);
-        index_vecs[i] = IrFactory::createIConstantVar(index % dimension_product);
+        // printf("The Index Vector[%d] is %d, the dimension size is %d\n", i, index % dimension_product, array_value->getDimensionSize(i));
     }
     return index_vecs;
 }
@@ -1054,7 +1058,7 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
                 int32_t len = end - start;
                 assert(len >= 0);
                 auto offset_const_value = IrFactory::createIConstantVar(start);
-                auto size_const_value = IrFactory::createIConstantVar(len);
+                auto size_const_value = IrFactory::createIConstantVar(len * 4);
                 auto gep_start_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
                                             IrFactory::createIGEPInstruction(array_base, false, arrayIndex2IndexVec(start)):
                                             IrFactory::createFGEPInstruction(array_base, false, arrayIndex2IndexVec(start));        // 获取start指针

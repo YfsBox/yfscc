@@ -115,6 +115,8 @@ private:
 
     VirtualReg *createVirtualReg(MachineOperand::ValueType value_type, Value *value = nullptr);
 
+    MachineOperand *constant2VirtualReg(int32_t const_value, bool can_be_imm);
+
     MachineOperand *loadGlobalVarAddr(GlobalVariable *global);
 
     MachineOperand *value2MachineOperand(Value *value, bool can_be_imm, bool *is_float = nullptr);

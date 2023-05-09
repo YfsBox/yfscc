@@ -56,6 +56,33 @@ VirtualReg *CodeGen::createVirtualReg(MachineOperand::ValueType value_type, Valu
     return virtual_reg;
 }
 
+MachineOperand *CodeGen::constant2VirtualReg(int32_t const_value, bool can_be_imm) {
+    MachineOperand *dst_reg;
+    int32_t high_value = getHigh(const_value);
+    if (high_value != 0) {
+        dst_reg = createVirtualReg(MachineOperand::Int);
+        int32_t low_value = getLow(const_value);
+
+        auto h_imm = new ImmNumber(high_value);
+        auto l_imm = new ImmNumber(low_value);
+
+        auto movh_inst = new MoveInst(curr_machine_basic_block_, MoveInst::H2I, h_imm, dst_reg);
+        auto movl_inst = new MoveInst(curr_machine_basic_block_, MoveInst::L2I, l_imm, dst_reg);
+
+        addMachineInst(movh_inst);
+        addMachineInst(movl_inst);
+    } else {
+        auto imm = new ImmNumber(const_value);
+        dst_reg = imm;
+        if (!can_be_imm) {
+            dst_reg = createVirtualReg(MachineOperand::Int);
+            auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, imm, dst_reg);
+            addMachineInst(mov_inst);
+        }
+    }
+    return dst_reg;
+}
+
 bool CodeGen::isImmNeedSplitMove(int imm_value) {
     int v = imm_value;
     for (int r = 0; r < 31; r += 2) {
@@ -212,16 +239,16 @@ void CodeGen::visit(GEPInstruction *inst) {
             if (const_index_number == 0) {
                 continue;
             }
-            auto base_add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, dst_base_reg, dst_base_reg, new ImmNumber(addbase_offset * const_index_number * 4));
+            auto base_add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, dst_base_reg, dst_base_reg,
+                                                constant2VirtualReg(addbase_offset * const_index_number * 4, true));
             addMachineInst(base_add_inst);
         } else {
             auto const_index_reg = value2MachineOperand(index, false);
             assert(base_ptr_reg);
-            ImmNumber *index_base_imm = new ImmNumber(addbase_offset * 4);
             if (tmp_mul_dst == nullptr) {
                 tmp_mul_dst = createVirtualReg(MachineOperand::Int);
             }
-            auto mov_to_mul_dst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, index_base_imm, tmp_mul_dst);
+            auto mov_to_mul_dst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, constant2VirtualReg(addbase_offset * 4, true), tmp_mul_dst);
             addMachineInst(mov_to_mul_dst);
 
             auto mul_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IMul, tmp_mul_dst, tmp_mul_dst, const_index_reg);
@@ -273,11 +300,13 @@ void CodeGen::visit(CallInstruction *inst) {
     if (stack_offset % 8) {
         stack_offset += 4;
     }
-
-    ImmNumber *stack_offset_imm = new ImmNumber(stack_offset);
-
-    auto sub_stack_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, sp_reg_, sp_reg_, stack_offset_imm);
-    addMachineInst(sub_stack_inst);
+    ImmNumber *stack_offset_imm = nullptr;
+    if (stack_offset != 0) {
+        stack_offset_imm = new ImmNumber(stack_offset);
+        auto sub_stack_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, sp_reg_, sp_reg_,
+                                             stack_offset_imm);
+        addMachineInst(sub_stack_inst);
+    }
 
     int32_t old_stack_offset = stack_offset;
 
@@ -304,12 +333,12 @@ void CodeGen::visit(CallInstruction *inst) {
             float_args_cnt--;
         } else {
             if (int_args_cnt <= 4) {
-                auto mreg = static_cast<MachineReg::Reg>(MachineReg::r4 - int_args_cnt);
+                auto mreg = static_cast<MachineReg::Reg>(MachineReg::r3 - int_args_cnt);
                 auto dst_vreg = new MachineReg(mreg);
                 auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, actual_vreg, dst_vreg);
                 addMachineInst(mov_inst);
             } else {
-                auto tmp_dst_reg = new MachineReg(MachineReg::r1);
+                auto tmp_dst_reg = new MachineReg(MachineReg::r0);
                 auto tmp_mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, actual_vreg, tmp_dst_reg);
                 auto store_inst = new StoreInst(MemIndexType::PostiveIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset));
 
@@ -324,24 +353,28 @@ void CodeGen::visit(CallInstruction *inst) {
     auto branch_funciton_inst = new BranchInst(curr_machine_basic_block_, new Label(function->getName()), BranchInst::BrNoCond, BranchInst::BranchType::Bl);
     addMachineInst(branch_funciton_inst);
 
-    auto add_stack_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, sp_reg_, sp_reg_, stack_offset_imm);
-    addMachineInst(add_stack_inst);     // 恢复stack
+    if (stack_offset_imm) {
+        auto add_stack_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, sp_reg_, sp_reg_,
+                                             stack_offset_imm);
+        addMachineInst(add_stack_inst);     // 恢复stack
+    }
 
     // 返回值保存在r0之中，需要增加一个move语句，将r0保存到某个寄存器里
     MachineReg *ret_reg;
-    MoveInst *mov_inst;
+    MoveInst *mov_inst = nullptr;
     auto ret_type = function->getRetType();
     if (ret_type == BasicType::FLOAT_BTYPE) {
         ret_reg = new MachineReg(MachineReg::s0);
         auto dst_reg = createVirtualReg(MachineOperand::Float, inst);
         mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, dst_reg, ret_reg);
-    } else if (ret_type != BasicType::VOID_BTYPE) {
+    } else if (ret_type == BasicType::INT_BTYPE) {
         ret_reg = new MachineReg(MachineReg::r0);
         auto dst_reg = createVirtualReg(MachineOperand::Int, inst);
         mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, dst_reg, ret_reg);
     }
-    addMachineInst(mov_inst);
-
+    if (mov_inst) {
+        addMachineInst(mov_inst);
+    }
 }
 
 void CodeGen::visit(CastInstruction *inst) {
@@ -415,30 +448,7 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, boo
             const_value_number = const_value->getIValue();
         }
 
-        auto dst_vreg = createVirtualReg(MachineOperand::ValueType::Int);
-        int32_t high_value = getHigh(const_value_number);
-        if (high_value != 0) {
-            int32_t low_value = getLow(const_value_number);
-
-            auto h_imm = new ImmNumber(high_value);
-            auto l_imm = new ImmNumber(low_value);
-
-            auto movh_inst = new MoveInst(curr_machine_basic_block_, MoveInst::H2I, h_imm, dst_vreg);
-            auto movl_inst = new MoveInst(curr_machine_basic_block_, MoveInst::L2I, l_imm, dst_vreg);
-
-            addMachineInst(movh_inst);
-            addMachineInst(movl_inst);
-
-            ret_operand = dst_vreg;
-        } else {
-            auto imm = new ImmNumber(const_value_number);
-            ret_operand = imm;
-            if (!can_be_imm) {
-                auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, imm, dst_vreg);
-                ret_operand = dst_vreg;
-                addMachineInst(mov_inst);
-            }
-        }
+        ret_operand = constant2VirtualReg(const_value_number, can_be_imm);
 
         if (const_value->isFloat()) {       // 因为前面的ret_operand是Int类型的,所以还需要涉及到一步到float的转换操作
             auto src = ret_operand;
