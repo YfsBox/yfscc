@@ -595,6 +595,11 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     // 退出
     var_symbol_table_.exitScope();
     context_->curr_function_->removeEmptyBasicBlock();
+    for (auto &bb: context_->curr_function_->getBlocks()) {
+        if (bb->getHasRet()) {
+            bb->clearSuccessors();
+        }
+    }
 }
 
 void IrBuilder::visit(const std::shared_ptr<Statement> &stmt) {
@@ -1057,7 +1062,7 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
             for (auto &[start, end]: arrayval->zero_init_intervals_) {
                 int32_t len = end - start;
                 assert(len >= 0);
-                auto offset_const_value = IrFactory::createIConstantVar(start);
+                auto offset_const_value = IrFactory::createIConstantVar(start * 4);
                 auto size_const_value = IrFactory::createIConstantVar(len * 4);
                 auto gep_start_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
                                             IrFactory::createIGEPInstruction(array_base, false, arrayIndex2IndexVec(start)):

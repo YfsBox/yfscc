@@ -171,7 +171,35 @@ void CodeGen::visit(Constant *constant) {
 
 void CodeGen::visit(Function *function) {
     curr_machine_function_ = new MachineFunction(module_.get(), function->getName());
+    virtual_reg_id_ = -1;
+    stack_offset_ = 0;
+
     int32_t old_stack_offset = stack_offset_;
+
+    int32_t int_arg_reg_cnt = 0, float_arg_reg_cnt = 0;
+    std::vector<MachineInst *> args_move_insts;
+
+    for (int i = 0; i < function->getArgumentSize(); ++i) {
+        auto arg = function->getArgument(i);
+        MachineOperand *vreg;
+        if (arg->getBasicType() == BasicType::FLOAT_BTYPE && !arg->isPtrArg()) {
+            vreg = createVirtualReg(MachineOperand::Float, arg);
+            if (float_arg_reg_cnt < 16) {
+                MachineReg::Reg machine_reg = static_cast<MachineReg::Reg>(MachineReg::s0 + float_arg_reg_cnt);
+                auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::F2F, new MachineReg(machine_reg), vreg);
+                args_move_insts.push_back(mov_inst);
+                float_arg_reg_cnt++;
+            }
+        } else {
+            vreg = createVirtualReg(MachineOperand::Int, arg);
+            if (int_arg_reg_cnt < 4) {
+                MachineReg::Reg machine_reg = static_cast<MachineReg::Reg>(MachineReg::r0 + int_arg_reg_cnt);
+                auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::I2I, new MachineReg(machine_reg), vreg);
+                args_move_insts.push_back(mov_inst);
+                int_arg_reg_cnt++;
+            }
+        }
+    }
 
     for (auto &basic_block: function->getBlocks()) {
         visit(basic_block.get());
@@ -189,6 +217,10 @@ void CodeGen::visit(Function *function) {
     int32_t mov_stack_offset = stack_offset_ - old_stack_offset;
     MachineBasicBlock *enter_basicblock = curr_machine_function_->getEnterBasicBlock();
     ImmNumber *offset_imm = new ImmNumber(mov_stack_offset);
+
+    for (auto mov_inst: args_move_insts) {
+        enter_basicblock->addFrontInstruction(mov_inst);
+    }
 
     enter_basicblock->addFrontInstruction(new BinaryInst(enter_basicblock, BinaryInst::ISub, sp_reg_, sp_reg_, offset_imm));
     enter_basicblock->addFrontInstruction(new MoveInst(enter_basicblock, sp_reg_, fp_reg_));
@@ -309,20 +341,20 @@ void CodeGen::visit(CallInstruction *inst) {
     }
 
     int32_t old_stack_offset = stack_offset;
-
+    int32_t curr_float_arg_cnt = 0, curr_int_arg_cnt = 0;
     for (int i = 0; i < function->getArgumentSize(); ++i) {
         auto arg = function->getArgument(i);
         auto actual = inst->getActual(i);
         auto actual_vreg = value2MachineOperand(actual, true);
         assert(actual_vreg);
         if (!arg->isPtrArg() && arg->getBasicType() == BasicType::FLOAT_BTYPE) {
-            if (float_args_cnt <= 16) {
-                auto mreg = static_cast<MachineReg::Reg>(MachineReg::s16 - float_args_cnt);
+            if (curr_float_arg_cnt < 16) {
+                auto mreg = static_cast<MachineReg::Reg>(MachineReg::s0 + curr_float_arg_cnt);
                 auto dst_vreg = new MachineReg(mreg);
                 auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, actual_vreg, dst_vreg);
                 addMachineInst(mov_inst);
             } else {
-                auto tmp_dst_reg = new MachineReg(MachineReg::s15);
+                auto tmp_dst_reg = new MachineReg(MachineReg::s16);
                 auto tmp_mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, actual_vreg, tmp_dst_reg);
                 auto store_inst = new StoreInst(MemIndexType::PostiveIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset));
 
@@ -330,15 +362,15 @@ void CodeGen::visit(CallInstruction *inst) {
                 addMachineInst(store_inst);
                 stack_offset -= 4;
             }
-            float_args_cnt--;
+            curr_float_arg_cnt++;
         } else {
-            if (int_args_cnt <= 4) {
-                auto mreg = static_cast<MachineReg::Reg>(MachineReg::r3 - int_args_cnt);
+            if (curr_int_arg_cnt < 4) {
+                auto mreg = static_cast<MachineReg::Reg>(MachineReg::r0 + curr_int_arg_cnt);
                 auto dst_vreg = new MachineReg(mreg);
                 auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, actual_vreg, dst_vreg);
                 addMachineInst(mov_inst);
             } else {
-                auto tmp_dst_reg = new MachineReg(MachineReg::r0);
+                auto tmp_dst_reg = new MachineReg(MachineReg::r4);
                 auto tmp_mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, actual_vreg, tmp_dst_reg);
                 auto store_inst = new StoreInst(MemIndexType::PostiveIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset));
 
@@ -346,7 +378,7 @@ void CodeGen::visit(CallInstruction *inst) {
                 addMachineInst(store_inst);
                 stack_offset -= 4;
             }
-            int_args_cnt--;
+            curr_int_arg_cnt++;
         }
     }
 
@@ -366,11 +398,11 @@ void CodeGen::visit(CallInstruction *inst) {
     if (ret_type == BasicType::FLOAT_BTYPE) {
         ret_reg = new MachineReg(MachineReg::s0);
         auto dst_reg = createVirtualReg(MachineOperand::Float, inst);
-        mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, dst_reg, ret_reg);
+        mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, ret_reg, dst_reg);
     } else if (ret_type == BasicType::INT_BTYPE) {
         ret_reg = new MachineReg(MachineReg::r0);
         auto dst_reg = createVirtualReg(MachineOperand::Int, inst);
-        mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, dst_reg, ret_reg);
+        mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, ret_reg, dst_reg);
     }
     if (mov_inst) {
         addMachineInst(mov_inst);

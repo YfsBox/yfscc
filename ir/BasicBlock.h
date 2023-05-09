@@ -80,8 +80,25 @@ public:
         return has_jump_;
     }
 
+    void setHasRet(bool ret) {
+        has_ret_ = ret;
+    }
+
+    bool getHasRet() const {
+        return has_ret_;
+    }
+
+    void clearSuccessors() {
+        for (auto succ: successor_blocks_) {
+            succ->removePredecessorBlock(this);
+        }
+        successor_blocks_.clear();
+    }
+
 private:
     bool has_jump_;
+
+    bool has_ret_;
 
     Function *owner_function_;
 

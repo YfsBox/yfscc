@@ -141,8 +141,6 @@ private:
 
     std::unordered_map<std::string, GlobalVarLabelPtr> global_var_map_;
 
-    std::unordered_map<int, VirtualReg *> virtual_reg_map_;
-
     Value2MachineRegMap value_machinereg_map_;
 };
 

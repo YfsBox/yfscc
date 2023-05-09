@@ -305,14 +305,17 @@ IrFactory::ValuePtr IrFactory::createFStoreInstruction(Value *value, Value *ptr)
 }
 
 IrFactory::ValuePtr IrFactory::createVoidRetInstruction() {
+    context_->curr_bb_->setHasRet(true);
     return new RetInstruction (context_->curr_bb_);
 }
 
 IrFactory::ValuePtr IrFactory::createIRetInstruction(Value *value) {
+    context_->curr_bb_->setHasRet(true);
     return new RetInstruction (context_->curr_bb_, BasicType::INT_BTYPE, value);
 }
 
 IrFactory::ValuePtr IrFactory::createFRetInstruction(Value *value) {
+    context_->curr_bb_->setHasRet(true);
     return new RetInstruction (context_->curr_bb_, BasicType::FLOAT_BTYPE, value);
 }
 
