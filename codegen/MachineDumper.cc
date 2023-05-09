@@ -306,7 +306,11 @@ void MachineDumper::dump(const CmpInst *inst) {
 }
 
 void MachineDumper::dump(const ClzInst *inst) {
-
+    fout_ << "\tclz\t";
+    dump(inst->getDst());
+    fout_ << ", ";
+    dump(inst->getSrc());
+    fout_ << "\n";
 }
 
 void MachineDumper::dump(const RetInst *inst) {
