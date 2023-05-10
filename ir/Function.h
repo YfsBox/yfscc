@@ -56,6 +56,8 @@ public:
         return blocks_;
     }
 
+    void bindBasicBlocks();
+
 private:
     Module *parent_;
     BasicType ret_type_;

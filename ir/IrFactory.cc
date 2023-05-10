@@ -119,7 +119,7 @@ IrFactory::ValuePtr IrFactory::createBrInstruction(Value *label) {
     // context_->ssaAdd();
     context_->curr_bb_->setHasJump(true);
     auto br_inst = new BranchInstruction(context_->curr_bb_, label /*std::to_string(context_->ssa_no_)*/);
-    BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(label));
+    context_->curr_bb_->setBranchInst(br_inst);
     return br_inst;
 }
 
@@ -134,12 +134,7 @@ IrFactory::ValuePtr IrFactory::createCondBrInstruction(Value *cond, Value *truel
     // context_->ssaAdd();
     context_->curr_bb_->setHasJump(true);
     auto br_inst = new BranchInstruction(context_->curr_bb_, cond, truelabel, falselabel /*std::to_string(context_->ssa_no_)*/);
-    if (truelabel) {
-        BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(truelabel));
-    }
-    if (falselabel) {
-        BasicBlock::bindBasicBlock(context_->curr_bb_, dynamic_cast<BasicBlock *>(falselabel));
-    }
+    context_->curr_bb_->setBranchInst(br_inst);
     return br_inst;
 }
 

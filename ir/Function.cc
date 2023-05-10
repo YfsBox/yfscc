@@ -42,3 +42,17 @@ void Function::removeEmptyBasicBlock() {
 void Function::dump() const {
 
 }
+
+void Function::bindBasicBlocks() {
+    for (auto &bb: blocks_) {
+        BranchInstruction *br_inst = bb->getBranchInst();
+        if (br_inst && !bb->getHasRet()) {
+            if (!br_inst->isCondBranch()) {
+                BasicBlock::bindBasicBlock(bb.get(), dynamic_cast<BasicBlock *>(br_inst->getLabel()));
+            } else {
+                BasicBlock::bindBasicBlock(bb.get(), dynamic_cast<BasicBlock *>(br_inst->getTrueLabel()));
+                BasicBlock::bindBasicBlock(bb.get(), dynamic_cast<BasicBlock *>(br_inst->getFalseLabel()));
+            }
+        }
+    }
+}

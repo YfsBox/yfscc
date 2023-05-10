@@ -95,6 +95,14 @@ public:
         successor_blocks_.clear();
     }
 
+    void setBranchInst(BranchInstruction *inst) {
+        branch_inst_ = inst;
+    }
+
+    BranchInstruction *getBranchInst() {
+        return branch_inst_;
+    }
+
 private:
     bool has_jump_;
 
@@ -109,6 +117,8 @@ private:
     BlockList predecessor_blocks_;
 
     BlockList terminals_;
+
+    BranchInstruction *branch_inst_;
 };
 
 #endif //YFSCC_BASICBLOCK_H

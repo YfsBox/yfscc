@@ -5,7 +5,7 @@
 #include "BasicBlock.h"
 
 BasicBlock::BasicBlock(Function *func, const std::string &lebal):
-    Value(ValueType::BasicBlockValue, false, false, lebal), has_jump_(false), owner_function_(func) {}
+    Value(ValueType::BasicBlockValue, false, false, lebal), has_jump_(false), owner_function_(func), branch_inst_(nullptr) {}
 
 BasicBlock::~BasicBlock() = default;
 

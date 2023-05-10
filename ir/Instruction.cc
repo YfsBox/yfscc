@@ -146,7 +146,7 @@ BranchInstruction::~BranchInstruction() = default;
 
 SetCondInstruction::SetCondInstruction(BasicBlock *block, CmpCondType cmptype, bool is_float, Value *left, Value *right,
                                        const std::string &name):
-        Instruction(InstructionType::SetCondType, BasicType::VOID_BTYPE,false, true, block, name),
+        Instruction(InstructionType::SetCondType, BasicType::INT_BTYPE,false, true, block, name),
         is_float_(is_float),
         cmp_cond_type_(cmptype){
     addOperand(left);
