@@ -296,7 +296,11 @@ void MachineDumper::dump(const MoveInst *inst) {
 
 //无法确定load寻址的类型
 void MachineDumper::dump(const LoadInst *inst) {
-    fout_ << "\tldr\t";
+    fout_ << "\t";
+    if (inst->getValueType() == MachineInst::Float) {
+        fout_ << "v";
+    }
+    fout_ << "ldr\t";
     dump(inst->getDst());
     fout_ << ", [";
     dump(inst->getBase());
@@ -344,7 +348,11 @@ void MachineDumper::dump(const RetInst *inst) {
 }
 
 void MachineDumper::dump(const PushInst *inst) {
-    fout_ << "\tpush\t" << "{";
+    fout_ << "\t";
+    if (inst->getValueType() == MachineInst::Float) {
+        fout_ << "v";
+    }
+    fout_ << "push\t" << "{";
     auto reg_size = inst->getRegsSize();
     for(int i = 0; i< reg_size; i++) {
         dump(inst->getReg(i));

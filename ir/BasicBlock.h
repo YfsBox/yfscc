@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include "Value.h"
 #include "Instruction.h"
+#include "Function.h"
 
 class Function;
 
@@ -101,6 +102,10 @@ public:
 
     BranchInstruction *getBranchInst() {
         return branch_inst_;
+    }
+
+    bool isEnterBasicBlock() const {
+        return name_ == owner_function_->getName() + "0";
     }
 
 private:

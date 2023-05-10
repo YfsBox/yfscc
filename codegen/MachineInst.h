@@ -56,6 +56,10 @@ public:
         value_type_ = vtype;
     }
 
+    MachineInst::ValueType getValueType() const {
+        return value_type_;
+    }
+
 protected:
 
     ValueType getValueType(MachineOperand *operand);
@@ -310,7 +314,7 @@ private:
 
 class PopInst: public MachineInst {
 public:
-    PopInst(MachineBasicBlock *parent, MachineInst::ValueType value_type);
+    PopInst(MachineBasicBlock *parent, MachineInst::ValueType value_type = Undef);
 
     ~PopInst() = default;
 

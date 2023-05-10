@@ -98,6 +98,8 @@ public:
 
 private:
 
+    static constexpr const int push_regs_offset_ = 64;
+
     int moveStackOffset(int offset) {
         stack_offset_ += offset;
         return stack_offset_;
@@ -122,6 +124,10 @@ private:
     MachineOperand *loadGlobalVarAddr(GlobalVariable *global);
 
     MachineOperand *value2MachineOperand(Value *value, bool can_be_imm, bool *is_float = nullptr);
+
+    void addPushInst(MachineBasicBlock *basicblock);
+
+    void addPopInst(MachineBasicBlock *basicblock);
 
     int virtual_reg_id_;
 

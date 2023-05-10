@@ -94,6 +94,44 @@ bool CodeGen::isImmNeedSplitMove(int imm_value) {
     return false;
 }
 
+void CodeGen::addPushInst(MachineBasicBlock *basicblock) {
+    auto push_regs_inst = new PushInst(curr_machine_basic_block_, MachineInst::Int);
+    auto push_sreg_inst = new PushInst(curr_machine_basic_block_, MachineInst::Float);
+
+    for (int i = 0; i < 8; ++i) {
+        MachineReg::Reg reg = static_cast<MachineReg::Reg>(MachineReg::r4 + i);
+        MachineReg::Reg sreg = static_cast<MachineReg::Reg>(MachineReg::s16 + i);
+        auto machine_reg = new MachineReg(reg);
+        auto machine_sreg = new MachineReg(sreg);
+
+        push_regs_inst->addReg(machine_reg);
+        push_sreg_inst->addReg(machine_sreg);
+    }
+    push_regs_inst->addReg(new MachineReg(MachineReg::lr));
+
+    basicblock->addFrontInstruction(push_regs_inst);
+    basicblock->addFrontInstruction(push_sreg_inst);
+}
+
+void CodeGen::addPopInst(MachineBasicBlock *basicblock) {
+    auto pop_regs_inst = new PopInst(curr_machine_basic_block_, MachineInst::Int);
+    auto pop_sreg_inst = new PopInst(curr_machine_basic_block_, MachineInst::Float);
+
+    for (int i = 0; i < 8; ++i) {
+        MachineReg::Reg reg = static_cast<MachineReg::Reg>(MachineReg::r4 + i);
+        MachineReg::Reg sreg = static_cast<MachineReg::Reg>(MachineReg::s16 + i);
+        auto machine_reg = new MachineReg(reg);
+        auto machine_sreg = new MachineReg(sreg);
+
+        pop_regs_inst->addReg(machine_reg);
+        pop_sreg_inst->addReg(machine_sreg);
+    }
+    pop_regs_inst->addReg(new MachineReg(MachineReg::lr));
+
+    basicblock->addInstruction(pop_regs_inst);
+    basicblock->addInstruction(pop_sreg_inst);
+}
+
 void CodeGen::visit(Module *module) {
     auto global_size = module->getGlobalSize();
     for (int i = 0; i < global_size; ++i) {
@@ -178,35 +216,54 @@ void CodeGen::visit(Function *function) {
 
     int32_t int_arg_reg_cnt = 0, float_arg_reg_cnt = 0;
     std::vector<MachineInst *> args_move_insts;
+    std::vector<MachineInst *> args_load_insts;
+
+    std::vector<MachineOperand *> args_onstack_vregs;
 
     for (int i = 0; i < function->getArgumentSize(); ++i) {
         auto arg = function->getArgument(i);
         MachineOperand *vreg;
         if (arg->getBasicType() == BasicType::FLOAT_BTYPE && !arg->isPtrArg()) {
             vreg = createVirtualReg(MachineOperand::Float, arg);
+            // printf("the arg %d in function %s to vreg %d\n", i, function->getName().c_str(), dynamic_cast<VirtualReg *>(vreg)->getRegId());
             if (float_arg_reg_cnt < 16) {
                 MachineReg::Reg machine_reg = static_cast<MachineReg::Reg>(MachineReg::s0 + float_arg_reg_cnt);
                 auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::F2F, new MachineReg(machine_reg), vreg);
                 args_move_insts.push_back(mov_inst);
                 float_arg_reg_cnt++;
+            } else {
+                args_onstack_vregs.push_back(vreg);
             }
         } else {
             vreg = createVirtualReg(MachineOperand::Int, arg);
+            // printf("the arg %d in function %s to vreg %d\n", i, function->getName().c_str(), dynamic_cast<VirtualReg *>(vreg)->getRegId());
             if (int_arg_reg_cnt < 4) {
                 MachineReg::Reg machine_reg = static_cast<MachineReg::Reg>(MachineReg::r0 + int_arg_reg_cnt);
                 auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::I2I, new MachineReg(machine_reg), vreg);
                 args_move_insts.push_back(mov_inst);
                 int_arg_reg_cnt++;
+            } else {
+                args_onstack_vregs.push_back(vreg);
             }
         }
+    }
+
+    auto args_onstack_cnt = args_onstack_vregs.size();
+    for (int i = args_onstack_cnt - 1; i >= 0; --i) {
+        auto vreg = args_onstack_vregs[i];
+        LoadInst *load_inst;
+        int32_t offset_cnt = args_onstack_cnt - i - 1;
+        load_inst = new LoadInst(curr_machine_basic_block_, vreg, fp_reg_, new ImmNumber(push_regs_offset_ + 4 * offset_cnt));
+        args_load_insts.push_back(load_inst);
     }
 
     for (auto &basic_block: function->getBlocks()) {
         visit(basic_block.get());
         curr_machine_function_->addBasicBlock(curr_machine_basic_block_);
-        // TODO,目前还不确定具体应该push或者pop哪些寄存器
-        if (basic_block->getPreDecessorBlocks().empty()) {
+        // printf("curr basicblock is %s\n", basic_block->getName().c_str());
+        if (basic_block->isEnterBasicBlock()) {
             curr_machine_function_->setEnterBasicBlock(curr_machine_basic_block_);
+            // printf("set basic block %s as enterblock\n", curr_machine_basic_block_->getLabelName().c_str());
         }
 
         if (basic_block->getSuccessorBlocks().empty()) {
@@ -218,6 +275,9 @@ void CodeGen::visit(Function *function) {
     MachineBasicBlock *enter_basicblock = curr_machine_function_->getEnterBasicBlock();
     ImmNumber *offset_imm = new ImmNumber(mov_stack_offset);
 
+    for (auto load_inst: args_load_insts) {
+        enter_basicblock->addFrontInstruction(load_inst);
+    }
     for (auto mov_inst: args_move_insts) {
         enter_basicblock->addFrontInstruction(mov_inst);
     }
@@ -225,22 +285,14 @@ void CodeGen::visit(Function *function) {
     enter_basicblock->addFrontInstruction(new BinaryInst(enter_basicblock, BinaryInst::ISub, sp_reg_, sp_reg_, offset_imm));
     enter_basicblock->addFrontInstruction(new MoveInst(enter_basicblock, sp_reg_, fp_reg_));
 
-    auto push_intregs_inst = new PushInst(enter_basicblock, MachineInst::Int);
-    enter_basicblock->addFrontInstruction(push_intregs_inst);
-
-    auto push_floatregs_inst = new PushInst(enter_basicblock, MachineInst::Float);
-    enter_basicblock->addFrontInstruction(push_floatregs_inst);
+    addPushInst(enter_basicblock);
 
     for (int i = 0; i < curr_machine_function_->getExitBasicBlockSize(); ++i) {
         auto exit_basicblock = curr_machine_function_->getExitBasicBlock(i);
         exit_basicblock->addInstruction(new BinaryInst(exit_basicblock, BinaryInst::IAdd, sp_reg_, sp_reg_, offset_imm));
         exit_basicblock->addInstruction(new MoveInst(exit_basicblock, fp_reg_, sp_reg_));
 
-        auto pop_intregs_inst = new PopInst(exit_basicblock, MachineInst::Int);
-        exit_basicblock->addInstruction(pop_intregs_inst);
-
-        auto pop_float_inst = new PopInst(exit_basicblock, MachineInst::Int);
-        exit_basicblock->addInstruction(pop_float_inst);
+        addPopInst(exit_basicblock);
 
         auto bx_inst = new BranchInst(exit_basicblock, lr_reg_, BranchInst::BrNoCond, BranchInst::Bx);
         exit_basicblock->addInstruction(bx_inst);
@@ -356,7 +408,9 @@ void CodeGen::visit(CallInstruction *inst) {
             } else {
                 auto tmp_dst_reg = new MachineReg(MachineReg::s16);
                 auto tmp_mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, actual_vreg, tmp_dst_reg);
-                auto store_inst = new StoreInst(MemIndexType::PostiveIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset));
+                auto store_inst = new StoreInst(MemIndexType::PostiveIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset - 4));
+
+                // printf("the arg %d in function %s on offset %d\n", i, inst->getFunction()->getName().c_str(), stack_offset - 4);
 
                 addMachineInst(tmp_mov_inst);
                 addMachineInst(store_inst);
@@ -372,8 +426,9 @@ void CodeGen::visit(CallInstruction *inst) {
             } else {
                 auto tmp_dst_reg = new MachineReg(MachineReg::r4);
                 auto tmp_mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, actual_vreg, tmp_dst_reg);
-                auto store_inst = new StoreInst(MemIndexType::PostiveIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset));
+                auto store_inst = new StoreInst(MemIndexType::PostiveIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset - 4));
 
+                // printf("the arg %d in function %s on offset %d\n", i, inst->getFunction()->getName().c_str(), stack_offset - 4);
                 addMachineInst(tmp_mov_inst);
                 addMachineInst(store_inst);
                 stack_offset -= 4;
@@ -665,39 +720,25 @@ void CodeGen::visit(SetCondInstruction *inst) {     // 一般紧接着就是跳�
 void CodeGen::visit(UnaryOpInstruction *uinst) {        // 一元操作
     auto uinst_op = uinst->getInstType();
     if (uinst_op == InstructionType::NotType) {
-        if (true) {
-            bool is_float = false;
 
-            MachineOperand *value = nullptr;
-            if (auto set_cond_inst = dynamic_cast<SetCondInstruction *>(uinst->getValue())) {
-                value = getCmpReusltInOperand(set_cond_inst);
-            } else {
+        bool is_float = false;
+
+        MachineOperand *value = nullptr;
+        if (auto set_cond_inst = dynamic_cast<SetCondInstruction *>(uinst->getValue())) {
+            value = getCmpReusltInOperand(set_cond_inst);
+        } else {
                 value = value2MachineOperand(uinst->getValue(), true,&is_float);
-            }
-            // assert(value);
-            auto dst_reg = createVirtualReg(basicType2ValueType(uinst->getBasicType()));
-            auto clz_inst = new ClzInst(curr_machine_basic_block_, dst_reg, value);
-            auto lsr_dst_reg = createVirtualReg(MachineOperand::Int, uinst);
-            auto lsr_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ILsr, lsr_dst_reg, dst_reg,
-                                           new ImmNumber(5));
-
-            addMachineInst(clz_inst);
-            addMachineInst(lsr_inst);
-        } else {        // 对于float类型的数一般通过cmp ne来进行判断
-            float imm_number = 0.0;
-            MachineOperand *value_operand = value2MachineOperand(uinst->getValue(), false);
-            assert(value_operand);
-            auto cmp_inst = new CmpInst(curr_machine_basic_block_, value_operand, new ImmNumber(imm_number));
-            assert(cmp_inst);
-            auto mov_dst_vreg = createVirtualReg(MachineOperand::Int, uinst);
-            auto mov1_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, mov_dst_vreg, new ImmNumber(1));
-            mov1_inst->setMoveCond(MoveInst::MoveEq);       // 和0比较相等时,就是move 1生效
-            auto mov2_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, mov_dst_vreg, new ImmNumber(0));
-
-            addMachineInst(cmp_inst);
-            addMachineInst(mov1_inst);
-            addMachineInst(mov2_inst);
         }
+
+        auto dst_reg = createVirtualReg(basicType2ValueType(uinst->getBasicType()));
+        auto clz_inst = new ClzInst(curr_machine_basic_block_, dst_reg, value);
+        auto lsr_dst_reg = createVirtualReg(MachineOperand::Int, uinst);
+        auto lsr_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ILsr, lsr_dst_reg, dst_reg,
+                                       new ImmNumber(5));
+
+        addMachineInst(clz_inst);
+        addMachineInst(lsr_inst);
+
     } else if (uinst_op == InstructionType::NegType) {
         if (uinst->getBasicType() == BasicType::INT_BTYPE) {
             auto rsb_dst = createVirtualReg(basicType2ValueType(uinst->getBasicType()), uinst);
