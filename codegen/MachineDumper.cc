@@ -94,6 +94,9 @@ void MachineDumper::dump(const MachineInst *inst) {
         case MachineInst::Load:
             dump(dynamic_cast<const LoadInst *>(inst));
             return;
+        case MachineInst::Cvt:
+            dump(dynamic_cast<const CvtInst *>(inst));
+            return;
     }
 }
 
@@ -191,7 +194,7 @@ void MachineDumper::dump(const BinaryInst *inst) {
             fout_ << "mul";
             break;
         case BinaryInst::BinaryOp::IDiv:
-            fout_ << "div";
+            fout_ << "sdiv";
             break;
         case BinaryInst::BinaryOp::FAdd:
             fout_ << "vadd.f32";
@@ -249,6 +252,7 @@ void MachineDumper::dump(const MoveInst *inst) {
         fout_ << "v";
     }
     fout_ << "mov";
+
     if (move_type == MoveInst::L2I) {
         fout_ << "w";
     } else if (move_type == MoveInst::H2I) {
@@ -349,6 +353,18 @@ void MachineDumper::dump(const PushInst *inst) {
         }
     }
     fout_ << "}" << "\n";
+}
+
+void MachineDumper::dump(const CvtInst *inst) {
+    if (inst->getCvtType() == CvtInst::I2F) {
+        fout_ << "\tvmov.f32.s32\t";
+    } else {
+        fout_ << "\tvmov.s32.f32\t";
+    }
+    dump(inst->getDst());
+    fout_ << ", ";
+    dump(inst->getSrc());
+    fout_ << "\n";
 }
 
 void MachineDumper::dumpGlobals() {

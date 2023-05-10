@@ -145,6 +145,18 @@ VnegInst::VnegInst(MachineBasicBlock *parent, OperandPtr dst, OperandPtr src):
 
 VnegInst::~VnegInst() = default;
 
+CvtInst::CvtInst(MachineBasicBlock *parent, CvtType cvt_type, OperandPtr dst, OperandPtr src):
+        MachineInst(Cvt, Undef, parent),
+        cvt_type_(cvt_type),
+        dst_(dst),
+        src_(src){
+    if (cvt_type == I2F) {
+        setValueType(ValueType::Float);
+    } else {
+        setValueType(ValueType::Int);
+    }
+}
+
 
 
 

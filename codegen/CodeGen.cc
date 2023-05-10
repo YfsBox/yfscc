@@ -410,7 +410,20 @@ void CodeGen::visit(CallInstruction *inst) {
 }
 
 void CodeGen::visit(CastInstruction *inst) {
-
+    CvtInst *cvt_inst = nullptr;
+    CvtInst::CvtType cvt_type;
+    MachineOperand::ValueType value_type;
+    if (inst->isI2F()) {
+        cvt_type = CvtInst::I2F;
+        value_type = MachineOperand::Float;
+    } else {
+        cvt_type = CvtInst::F2I;
+        value_type = MachineOperand::Int;
+    }
+    auto cast_dst_vreg = createVirtualReg(value_type, inst);
+    auto src_vreg = value2MachineOperand(inst->getValue(), false);
+    cvt_inst = new CvtInst(curr_machine_basic_block_, cvt_type, cast_dst_vreg, src_vreg);
+    addMachineInst(cvt_inst);
 }
 
 void CodeGen::visit(LoadInstruction *inst) {
@@ -431,7 +444,7 @@ void CodeGen::visit(LoadInstruction *inst) {
 
 void CodeGen::visit(ZextInstruction *inst) {
     MachineOperand *value_operand = nullptr;
-    if (auto set_cond_value = dynamic_cast<SetCondInstruction *>(inst)) {
+    if (auto set_cond_value = dynamic_cast<SetCondInstruction *>(inst->getValue())) {
         value_operand = getCmpReusltInOperand(set_cond_value);
     } else {
         value_operand = value2MachineOperand(inst->getValue(), true);
@@ -499,7 +512,8 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, boo
         }
     }
     if (ret_operand == nullptr) {
-        printf("the value type is %d\n", value_type);
+        auto inst = dynamic_cast<Instruction *>(value);
+        printf("the value type is %d, the inst type is %d\n", value_type, inst->getInstType());
     }
     return ret_operand;
 }
@@ -636,9 +650,9 @@ void CodeGen::visit(SetCondInstruction *inst) {     // 一般紧接着就是跳�
         std::swap(lhs_value, rhs_value);
     }
 
-    auto lhs = value2MachineOperand(inst->getLeft(), false);
+    auto lhs = value2MachineOperand(lhs_value, false);
     assert(lhs);
-    auto rhs = value2MachineOperand(inst->getRight(), true);
+    auto rhs = value2MachineOperand(rhs_value, true);
     assert(rhs);
 
     cmp_inst->setLhs(lhs);
@@ -651,7 +665,7 @@ void CodeGen::visit(SetCondInstruction *inst) {     // 一般紧接着就是跳�
 void CodeGen::visit(UnaryOpInstruction *uinst) {        // 一元操作
     auto uinst_op = uinst->getInstType();
     if (uinst_op == InstructionType::NotType) {
-        if (uinst->getBasicType() == BasicType::INT_BTYPE) {
+        if (true) {
             bool is_float = false;
 
             MachineOperand *value = nullptr;
@@ -671,7 +685,9 @@ void CodeGen::visit(UnaryOpInstruction *uinst) {        // 一元操作
             addMachineInst(lsr_inst);
         } else {        // 对于float类型的数一般通过cmp ne来进行判断
             float imm_number = 0.0;
-            auto cmp_inst = new CmpInst(curr_machine_basic_block_, value2MachineOperand(uinst->getValue(), false), new ImmNumber(imm_number));
+            MachineOperand *value_operand = value2MachineOperand(uinst->getValue(), false);
+            assert(value_operand);
+            auto cmp_inst = new CmpInst(curr_machine_basic_block_, value_operand, new ImmNumber(imm_number));
             assert(cmp_inst);
             auto mov_dst_vreg = createVirtualReg(MachineOperand::Int, uinst);
             auto mov1_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, mov_dst_vreg, new ImmNumber(1));

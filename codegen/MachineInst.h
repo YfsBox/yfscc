@@ -37,6 +37,7 @@ public:
         Load,
         Store,
         Vneg,
+        Cvt,
     };
 
     MachineInst(MachineInstType mtype, ValueType value_type, MachineBasicBlock *parent);
@@ -406,6 +407,37 @@ public:
 
 private:
     OperandPtr src_;
+    OperandPtr dst_;
+};
+
+class CvtInst: public MachineInst {
+public:
+    enum CvtType {
+        I2F,
+        F2I,
+    };
+
+    CvtInst(MachineBasicBlock *parent, CvtType cvt_type, OperandPtr dst, OperandPtr src);
+
+    ~CvtInst() = default;
+
+    MachineOperand *getSrc() const {
+        return src_;
+    }
+
+    MachineOperand *getDst() const {
+        return dst_;
+    }
+
+    CvtType getCvtType() const {
+        return cvt_type_;
+    }
+
+private:
+    CvtType cvt_type_;
+
+    OperandPtr src_;
+
     OperandPtr dst_;
 };
 

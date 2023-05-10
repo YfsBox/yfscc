@@ -26,6 +26,7 @@ class PushInst;
 class PopInst;
 class StoreInst;
 class LoadInst;
+class CvtInst;
 
 class VirtualReg;
 class ImmNumber;
@@ -81,6 +82,8 @@ public:
     void dump(const ImmNumber *operand);
 
     void dump(const Label *operand);
+
+    void dump(const CvtInst *inst);
 
     void dump() {
         dump(module_);
