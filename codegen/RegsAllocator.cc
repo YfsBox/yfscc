@@ -61,18 +61,18 @@ void RegsAllocator::analyseLiveness(MachineFunction *function) {
             auto old_in = live_in_[bb];
             auto old_out = live_out_[bb];
 
-            live_in_[bb] = use_sets_[bb];
+            live_in_[bb] = use_sets_[bb];       // live_in = use union (out - def)
             for (auto &out: live_out_[bb]) {
                 if (def_sets_[bb].find(out) == def_sets_[bb].end()) {
                     live_in_[bb].insert(out);
-                }
+                }       // 如果这个out的这一项是def中没有的，那么就将其加上
             }
 
             live_out_[bb].clear();
             auto ir_bb = machine_module_->getBasicBlock(bb);
             assert(ir_bb);
 
-            for (auto succ: ir_bb->getSuccessorBlocks()) {
+            for (auto succ: ir_bb->getSuccessorBlocks()) {      // 将每一个后继的IN进行union
                 auto mc_succ = machine_module_->getMachineBasicBlock(succ);
                 for (auto succ_in: live_in_[mc_succ]) {
                     live_out_[bb].insert(succ_in);
@@ -84,9 +84,7 @@ void RegsAllocator::analyseLiveness(MachineFunction *function) {
                     has_changed = true;
                 }
             }
-
         }
     }
-
 }
 

@@ -6,7 +6,6 @@
 #include "../common/Utils.h"
 
 MachineInst::MachineInst(MachineInstType mtype, ValueType value_type, MachineBasicBlock *parent):
-    no_(-1),
     value_type_(value_type),
     machine_inst_type_(mtype),
     parent_(parent){
