@@ -38,7 +38,18 @@ MoveInst::MoveInst(MachineBasicBlock *parent, MachineOperand *src, MachineOperan
     mov_cond_(MoveNoCond),
     dst_(dst),
     src_(src){
-    setValueType(getValueType(dst_));
+    auto dst_value_type = getValueType(dst_);
+    auto src_value_type = getValueType(src_);
+    setValueType(dst_value_type);
+    if (dst_value_type == src_value_type) {
+        if (dst_value_type == ValueType::Int) {
+            mov_type_ = MoveType::I2I;
+        } else {
+            mov_type_ = MoveType::F2F;
+        }
+    } else {
+        mov_type_ = MoveType::F_I;
+    }
 }
 
 MoveInst::~MoveInst() = default;

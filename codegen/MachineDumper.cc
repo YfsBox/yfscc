@@ -97,6 +97,9 @@ void MachineDumper::dump(const MachineInst *inst) {
         case MachineInst::Cvt:
             dump(dynamic_cast<const CvtInst *>(inst));
             return;
+        case MachineInst::Vneg:
+            dump(dynamic_cast<const VnegInst *>(inst));
+            return;
     }
 }
 
@@ -128,7 +131,11 @@ void MachineDumper::dump(const MachineReg *operand) {
 }
 
 void MachineDumper::dump(const VirtualReg *operand) {
-    fout_ << "vreg" << operand->getRegId();
+    if (operand->getValueType() == MachineOperand::Float) {
+        fout_ << "vfreg" << operand->getRegId();
+    } else {
+        fout_ << "vreg" << operand->getRegId();
+    }
 }
 
 void MachineDumper::dump(const ImmNumber *operand) {
@@ -234,7 +241,11 @@ void MachineDumper::dump(const BinaryInst *inst) {
 }
 
 void MachineDumper::dump(const StoreInst *inst) {
-    fout_ << "\tstr\t";
+    fout_ << "\t";
+    if (inst->getValueType() == MachineInst::Float) {
+        fout_ << "v";
+    }
+    fout_ << "str\t";
     dump(inst->getValue());
     fout_ << ", [";
     dump(inst->getBase());
@@ -248,16 +259,25 @@ void MachineDumper::dump(const StoreInst *inst) {
 void MachineDumper::dump(const MoveInst *inst) {
     fout_ << "\t";
     auto move_type = inst->getMoveType();
-    if (move_type == MoveInst::F2F) {
-        fout_ << "v";
-    }
-    fout_ << "mov";
 
-    if (move_type == MoveInst::L2I) {
-        fout_ << "w";
-    } else if (move_type == MoveInst::H2I) {
-        fout_ << "t";
+    switch (move_type) {
+        case MoveInst::MoveType::I2I:
+            fout_ << "mov";
+            break;
+        case MoveInst::MoveType::F2F:
+            fout_ << "vmov";
+            break;
+        case MoveInst::MoveType::F_I:
+            fout_ << "vmov";
+            break;
+        case MoveInst::MoveType::L2I:
+            fout_ << "movw";
+            break;
+        case MoveInst::MoveType::H2I:
+            fout_ << "movt";
+            break;
     }
+
     auto move_cond = inst->getMoveCond();
     switch (move_cond) {
         case MoveInst::MoveNe:
@@ -278,6 +298,9 @@ void MachineDumper::dump(const MoveInst *inst) {
         case MoveInst::MoveGt:
             fout_ << "gt";
             break;
+    }
+    if (move_type == MoveInst::F2F) {
+        fout_ << ".f32";
     }
 
     fout_ << "\t";
@@ -328,11 +351,21 @@ void MachineDumper::dump(const PopInst *inst) {
 }
 
 void MachineDumper::dump(const CmpInst *inst) {
-    fout_ << "\tcmp\t";
+    fout_ << "\t";
+    if (inst->getValueType() == MachineInst::Int) {
+        fout_ << "cmp";
+    } else {
+        fout_ << "vcmp.f32";
+    }
+    fout_ << "\t";
     dump(inst->getLhs());
     fout_ << ", ";
     dump(inst->getRhs());
-    fout_ << std::endl;
+    fout_ << "\n";
+    if (inst->getValueType() == MachineInst::Float) {
+        fout_ << "\tvmrs\tAPSR_nzcv, FPSCR\n";
+    }
+
 }
 
 void MachineDumper::dump(const ClzInst *inst) {
@@ -365,10 +398,18 @@ void MachineDumper::dump(const PushInst *inst) {
 
 void MachineDumper::dump(const CvtInst *inst) {
     if (inst->getCvtType() == CvtInst::I2F) {
-        fout_ << "\tvmov.f32.s32\t";
+        fout_ << "\tvcvt.f32.s32\t";
     } else {
-        fout_ << "\tvmov.s32.f32\t";
+        fout_ << "\tvcvt.s32.f32\t";
     }
+    dump(inst->getDst());
+    fout_ << ", ";
+    dump(inst->getSrc());
+    fout_ << "\n";
+}
+
+void MachineDumper::dump(const VnegInst *inst) {
+    fout_ << "\tvneg.f32\t";
     dump(inst->getDst());
     fout_ << ", ";
     dump(inst->getSrc());

@@ -98,7 +98,7 @@ public:
 
 private:
 
-    static constexpr const int push_regs_offset_ = 64;
+    static constexpr const int push_regs_offset_ = 68;
 
     int moveStackOffset(int offset) {
         stack_offset_ += offset;

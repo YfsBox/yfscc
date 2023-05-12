@@ -108,6 +108,7 @@ void CodeGen::addPushInst(MachineBasicBlock *basicblock) {
         push_sreg_inst->addReg(machine_sreg);
     }
     push_regs_inst->addReg(new MachineReg(MachineReg::lr));
+    push_sreg_inst->setValueType(MachineInst::Float);
 
     basicblock->addFrontInstruction(push_regs_inst);
     basicblock->addFrontInstruction(push_sreg_inst);
@@ -127,6 +128,7 @@ void CodeGen::addPopInst(MachineBasicBlock *basicblock) {
         pop_sreg_inst->addReg(machine_sreg);
     }
     pop_regs_inst->addReg(new MachineReg(MachineReg::lr));
+    pop_sreg_inst->setValueType(MachineInst::Float);
 
     basicblock->addInstruction(pop_regs_inst);
     basicblock->addInstruction(pop_sreg_inst);
@@ -351,7 +353,7 @@ void CodeGen::visit(RetInstruction *inst) {
         bool is_float = false;
         MachineOperand *dst_operand = nullptr;
         MoveInst *mov_inst = nullptr;
-        auto operand = value2MachineOperand(inst->getRetValue(), &is_float);
+        auto operand = value2MachineOperand(inst->getRetValue(), false, &is_float);
         assert(operand);
         dst_operand = is_float ? new MachineReg(MachineReg::s0) : new MachineReg(MachineReg::r0);
         mov_inst = new MoveInst(curr_machine_basic_block_, is_float ? MoveInst::F2F : MoveInst::I2I, operand, dst_operand);
@@ -465,20 +467,28 @@ void CodeGen::visit(CallInstruction *inst) {
 }
 
 void CodeGen::visit(CastInstruction *inst) {
-    CvtInst *cvt_inst = nullptr;
-    CvtInst::CvtType cvt_type;
-    MachineOperand::ValueType value_type;
-    if (inst->isI2F()) {
-        cvt_type = CvtInst::I2F;
-        value_type = MachineOperand::Float;
-    } else {
-        cvt_type = CvtInst::F2I;
-        value_type = MachineOperand::Int;
-    }
-    auto cast_dst_vreg = createVirtualReg(value_type, inst);
     auto src_vreg = value2MachineOperand(inst->getValue(), false);
-    cvt_inst = new CvtInst(curr_machine_basic_block_, cvt_type, cast_dst_vreg, src_vreg);
-    addMachineInst(cvt_inst);
+    MachineInst *vmov_inst, *cvt_inst;
+    MachineOperand *vmov_dst_vreg, *cvt_dst_vreg;
+    if (inst->isI2F()) {
+        vmov_dst_vreg = createVirtualReg(MachineOperand::Float);
+        vmov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F_I, src_vreg, vmov_dst_vreg);
+        addMachineInst(vmov_inst);
+
+        cvt_dst_vreg = createVirtualReg(MachineOperand::Float, inst);
+        cvt_inst = new CvtInst(curr_machine_basic_block_, CvtInst::I2F, cvt_dst_vreg, vmov_dst_vreg);
+
+        addMachineInst(cvt_inst);
+    } else {
+        cvt_dst_vreg = createVirtualReg(MachineOperand::Float);
+        cvt_inst = new CvtInst(curr_machine_basic_block_, CvtInst::F2I, cvt_dst_vreg, src_vreg);
+        addMachineInst(cvt_inst);
+
+        vmov_dst_vreg = createVirtualReg(MachineOperand::Int, inst);
+        vmov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F_I, cvt_dst_vreg, vmov_dst_vreg);
+        addMachineInst(vmov_inst);
+    }
+
 }
 
 void CodeGen::visit(LoadInstruction *inst) {
@@ -490,6 +500,7 @@ void CodeGen::visit(LoadInstruction *inst) {
         value_type = inst->getBasicType() == BasicType::INT_BTYPE ? MachineOperand::Int: MachineOperand::Float;
     }
     auto dst_reg = createVirtualReg(value_type, inst);
+
     auto value_reg = value2MachineOperand(inst->getPtr(), true);
     assert(value_reg);
     auto load_inst = new LoadInst(curr_machine_basic_block_, dst_reg, value_reg);
@@ -529,7 +540,8 @@ MachineOperand *CodeGen::loadGlobalVarAddr(GlobalVariable *global) {
 MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, bool *is_float) {
     auto find_value = value_machinereg_map_.find(value);
     if (find_value != value_machinereg_map_.end()) {
-        if (is_float) {
+        if (is_float != nullptr) {
+            // printf("find the vreg%d type is %d\n", virreg->getRegId(), virreg->getValueType());
             *is_float = find_value->second->getValueType() == MachineOperand::Float;
         }
         return find_value->second;
