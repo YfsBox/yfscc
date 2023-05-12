@@ -262,6 +262,7 @@ void CodeGen::visit(Function *function) {
     for (auto &basic_block: function->getBlocks()) {
         visit(basic_block.get());
         curr_machine_function_->addBasicBlock(curr_machine_basic_block_);
+        module_->addBasicBlockPair(curr_machine_basic_block_, basic_block.get());
         // printf("curr basicblock is %s\n", basic_block->getName().c_str());
         if (basic_block->isEnterBasicBlock()) {
             curr_machine_function_->setEnterBasicBlock(curr_machine_basic_block_);
