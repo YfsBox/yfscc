@@ -13,6 +13,8 @@
 
 class MachineInst;
 class MachineFunction;
+class MachineBasicBlock;
+class BasicBlock;
 class Module;
 
 class MachineModule {
@@ -33,10 +35,27 @@ public:
         return machine_functions_;
     }
 
+    void addBasicBlockPair(MachineBasicBlock *mcbb, BasicBlock *bb) {
+        machinebb2bb_map_[mcbb] = bb;
+        bb2machinebb_map_[bb] = mcbb;
+    }
+
+    MachineBasicBlock *getMachineBasicBlock(BasicBlock *bb) {
+        return bb2machinebb_map_[bb];
+    }
+
+    BasicBlock *getBasicBlock(MachineBasicBlock *mcbb) {
+        return machinebb2bb_map_[mcbb];
+    }
+
 private:
     Module *ir_module_;
 
     std::vector<MachineFunctionPtr> machine_functions_;
+
+    std::unordered_map<MachineBasicBlock *, BasicBlock *> machinebb2bb_map_;
+
+    std::unordered_map<BasicBlock *, MachineBasicBlock *> bb2machinebb_map_;
 };
 
 class MachineBasicBlock {
@@ -69,9 +88,31 @@ public:
         return label_name_;
     }
 
+    int32_t getLoopDepth() const {
+        return loop_depth_;
+    }
+
+    int32_t getBelongsToLoops() const {
+        return belongs_to_loops_;
+    }
+
+    void setLoopDepth(int32_t loop_depth) {
+        loop_depth_ = loop_depth;
+    }
+
+    void setBelongsToLoops(int32_t belongs_to_loops) {
+        belongs_to_loops_ = belongs_to_loops;
+    }
+
 private:
+    int32_t loop_depth_;
+
+    int32_t belongs_to_loops_;
+
     std::string label_name_;
+
     MachineFunction *parent_;
+
     std::list<MachineInstPtr> instructions_;
 };
 
