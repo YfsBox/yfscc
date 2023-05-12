@@ -60,6 +60,11 @@ public:
         return value_type_;
     }
 
+
+    static std::vector<MachineOperand *> getUses(MachineInst *inst);
+
+    static std::vector<MachineOperand *> getDefs(MachineInst *inst);
+
 protected:
 
     ValueType getValueType(MachineOperand *operand);

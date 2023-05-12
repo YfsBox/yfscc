@@ -6,6 +6,7 @@
 #include "../common/Utils.h"
 
 MachineInst::MachineInst(MachineInstType mtype, ValueType value_type, MachineBasicBlock *parent):
+    no_(-1),
     value_type_(value_type),
     machine_inst_type_(mtype),
     parent_(parent){
@@ -13,6 +14,78 @@ MachineInst::MachineInst(MachineInstType mtype, ValueType value_type, MachineBas
 }
 
 MachineInst::~MachineInst() = default;
+
+std::vector<MachineOperand *> MachineInst::getUses(MachineInst *inst) {
+    std::vector<MachineOperand *> operands;
+    switch (inst->machine_inst_type_) {
+        case MachineInstType::Move:
+            operands.push_back(dynamic_cast<MoveInst*>(inst)->getSrc());
+            break;
+        case MachineInstType::Clz:
+            operands.push_back(dynamic_cast<ClzInst*>(inst)->getSrc());
+            break;
+        case MachineInstType::Vneg:
+            operands.push_back(dynamic_cast<VnegInst*>(inst)->getSrc());
+            break;
+        case MachineInstType::Binary: {
+            auto binary_inst = dynamic_cast<BinaryInst *>(inst);
+            operands.push_back(binary_inst->getLeft());
+            operands.push_back(binary_inst->getRight());
+            break;
+        }
+        case MachineInstType::Load:{
+            auto load_inst = dynamic_cast<LoadInst *>(inst);
+            operands.push_back(load_inst->getOffset());
+            operands.push_back(load_inst->getBase());
+            break;
+        }
+        case MachineInstType::Cvt:
+            operands.push_back(dynamic_cast<CvtInst*>(inst)->getSrc());
+            break;
+        case MachineInstType::Store:{
+            auto store_inst = dynamic_cast<StoreInst*>(inst);
+            operands.push_back(store_inst->getBase());
+            operands.push_back(store_inst->getOffset());
+            operands.push_back(store_inst->getValue());
+            break;
+        }
+        case MachineInstType::Cmp: {
+            auto cmp_inst = dynamic_cast<CmpInst *>(inst);
+            operands.push_back(cmp_inst->getLhs());
+            operands.push_back(cmp_inst->getRhs());
+        }
+        default:
+            break;
+    }
+    return operands;
+}
+
+// 不考虑非Virtual寄存器的话
+std::vector<MachineOperand *> MachineInst::getDefs(MachineInst *inst) {
+    std::vector<MachineOperand *> operands;
+    switch (inst->machine_inst_type_) {
+        case MachineInstType::Move:
+            operands.push_back(dynamic_cast<MoveInst*>(inst)->getDst());
+            break;
+        case MachineInstType::Vneg:
+            operands.push_back(dynamic_cast<VnegInst*>(inst)->getDst());
+            break;
+        case MachineInstType::Cvt:
+            operands.push_back(dynamic_cast<CvtInst*>(inst)->getDst());
+            break;
+        case MachineInstType::Load:
+            operands.push_back(dynamic_cast<LoadInst*>(inst)->getDst());
+            break;
+        case MachineInstType::Binary:
+            operands.push_back(dynamic_cast<BinaryInst*>(inst)->getDst());
+            break;
+        case MachineInstType::Clz:
+            operands.push_back(dynamic_cast<ClzInst*>(inst)->getDst());
+        default:
+            break;
+    }
+    return operands;
+}
 
 MachineInst::ValueType MachineInst::getValueType(MachineOperand *operand) {
     if (operand == nullptr || operand->getValueType() == MachineOperand::Undef) {
