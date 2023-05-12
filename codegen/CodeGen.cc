@@ -382,9 +382,13 @@ void CodeGen::visit(CallInstruction *inst) {
         stack_offset += float_args_cnt - 16;
     }
     stack_offset *= 4;
+
+    bool align_offset = false;
     // 考虑内存对齐，对齐到8
     if (stack_offset % 8) {
-        stack_offset += 4;
+        // stack_offset += 4;
+        align_offset = true;
+        addMachineInst(new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, sp_reg_, sp_reg_, new ImmNumber(4)));
     }
     ImmNumber *stack_offset_imm = nullptr;
     if (stack_offset != 0) {
@@ -446,6 +450,10 @@ void CodeGen::visit(CallInstruction *inst) {
         auto add_stack_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, sp_reg_, sp_reg_,
                                              stack_offset_imm);
         addMachineInst(add_stack_inst);     // 恢复stack
+    }
+
+    if (align_offset) {
+        addMachineInst(new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, sp_reg_, sp_reg_, new ImmNumber(4)));
     }
 
     // 返回值保存在r0之中，需要增加一个move语句，将r0保存到某个寄存器里
@@ -573,6 +581,7 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, boo
 
             addMachineInst(mov_i2i_inst);
             addMachineInst(mov_i2f_inst);
+            ret_operand = vdst;
             if (is_float) {
                 *is_float = true;
             }

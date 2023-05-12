@@ -568,7 +568,7 @@ void SemanticCheck::visit(const std::shared_ptr<BinaryExpr> &expr) {
             appendError(expr.get(), "#The left and right can't be void.\n");
         }
     } else {
-        expr->expr_type_ = BasicType::INT_BTYPE;
+        expr->expr_type_ = BasicType::FLOAT_BTYPE;
     }
 }
 
