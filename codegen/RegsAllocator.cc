@@ -99,6 +99,7 @@ bool RegsAllocator::isInAdjSet(MachineOperand *a, MachineOperand *b) {
 }
 
 bool RegsAllocator::isPrecolored(MachineOperand *operand) {
+    // TODO
     return false;
 }
 
@@ -153,5 +154,86 @@ void RegsAllocator::build() {
         }
     }
 }
+
+bool RegsAllocator::moveRelated(MachineOperand *operand) {
+    auto result = nodeMoves(operand);
+    return !result.empty();
+}
+
+void RegsAllocator::mkWorkList() {      // 将不同类型的变量进行分类到不同的集合中
+    for (auto init: initial_) {
+        initial_.erase(init);
+        if (degree_[init] > k_) {
+            spill_work_list_.insert(init);
+        } else if (moveRelated(init)) {         // 如果这个变量涉及到move语句
+            freeze_work_list_.insert(init);
+        } else {
+            simplify_work_list_.insert(init);
+        }
+    }
+}
+
+RegsAllocator::OperandSet RegsAllocator::adjacent(MachineOperand *operand) {
+    OperandSet tmp_set;
+    std::set_union(select_stack_.begin(), select_stack_.end(), coalesced_nodes_.begin(), coalesced_nodes_.end(), tmp_set.begin());
+    OperandSet result;
+    std::set_difference(adj_list_[operand].begin(), adj_list_[operand].end(), tmp_set.begin(), tmp_set.end(), result.begin());
+    return result;
+}
+
+RegsAllocator::InstSet RegsAllocator::nodeMoves(MachineOperand *operand) {
+    InstSet tmp_union_set;
+    std::set_union(active_moves_.begin(), active_moves_.end(), worklist_moves_.begin(), worklist_moves_.end(), tmp_union_set.begin());
+    InstSet result;
+    std::set_intersection(move_list_.begin(), move_list_.end(), tmp_union_set.begin(), tmp_union_set.end(), result.begin());
+    return result;
+}
+
+void RegsAllocator::decrementDegree(MachineOperand *operand) {
+    auto degree = degree_[operand];     // let d = degree[m]
+    degree_[operand] = degree - 1;      // degree[m] := d - 1
+
+    if (degree == k_) {     //
+        auto tmp_set = adjacent(operand);
+        tmp_set.insert(operand);        // {m} U adjacent
+        enableMoves(tmp_set);
+
+        spill_work_list_.erase(operand);
+
+        if (moveRelated(operand)) {
+            freeze_work_list_.insert(operand);
+        } else {
+            simplify_work_list_.insert(operand);
+        }
+    }
+}
+
+void RegsAllocator::enableMoves(const OperandSet &operand_set) {
+    for (auto operand: operand_set) {
+        auto node_moves = nodeMoves(operand);
+        for (auto m: node_moves) {
+            if (active_moves_.count(m)) {
+                active_moves_.erase(m);
+                worklist_moves_.insert(m);
+            }
+        }
+    }
+}
+
+void RegsAllocator::simplify() {
+    auto operand = *simplify_work_list_.begin();
+    simplify_work_list_.erase(operand);
+
+    select_stack_.push_back(operand);
+
+    OperandSet adj = adjacent(operand);
+
+    for (auto m: adj) {
+        decrementDegree(m);
+    }
+}
+
+
+
 
 
