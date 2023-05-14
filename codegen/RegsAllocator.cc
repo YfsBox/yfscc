@@ -2,6 +2,7 @@
 // Created by 杨丰硕 on 2023/5/2.
 //
 #include <cassert>
+#include <algorithm>
 #include "MachineInst.h"
 #include "RegsAllocator.h"
 #include "../ir/BasicBlock.h"
@@ -87,4 +88,70 @@ void RegsAllocator::analyseLiveness(MachineFunction *function) {
         }
     }
 }
+
+bool RegsAllocator::isInAdjSet(MachineOperand *a, MachineOperand *b) {
+    auto finda_it = adj_set_.find(a);
+    auto findb_it = adj_set_.find(b);
+    if (finda_it != adj_set_.end() && findb_it != adj_set_.end()) {
+        return finda_it->second.count(b) && findb_it->second.count(a);
+    }
+    return false;
+}
+
+bool RegsAllocator::isPrecolored(MachineOperand *operand) {
+    return false;
+}
+
+void RegsAllocator::addEdge(MachineOperand *a, MachineOperand *b) {
+    if (!isInAdjSet(a, b) && a != b) {
+        adj_set_[a].insert(b);
+        adj_set_[b].insert(a);
+        if (!isPrecolored(a)) {
+            adj_list_[a].insert(b);
+            degree_[a] = degree_[a] + 1;
+        }
+        if (!isPrecolored(b)) {
+            adj_list_[b].insert(a);
+            degree_[b] = degree_[b] + 1;
+        }
+    }
+}
+
+void RegsAllocator::build() {
+    for (auto &mc_basicblock: curr_function_->getMachineBasicBlock()) {
+        auto live = live_out_[mc_basicblock.get()];
+        auto mc_inst_list = mc_basicblock->getInstructionList();
+
+        for (auto it = mc_inst_list.rbegin(); it != mc_inst_list.rend(); ++it) {
+            MachineInst *mc_inst = it->get();
+            auto defs = MachineInst::getDefs(mc_inst);
+            auto uses = MachineInst::getUses(mc_inst);
+            if (mc_inst->getMachineInstType() == MachineInst::Move) {
+                for (auto use : uses) {     // live :=  live \ use(I)
+                    if (live.find(use) != live.end()) {
+                        live.erase(use);
+                    }
+                    move_list_[use].insert(mc_inst);
+                }
+
+                for (auto def: defs) {
+                    move_list_[def].insert(mc_inst);
+                }
+                worklist_moves_.insert(mc_inst);
+            }
+            live.insert(defs.begin(), defs.end());
+            // add edges
+            for (auto def: defs) {
+                for (auto l: live) {
+                    addEdge(l, def);
+                }
+            }
+            // live := use(I) U (live \ def(I))
+            std::unordered_set<MachineOperand *> tmp_set;
+            std::set_difference(live.begin(), live.end(), defs.begin(), defs.end(), tmp_set.end());
+            live.insert(uses.begin(), uses.end());
+        }
+    }
+}
+
 
