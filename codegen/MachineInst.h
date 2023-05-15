@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 class MachineOperand;
@@ -60,9 +61,9 @@ public:
         return value_type_;
     }
 
-    static std::vector<MachineOperand *> getUses(MachineInst *inst);
+    static std::unordered_set<MachineOperand *> getUses(MachineInst *inst, bool is_float);
 
-    static std::vector<MachineOperand *> getDefs(MachineInst *inst);
+    static std::unordered_set<MachineOperand *> getDefs(MachineInst *inst, bool is_float);
 
 protected:
 

@@ -1,6 +1,7 @@
 //
 // Created by 杨丰硕 on 2023/5/2.
 //
+#include <unordered_set>
 #include "MachineInst.h"
 #include "MachineOperand.h"
 #include "../common/Utils.h"
@@ -14,76 +15,96 @@ MachineInst::MachineInst(MachineInstType mtype, ValueType value_type, MachineBas
 
 MachineInst::~MachineInst() = default;
 
-std::vector<MachineOperand *> MachineInst::getUses(MachineInst *inst) {
-    std::vector<MachineOperand *> operands;
+std::unordered_set<MachineOperand *> MachineInst::getUses(MachineInst *inst, bool is_float) {
+    std::unordered_set<MachineOperand *> operands;
     switch (inst->machine_inst_type_) {
         case MachineInstType::Move:
-            operands.push_back(dynamic_cast<MoveInst*>(inst)->getSrc());
+            operands.insert(dynamic_cast<MoveInst*>(inst)->getSrc());
             break;
         case MachineInstType::Clz:
-            operands.push_back(dynamic_cast<ClzInst*>(inst)->getSrc());
+            operands.insert(dynamic_cast<ClzInst*>(inst)->getSrc());
             break;
         case MachineInstType::Vneg:
-            operands.push_back(dynamic_cast<VnegInst*>(inst)->getSrc());
+            operands.insert(dynamic_cast<VnegInst*>(inst)->getSrc());
             break;
         case MachineInstType::Binary: {
             auto binary_inst = dynamic_cast<BinaryInst *>(inst);
-            operands.push_back(binary_inst->getLeft());
-            operands.push_back(binary_inst->getRight());
+            operands.insert(binary_inst->getLeft());
+            operands.insert(binary_inst->getRight());
             break;
         }
         case MachineInstType::Load:{
             auto load_inst = dynamic_cast<LoadInst *>(inst);
-            operands.push_back(load_inst->getOffset());
-            operands.push_back(load_inst->getBase());
+            operands.insert(load_inst->getOffset());
+            operands.insert(load_inst->getBase());
             break;
         }
         case MachineInstType::Cvt:
-            operands.push_back(dynamic_cast<CvtInst*>(inst)->getSrc());
+            operands.insert(dynamic_cast<CvtInst*>(inst)->getSrc());
             break;
         case MachineInstType::Store:{
             auto store_inst = dynamic_cast<StoreInst*>(inst);
-            operands.push_back(store_inst->getBase());
-            operands.push_back(store_inst->getOffset());
-            operands.push_back(store_inst->getValue());
+            operands.insert(store_inst->getBase());
+            operands.insert(store_inst->getOffset());
+            operands.insert(store_inst->getValue());
             break;
         }
         case MachineInstType::Cmp: {
             auto cmp_inst = dynamic_cast<CmpInst *>(inst);
-            operands.push_back(cmp_inst->getLhs());
-            operands.push_back(cmp_inst->getRhs());
+            operands.insert(cmp_inst->getLhs());
+            operands.insert(cmp_inst->getRhs());
         }
         default:
             break;
     }
-    return operands;
+    std::unordered_set<MachineOperand *> result;
+    for (auto operand: operands) {
+        if (operand->getOperandType() == MachineOperand::ImmNumber || operand->getOperandType() == MachineOperand::Label) {
+            continue;
+        }
+        if ((!is_float && operand->getValueType() == MachineOperand::Int) || (is_float && operand->getValueType() == MachineOperand::Float)) {
+            result.insert(operand);
+        }
+    }
+
+    return result;
 }
 
 // 不考虑非Virtual寄存器的话
-std::vector<MachineOperand *> MachineInst::getDefs(MachineInst *inst) {
-    std::vector<MachineOperand *> operands;
+std::unordered_set<MachineOperand *> MachineInst::getDefs(MachineInst *inst, bool is_float) {
+    std::unordered_set<MachineOperand *> operands;
     switch (inst->machine_inst_type_) {
         case MachineInstType::Move:
-            operands.push_back(dynamic_cast<MoveInst*>(inst)->getDst());
+            operands.insert(dynamic_cast<MoveInst*>(inst)->getDst());
             break;
         case MachineInstType::Vneg:
-            operands.push_back(dynamic_cast<VnegInst*>(inst)->getDst());
+            operands.insert(dynamic_cast<VnegInst*>(inst)->getDst());
             break;
         case MachineInstType::Cvt:
-            operands.push_back(dynamic_cast<CvtInst*>(inst)->getDst());
+            operands.insert(dynamic_cast<CvtInst*>(inst)->getDst());
             break;
         case MachineInstType::Load:
-            operands.push_back(dynamic_cast<LoadInst*>(inst)->getDst());
+            operands.insert(dynamic_cast<LoadInst*>(inst)->getDst());
             break;
         case MachineInstType::Binary:
-            operands.push_back(dynamic_cast<BinaryInst*>(inst)->getDst());
+            operands.insert(dynamic_cast<BinaryInst*>(inst)->getDst());
             break;
         case MachineInstType::Clz:
-            operands.push_back(dynamic_cast<ClzInst*>(inst)->getDst());
+            operands.insert(dynamic_cast<ClzInst*>(inst)->getDst());
         default:
             break;
     }
-    return operands;
+    std::unordered_set<MachineOperand *> result;
+    for (auto operand: operands){
+        if (operand->getOperandType() == MachineOperand::ImmNumber || operand->getOperandType() == MachineOperand::Label) {
+            continue;
+        }
+        if (((!is_float && operand->getValueType() == MachineOperand::Int) || (is_float && operand->getValueType() == MachineOperand::Float))) {
+            result.insert(operand);
+        }
+    }
+
+    return result;
 }
 
 MachineInst::ValueType MachineInst::getValueType(MachineOperand *operand) {
