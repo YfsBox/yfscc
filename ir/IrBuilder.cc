@@ -1089,8 +1089,12 @@ void IrBuilder::visit(const std::shared_ptr<BreakStatement> &stmt) {
 void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
     auto while_start_bb_value = IrFactory::createBasicBlock("while.start.");
     BasicBlock *while_start_bb = dynamic_cast<BasicBlock *>(while_start_bb_value);
+
+    context_->while_loop_depth_++;
     auto while_then_bb_value = IrFactory::createBasicBlock("while.body.");
+    context_->while_loop_depth_--;
     BasicBlock *while_then_bb = dynamic_cast<BasicBlock *>(while_then_bb_value);
+
     auto while_next_bb_value = IrFactory::createBasicBlock("while.next.");
     BasicBlock *while_next_bb = dynamic_cast<BasicBlock *>(while_next_bb_value);
 
@@ -1128,7 +1132,10 @@ void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
 
         addBasicBlock(while_then_bb);
         setCurrBasicBlock(while_then_bb);
+
+        context_->while_loop_depth_++;
         visit(stmt->getStatement());
+        context_->while_loop_depth_--;
 
         while_stack_.pop_back();
 

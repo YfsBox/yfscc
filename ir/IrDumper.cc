@@ -460,6 +460,7 @@ void IrDumper::dump(BasicBlock *block) {
     for (auto succ : block->getSuccessorBlocks()) {
         out_ << dumpValue(succ) << " ";
     }
+    out_ << ";while loop depth is " << block->getWhileLoopDepth();
     out_ << '\n';
     auto &inst_list = block->getInstructionList();
     for (const auto &inst : inst_list) {

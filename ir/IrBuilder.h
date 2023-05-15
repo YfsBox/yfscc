@@ -24,6 +24,7 @@ struct IrContext {
 
     IrContext(Module *module): curr_module_(module),
         ssa_no_(-1),
+        while_loop_depth_(0),
         curr_function_(nullptr),
         curr_bb_(nullptr),
         curr_bb_has_branch_(false){}
@@ -34,6 +35,8 @@ struct IrContext {
 
     bool curr_bb_has_branch_;
 
+    int32_t while_loop_depth_;
+
     Module *curr_module_;
 
     Function *curr_function_;
@@ -41,6 +44,7 @@ struct IrContext {
     BasicBlock *curr_bb_;
 
     void ResetSSA() {
+        while_loop_depth_ = 0;
         curr_bb_has_branch_ = false;
         ssa_no_ = -1;
     }
@@ -244,6 +248,7 @@ private:
     LibFunctionMap libfunction_map_;
 
     std::vector<Value *> array_lval_index_vec_;
+
 };
 
 

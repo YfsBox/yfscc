@@ -108,10 +108,20 @@ public:
         return name_ == owner_function_->getName() + "0";
     }
 
+    void setWhileLoopDepth(int32_t depth) {
+        loop_depth_ = depth;
+    }
+
+    int32_t getWhileLoopDepth() const {
+        return loop_depth_;
+    }
+
 private:
     bool has_jump_;
 
     bool has_ret_;
+
+    int32_t loop_depth_;
 
     Function *owner_function_;
 
