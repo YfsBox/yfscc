@@ -45,23 +45,15 @@ CodeGen::CodeGen(Module *ir_module):
     curr_machine_function_(nullptr),
     curr_machine_operand_(nullptr){
 
-    for (int i = 0; i < 16; ++i) {
-        MachineReg::Reg mc_reg = static_cast<MachineReg::Reg>(MachineReg::r0 + i);
-        machine_regs_map_[mc_reg] = new MachineReg(mc_reg);
-    }
-    for (int i = 0; i < 32; ++i) {
-        MachineReg::Reg mc_reg = static_cast<MachineReg::Reg>(MachineReg::s0 + i);
-        machine_regs_map_[mc_reg] = new MachineReg(mc_reg);
-    }
-
-    sp_reg_ = machine_regs_map_[MachineReg::sp];
-    fp_reg_ = machine_regs_map_[MachineReg::fp];
-    lr_reg_ = machine_regs_map_[MachineReg::lr];
+    sp_reg_ = module_->getMachineReg(MachineReg::sp);
+    fp_reg_ = module_->getMachineReg(MachineReg::fp);
+    lr_reg_ = module_->getMachineReg(MachineReg::lr);
 }
 
 VirtualReg *CodeGen::createVirtualReg(MachineOperand::ValueType value_type, Value *value) {
     virtual_reg_id_++;
     VirtualReg *virtual_reg = new VirtualReg(virtual_reg_id_, value_type);
+    curr_machine_function_->addVirtualReg(virtual_reg);
     if (value) {
         value_machinereg_map_[value] = virtual_reg;
     }
@@ -117,7 +109,7 @@ void CodeGen::addPushInst(MachineBasicBlock *basicblock) {
         push_regs_inst->addReg(machine_reg);
         push_sreg_inst->addReg(machine_sreg);
     }
-    push_regs_inst->addReg(machine_regs_map_[MachineReg::lr]);
+    push_regs_inst->addReg(module_->getMachineReg(MachineReg::lr));
     push_sreg_inst->setValueType(MachineInst::Float);
 
     basicblock->addFrontInstruction(push_regs_inst);
@@ -135,7 +127,7 @@ void CodeGen::addPopInst(MachineBasicBlock *basicblock) {
         pop_regs_inst->addReg(machine_reg);
         pop_sreg_inst->addReg(machine_sreg);
     }
-    pop_regs_inst->addReg(machine_regs_map_[MachineReg::lr]);
+    pop_regs_inst->addReg(module_->getMachineReg(MachineReg::lr));
     pop_sreg_inst->setValueType(MachineInst::Float);
 
     basicblock->addInstruction(pop_regs_inst);
@@ -641,7 +633,7 @@ MachineReg *CodeGen::getMachineReg(bool isfloat, int reg_no) {
     } else {
         reg = static_cast<MachineReg::Reg>(MachineReg::r0 + reg_no);
     }
-    return machine_regs_map_[reg];
+    return module_->getMachineReg(reg);
 }
 
 void CodeGen::visit(GlobalVariable *global) {

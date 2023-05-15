@@ -7,7 +7,14 @@
 
 MachineModule::MachineModule(Module *irmodule):
     ir_module_(irmodule){
-
+    for (int i = 0; i < 16; ++i) {
+        MachineReg::Reg mc_reg = static_cast<MachineReg::Reg>(MachineReg::r0 + i);
+        machine_regs_map_[mc_reg] = new MachineReg(mc_reg);
+    }
+    for (int i = 0; i < 32; ++i) {
+        MachineReg::Reg mc_reg = static_cast<MachineReg::Reg>(MachineReg::s0 + i);
+        machine_regs_map_[mc_reg] = new MachineReg(mc_reg);
+    }
 }
 
 void MachineModule::addMachineFunction(MachineFunction *function) {

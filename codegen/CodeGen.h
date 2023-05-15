@@ -153,8 +153,6 @@ private:
 
     std::unordered_map<SetCondInstruction *, MachineBasicBlock::MachineInstListIt> set_cond_it_map_;
 
-    std::unordered_map<MachineReg::Reg, MachineReg *> machine_regs_map_;
-
     Value2MachineRegMap value_machinereg_map_;
 };
 

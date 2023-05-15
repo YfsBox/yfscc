@@ -639,9 +639,9 @@ void SemanticCheck::visit(const std::shared_ptr<WhileStatement> &stmt) {
     auto blockstmt = stmt->getStatement();
     if (blockstmt) {
         // 进入一层while的作用域
-        curr_while_depth_++;
+        addWhileDepth();
         visit(blockstmt);
-        curr_while_depth_--;
+        descWhileDepth();
     }
 
 }

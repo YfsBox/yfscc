@@ -8,8 +8,10 @@
 #include <vector>
 #include <list>
 #include <memory>
+#include <unordered_set>
 #include <unordered_map>
 #include "MachineInst.h"
+#include "MachineOperand.h"
 
 class MachineInst;
 class MachineFunction;
@@ -48,6 +50,14 @@ public:
         return machinebb2bb_map_[mcbb];
     }
 
+    MachineReg *getMachineReg(MachineReg::Reg reg) {
+        return machine_regs_map_[reg];
+    }
+
+    const std::unordered_map<MachineReg::Reg, MachineReg *> &getMachineRegMap() const {
+        return machine_regs_map_;
+    }
+
 private:
     Module *ir_module_;
 
@@ -56,6 +66,8 @@ private:
     std::unordered_map<MachineBasicBlock *, BasicBlock *> machinebb2bb_map_;
 
     std::unordered_map<BasicBlock *, MachineBasicBlock *> bb2machinebb_map_;
+
+    std::unordered_map<MachineReg::Reg, MachineReg *> machine_regs_map_;
 };
 
 class MachineBasicBlock {
@@ -163,6 +175,14 @@ public:
         return function_name_;
     }
 
+    void addVirtualReg(MachineOperand *operand) {
+        virtual_regs_.insert(operand);
+    }
+
+    const std::unordered_set<MachineOperand *> &getVirtualRegs() {
+        return virtual_regs_;
+    }
+
 private:
     std::string function_name_;
 
@@ -173,6 +193,8 @@ private:
     std::vector<MachineBasicBlock *> exit_basic_block_;
 
     std::vector<MachineBasicBlockPtr> basic_blocks_;
+
+    std::unordered_set<MachineOperand *> virtual_regs_;
 
 };
 
