@@ -37,14 +37,26 @@ static void getDimensionBasesSize(const std::vector<int32_t> &dimension_number, 
 CodeGen::CodeGen(Module *ir_module):
     virtual_reg_id_(-1),
     stack_offset_(0),
-    sp_reg_(new MachineReg(MachineReg::sp)),
-    fp_reg_(new MachineReg(MachineReg::fp)),
-    lr_reg_(new MachineReg(MachineReg::lr)),
+    sp_reg_(nullptr),
+    fp_reg_(nullptr),
+    lr_reg_(nullptr),
     module_(std::make_unique<MachineModule>(ir_module)),
     curr_machine_basic_block_(nullptr),
     curr_machine_function_(nullptr),
     curr_machine_operand_(nullptr){
 
+    for (int i = 0; i < 16; ++i) {
+        MachineReg::Reg mc_reg = static_cast<MachineReg::Reg>(MachineReg::r0 + i);
+        machine_regs_map_[mc_reg] = new MachineReg(mc_reg);
+    }
+    for (int i = 0; i < 32; ++i) {
+        MachineReg::Reg mc_reg = static_cast<MachineReg::Reg>(MachineReg::s0 + i);
+        machine_regs_map_[mc_reg] = new MachineReg(mc_reg);
+    }
+
+    sp_reg_ = machine_regs_map_[MachineReg::sp];
+    fp_reg_ = machine_regs_map_[MachineReg::fp];
+    lr_reg_ = machine_regs_map_[MachineReg::lr];
 }
 
 VirtualReg *CodeGen::createVirtualReg(MachineOperand::ValueType value_type, Value *value) {
@@ -99,15 +111,13 @@ void CodeGen::addPushInst(MachineBasicBlock *basicblock) {
     auto push_sreg_inst = new PushInst(curr_machine_basic_block_, MachineInst::Float);
 
     for (int i = 0; i < 8; ++i) {
-        MachineReg::Reg reg = static_cast<MachineReg::Reg>(MachineReg::r4 + i);
-        MachineReg::Reg sreg = static_cast<MachineReg::Reg>(MachineReg::s16 + i);
-        auto machine_reg = new MachineReg(reg);
-        auto machine_sreg = new MachineReg(sreg);
+        auto machine_reg = getMachineReg(false, 4 + i);
+        auto machine_sreg = getMachineReg(true, 16 + i);
 
         push_regs_inst->addReg(machine_reg);
         push_sreg_inst->addReg(machine_sreg);
     }
-    push_regs_inst->addReg(new MachineReg(MachineReg::lr));
+    push_regs_inst->addReg(machine_regs_map_[MachineReg::lr]);
     push_sreg_inst->setValueType(MachineInst::Float);
 
     basicblock->addFrontInstruction(push_regs_inst);
@@ -119,15 +129,13 @@ void CodeGen::addPopInst(MachineBasicBlock *basicblock) {
     auto pop_sreg_inst = new PopInst(curr_machine_basic_block_, MachineInst::Float);
 
     for (int i = 0; i < 8; ++i) {
-        MachineReg::Reg reg = static_cast<MachineReg::Reg>(MachineReg::r4 + i);
-        MachineReg::Reg sreg = static_cast<MachineReg::Reg>(MachineReg::s16 + i);
-        auto machine_reg = new MachineReg(reg);
-        auto machine_sreg = new MachineReg(sreg);
+        auto machine_reg = getMachineReg(false, 4 + i);
+        auto machine_sreg = getMachineReg(true, 16 + i);
 
         pop_regs_inst->addReg(machine_reg);
         pop_sreg_inst->addReg(machine_sreg);
     }
-    pop_regs_inst->addReg(new MachineReg(MachineReg::lr));
+    pop_regs_inst->addReg(machine_regs_map_[MachineReg::lr]);
     pop_sreg_inst->setValueType(MachineInst::Float);
 
     basicblock->addInstruction(pop_regs_inst);
@@ -149,6 +157,7 @@ void CodeGen::visit(Module *module) {
 
 void CodeGen::visit(BasicBlock *block) {
     curr_machine_basic_block_ = new MachineBasicBlock(curr_machine_function_, block->getName());
+    curr_machine_basic_block_->setLoopDepth(block->getWhileLoopDepth());
     for (auto &inst: block->getInstructionList()) {
         visit(inst.get());
     }
@@ -229,8 +238,7 @@ void CodeGen::visit(Function *function) {
             vreg = createVirtualReg(MachineOperand::Float, arg);
             // printf("the arg %d in function %s to vreg %d\n", i, function->getName().c_str(), dynamic_cast<VirtualReg *>(vreg)->getRegId());
             if (float_arg_reg_cnt < 16) {
-                MachineReg::Reg machine_reg = static_cast<MachineReg::Reg>(MachineReg::s0 + float_arg_reg_cnt);
-                auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::F2F, new MachineReg(machine_reg), vreg);
+                auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::F2F, getMachineReg(true, float_arg_reg_cnt), vreg);
                 args_move_insts.push_back(mov_inst);
                 float_arg_reg_cnt++;
             } else {
@@ -240,8 +248,7 @@ void CodeGen::visit(Function *function) {
             vreg = createVirtualReg(MachineOperand::Int, arg);
             // printf("the arg %d in function %s to vreg %d\n", i, function->getName().c_str(), dynamic_cast<VirtualReg *>(vreg)->getRegId());
             if (int_arg_reg_cnt < 4) {
-                MachineReg::Reg machine_reg = static_cast<MachineReg::Reg>(MachineReg::r0 + int_arg_reg_cnt);
-                auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::I2I, new MachineReg(machine_reg), vreg);
+                auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::I2I, getMachineReg(false, int_arg_reg_cnt), vreg);
                 args_move_insts.push_back(mov_inst);
                 int_arg_reg_cnt++;
             } else {
@@ -356,7 +363,7 @@ void CodeGen::visit(RetInstruction *inst) {
         MoveInst *mov_inst = nullptr;
         auto operand = value2MachineOperand(inst->getRetValue(), false, &is_float);
         assert(operand);
-        dst_operand = is_float ? new MachineReg(MachineReg::s0) : new MachineReg(MachineReg::r0);
+        dst_operand = is_float ? getMachineReg(true, 0) : getMachineReg(false, 0);
         mov_inst = new MoveInst(curr_machine_basic_block_, is_float ? MoveInst::F2F : MoveInst::I2I, operand, dst_operand);
         addMachineInst(mov_inst);
         setCurrMachineOperand(dst_operand);
@@ -408,12 +415,11 @@ void CodeGen::visit(CallInstruction *inst) {
         assert(actual_vreg);
         if (!arg->isPtrArg() && arg->getBasicType() == BasicType::FLOAT_BTYPE) {
             if (curr_float_arg_cnt < 16) {
-                auto mreg = static_cast<MachineReg::Reg>(MachineReg::s0 + curr_float_arg_cnt);
-                auto dst_vreg = new MachineReg(mreg);
+                auto dst_vreg = getMachineReg(true, curr_float_arg_cnt);
                 auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, actual_vreg, dst_vreg);
                 addMachineInst(mov_inst);
             } else {
-                auto tmp_dst_reg = new MachineReg(MachineReg::s16);
+                auto tmp_dst_reg = getMachineReg(true, 16);
                 auto tmp_mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, actual_vreg, tmp_dst_reg);
                 auto store_inst = new StoreInst(MemIndexType::PostiveIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset - 4));
 
@@ -426,12 +432,11 @@ void CodeGen::visit(CallInstruction *inst) {
             curr_float_arg_cnt++;
         } else {
             if (curr_int_arg_cnt < 4) {
-                auto mreg = static_cast<MachineReg::Reg>(MachineReg::r0 + curr_int_arg_cnt);
-                auto dst_vreg = new MachineReg(mreg);
+                auto dst_vreg = getMachineReg(false, curr_int_arg_cnt);
                 auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, actual_vreg, dst_vreg);
                 addMachineInst(mov_inst);
             } else {
-                auto tmp_dst_reg = new MachineReg(MachineReg::r4);
+                auto tmp_dst_reg = getMachineReg(false, 4);
                 auto tmp_mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, actual_vreg, tmp_dst_reg);
                 auto store_inst = new StoreInst(MemIndexType::PostiveIndex, curr_machine_basic_block_, tmp_dst_reg, sp_reg_, new ImmNumber(stack_offset - 4));
 
@@ -462,11 +467,11 @@ void CodeGen::visit(CallInstruction *inst) {
     MoveInst *mov_inst = nullptr;
     auto ret_type = function->getRetType();
     if (ret_type == BasicType::FLOAT_BTYPE) {
-        ret_reg = new MachineReg(MachineReg::s0);
+        ret_reg = getMachineReg(true, 0);
         auto dst_reg = createVirtualReg(MachineOperand::Float, inst);
         mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, ret_reg, dst_reg);
     } else if (ret_type == BasicType::INT_BTYPE) {
-        ret_reg = new MachineReg(MachineReg::r0);
+        ret_reg = getMachineReg(false, 0);
         auto dst_reg = createVirtualReg(MachineOperand::Int, inst);
         mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, ret_reg, dst_reg);
     }
@@ -627,6 +632,16 @@ MachineOperand *CodeGen::getCmpReusltInOperand(SetCondInstruction *set_cond_inst
     curr_machine_basic_block_->insertInstruction(find_setcond_it->second, mov0_inst);
 
     return value;
+}
+
+MachineReg *CodeGen::getMachineReg(bool isfloat, int reg_no) {
+    MachineReg::Reg reg;
+    if (isfloat) {
+        reg = static_cast<MachineReg::Reg>(MachineReg::s0 + reg_no);
+    } else {
+        reg = static_cast<MachineReg::Reg>(MachineReg::r0 + reg_no);
+    }
+    return machine_regs_map_[reg];
 }
 
 void CodeGen::visit(GlobalVariable *global) {
