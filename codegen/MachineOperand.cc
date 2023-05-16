@@ -34,10 +34,10 @@ VirtualReg::VirtualReg(int reg_id, ValueType value_type):
 
 }
 
-void VirtualReg::replaceWith(const VirtualReg &vreg) {
-    this->reg_id_ = vreg.reg_id_;
-    this->is_colored_ = vreg.is_colored_;
-    this->colored_mcreg_ = vreg.colored_mcreg_;
+void VirtualReg::replaceWith(VirtualReg *vreg) {
+    this->reg_id_ = vreg->reg_id_;
+    this->is_colored_ = vreg->is_colored_;
+    this->colored_mcreg_ = vreg->colored_mcreg_;
 }
 
 Label::Label(const std::string &name):

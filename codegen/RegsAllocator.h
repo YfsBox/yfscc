@@ -26,7 +26,7 @@ public:
 
     using InstSet = std::unordered_set<MachineInst *>;
 
-    RegsAllocator(MachineModule *module, CodeGen *codegen): machine_module_(module), code_gen_(codegen) {}
+    RegsAllocator(MachineModule *module, CodeGen *codegen);
 
     ~RegsAllocator() = default;
 
@@ -34,9 +34,35 @@ public:
 
 private:
 
-    static std::set<MachineReg::Reg> float_regs_set_;
+    struct Stack {
+        std::deque<MachineOperand *> stack_;
+        std::unordered_set<MachineOperand *> set_;
 
-    static std::set<MachineReg::Reg> int_regs_set_;
+        void push(MachineOperand *operand) {
+            stack_.push_back(operand);
+            set_.insert(operand);
+        }
+
+        MachineOperand *pop() {
+            auto back = stack_.back();
+            stack_.pop_back();
+            set_.erase(back);
+            return back;
+        }
+
+        bool isInStack(MachineOperand *operand) {
+            return set_.count(operand) > 0;
+        }
+
+        void clear() {
+            stack_.clear();
+            set_.clear();
+        }
+
+        bool empty() {
+            return stack_.empty();
+        }
+    };
 
     void analyseLiveness(MachineFunction *function);
 
@@ -66,7 +92,7 @@ private:
 
     bool isPrecolored(MachineOperand *operand);
 
-    bool conservative(const BitSet &nodes);
+    bool conservative(const OperandSet &nodes);
 
     OperandSet adjacent(MachineOperand *operand);
 
@@ -93,6 +119,10 @@ private:
     void rewriteProgram();
 
     static bool isEqual(const BitSet &lhs, const BitSet &rhs);
+
+    std::set<MachineReg::Reg> float_regs_set_;
+
+    std::set<MachineReg::Reg> int_regs_set_;
 
     MachineModule *machine_module_;
 
@@ -133,7 +163,7 @@ private:
 
     OperandSet already_spilled_;
 
-    std::deque<MachineOperand *> select_stack_;     // 所有从graph中被移除的点都会加入到这个stack中
+    Stack select_stack_;     // 所有从graph中被移除的点都会加入到这个stack中
 
     // Others
     std::unordered_map<MachineOperand *, OperandSet> adj_set_;      // 描述冲突图的数据结构
@@ -158,6 +188,8 @@ private:
     InstSet coalesced_moves_;
 
     InstSet constrained_moves_;
+
+    InstSet frozen_moves_;
 
     std::unordered_map<MachineOperand *, MachineOperand *> alias_;
 

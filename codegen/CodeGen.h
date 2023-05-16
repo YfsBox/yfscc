@@ -125,7 +125,7 @@ private:
 
     VirtualReg *createVirtualReg(MachineOperand::ValueType value_type, Value *value = nullptr);
 
-    VirtualReg *createVirtualReg(MachineOperand::ValueType value_type, MachineFunction *function);
+    VirtualReg *createVirtualReg(MachineFunction *function, MachineOperand::ValueType value_type);
 
     MachineOperand *constant2VirtualReg(int32_t const_value, bool can_be_imm);
 

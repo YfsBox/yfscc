@@ -123,23 +123,27 @@ std::unordered_set<MachineOperand *> MachineInst::getDefs(MachineInst *inst) {
 }
 
 void MachineInst::replaceDefs(MachineInst *inst, VirtualReg *old_operand, VirtualReg *new_operand) {
+    assert(old_operand);
+    assert(new_operand);
     auto defs = getDefs(inst);
     for (auto def: defs) {
         if (def == old_operand) {
             auto vreg = dynamic_cast<VirtualReg *>(def);
             assert(vreg);
-            vreg->replaceWith(*new_operand);
+            vreg->replaceWith(new_operand);
         }
     }
 }
 
 void MachineInst::replaceUses(MachineInst *inst, VirtualReg *old_operand, VirtualReg *new_operand) {
+    assert(old_operand);
+    assert(new_operand);
     auto uses = getUses(inst);
     for (auto use: uses) {
         if (use == old_operand) {
             auto vreg = dynamic_cast<VirtualReg *>(use);
             assert(vreg);
-            vreg->replaceWith(*new_operand);
+            vreg->replaceWith(new_operand);
         }
     }
 }

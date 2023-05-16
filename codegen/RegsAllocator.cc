@@ -3,27 +3,33 @@
 //
 #include <cassert>
 #include <cmath>
+#include <set>
 #include <algorithm>
 #include "CodeGen.h"
+#include "Machine.h"
 #include "MachineInst.h"
+#include "MachineOperand.h"
 #include "RegsAllocator.h"
 #include "../ir/BasicBlock.h"
 
-std::set<MachineReg::Reg> RegsAllocator::int_regs_set_ = {
-        MachineReg::r0, MachineReg::r1, MachineReg::r2, MachineReg::r3, MachineReg::r4,
-        MachineReg::r5, MachineReg::r6, MachineReg::r7, MachineReg::r8, MachineReg::r9,
-        MachineReg::r10, MachineReg::r11, MachineReg::r12, MachineReg::r14,
-};      // 没有r13、r15，也就是没有sp、pc
-
-std::set<MachineReg::Reg> RegsAllocator::float_regs_set_ = {
-        MachineReg::s0, MachineReg::s1, MachineReg::s2, MachineReg::s3, MachineReg::s4,
-        MachineReg::s5, MachineReg::s6, MachineReg::s7, MachineReg::s8, MachineReg::s9,
-        MachineReg::s10, MachineReg::s11, MachineReg::s12, MachineReg::s13, MachineReg::s14,
-        MachineReg::s15, MachineReg::s16, MachineReg::s17, MachineReg::s18, MachineReg::s19,
-        MachineReg::s20, MachineReg::s21, MachineReg::s22, MachineReg::s23, MachineReg::s24,
-        MachineReg::s25, MachineReg::s26, MachineReg::s27, MachineReg::s28, MachineReg::s29,
-        MachineReg::s30, MachineReg::s31,
-};  // 没有特殊用途的寄存器，所以全部用上
+RegsAllocator::RegsAllocator(MachineModule *module, CodeGen *codegen):
+    machine_module_(module),
+    code_gen_(codegen){
+    int_regs_set_ = {
+            MachineReg::r0, MachineReg::r1, MachineReg::r2, MachineReg::r3, MachineReg::r4,
+            MachineReg::r5, MachineReg::r6, MachineReg::r7, MachineReg::r8, MachineReg::r9,
+            MachineReg::r10, MachineReg::r11, MachineReg::r12, MachineReg::r14,
+    };      // 没有r13、r15，也就是没有sp、pc
+    float_regs_set_ = {
+            MachineReg::s0, MachineReg::s1, MachineReg::s2, MachineReg::s3, MachineReg::s4,
+            MachineReg::s5, MachineReg::s6, MachineReg::s7, MachineReg::s8, MachineReg::s9,
+            MachineReg::s10, MachineReg::s11, MachineReg::s12, MachineReg::s13, MachineReg::s14,
+            MachineReg::s15, MachineReg::s16, MachineReg::s17, MachineReg::s18, MachineReg::s19,
+            MachineReg::s20, MachineReg::s21, MachineReg::s22, MachineReg::s23, MachineReg::s24,
+            MachineReg::s25, MachineReg::s26, MachineReg::s27, MachineReg::s28, MachineReg::s29,
+            MachineReg::s30, MachineReg::s31,
+    };  // 没有特殊用途的寄存器，所以全部用上
+}
 
 
 bool RegsAllocator::isEqual(const BitSet &lhs, const BitSet &rhs) {
@@ -54,8 +60,8 @@ void RegsAllocator::analyseLiveness(MachineFunction *function) {            // �
         BitSet tmp_use_sets;
         BitSet tmp_def_sets;
         for (auto &inst: insts) {
-            auto inst_defs = MachineInst::getDefs(inst.get(), allocate_float_);
-            auto inst_uses = MachineInst::getUses(inst.get(), allocate_float_);
+            auto inst_defs = MachineInst::getDefs(inst.get());
+            auto inst_uses = MachineInst::getUses(inst.get());
 
             for (auto use: inst_uses) {
                 if (use->getOperandType() == MachineOperand::VirtualReg && tmp_def_sets.find(use) == tmp_def_sets.end()) {
@@ -147,9 +153,7 @@ void RegsAllocator::build() {
             auto uses = MachineInst::getUses(mc_inst, allocate_float_);
             if (mc_inst->getMachineInstType() == MachineInst::Move && dynamic_cast<MoveInst *>(mc_inst)->getMoveType() != MoveInst::F_I) {
                 for (auto use : uses) {     // live :=  live \ use(I)
-                    if (live.find(use) != live.end()) {
-                        live.erase(use);
-                    }
+                    live.erase(use);
                     move_list_[use].insert(mc_inst);
                 }
 
@@ -161,19 +165,14 @@ void RegsAllocator::build() {
             live.insert(defs.begin(), defs.end());
 
             for (auto def: defs) {          // 用于计算spill cost
-                if (isNeedAlloca(def)) {
-                    def_use_count_map_[def]++;
-                    while_loop_depth_map[def] = std::max(while_loop_depth_map[def], mc_inst->getParent()->getLoopDepth());
-                }
+                def_use_count_map_[def]++;
+                while_loop_depth_map[def] = std::max(while_loop_depth_map[def], mc_inst->getParent()->getLoopDepth());
             }
 
             for (auto use: uses) {
-                if (isNeedAlloca(use)) {
-                    def_use_count_map_[use]++;
-                    while_loop_depth_map[use] = std::max(while_loop_depth_map[use], mc_inst->getParent()->getLoopDepth());
-                }
+                def_use_count_map_[use]++;
+                while_loop_depth_map[use] = std::max(while_loop_depth_map[use], mc_inst->getParent()->getLoopDepth());
             }
-
             // add edges
             for (auto def: defs) {
                 for (auto l: live) {
@@ -183,9 +182,7 @@ void RegsAllocator::build() {
             // live := use(I) U (live \ def(I))
             // std::set_difference(live.begin(), live.end(), defs.begin(), defs.end(), tmp_set.end());
             for (auto def: defs) {
-                if (live.count(def)) {
-                    live.erase(def);
-                }
+                live.erase(def);
             }
 
             live.insert(uses.begin(), uses.end());
@@ -216,7 +213,7 @@ RegsAllocator::OperandSet RegsAllocator::adjacent(MachineOperand *operand) {
     // std::set_union(select_stack_.begin(), select_stack_.end(), coalesced_nodes_.begin(), coalesced_nodes_.end(), tmp_set.begin());
     OperandSet result = adj_list_[operand];
     // std::set_difference(adj_list_[operand].begin(), adj_list_[operand].end(), tmp_set.begin(), tmp_set.end(), result.begin());
-    for (auto node: select_stack_) {
+    for (auto node: select_stack_.set_) {
         result.erase(node);
     }
     for (auto node: coalesced_nodes_) {
@@ -280,7 +277,7 @@ void RegsAllocator::simplify() {
     auto operand = *simplify_work_list_.begin();
     simplify_work_list_.erase(operand);
 
-    select_stack_.push_back(operand);
+    select_stack_.push(operand);
 
     OperandSet adj = adjacent(operand);
 
@@ -405,7 +402,15 @@ void RegsAllocator::freezeMoves(MachineOperand *operand) {
         auto v = move_inst->getDst();
 
         if (active_moves_.count(m)) {
+            active_moves_.erase(m);
+        } else {
+            worklist_moves_.erase(m);
+        }
 
+        frozen_moves_.insert(m);
+        if (nodeMoves(v).empty() && degree_[v] < k_) {
+            freeze_work_list_.erase(v);
+            simplify_work_list_.insert(v);
         }
     }
 }
@@ -433,8 +438,7 @@ void RegsAllocator::selectSpill() {
 
 void RegsAllocator::assignColors() {
     while (!select_stack_.empty()) {
-        auto node = select_stack_.back();
-        select_stack_.pop_back();
+        auto node = select_stack_.pop();
 
         std::set<MachineReg::Reg> ok_colors;     // 设置分配颜色的集合
         if (allocate_float_) {
@@ -466,36 +470,58 @@ void RegsAllocator::assignColors() {
 }
 
 void RegsAllocator::rewriteProgram() {
-    for (auto spill_node: spilled_nodes_) {
-        already_spilled_.insert(spill_node);
-        spilled_stack_size_ += 4;
+    for (auto spill_node: spilled_nodes_) {         // 确定为需要溢出的节点
+        already_spilled_.insert(spill_node);            // 插入到已经溢出的队列
+        spilled_stack_size_ += 4;           // spill维护的stack偏移量
 
         for (auto &bb: curr_function_->getMachineBasicBlock()) {
-            for (auto &const_inst: bb->getInstructionList()) {
-                auto inst = const_inst.get();
+            auto &inst_list = bb->getInstructionListNonConst();
+
+            std::unordered_map<MachineInst *, MachineInst *> insert_before;
+            std::unordered_map<MachineInst *, MachineInst *> insert_after;
+            std::unordered_map<MachineInst *, MachineBasicBlock::MachineInstListIt> insert_it;
+
+            for (auto it = inst_list.begin(); it != inst_list.end(); ++it) {
+                auto inst = it->get();
                 auto defs = MachineInst::getDefs(inst, allocate_float_);
                 auto uses = MachineInst::getUses(inst, allocate_float_);
 
                 MachineOperand::ValueType value_type = allocate_float_ ? MachineOperand::Float : MachineOperand::Int;
 
                 if (defs.count(spill_node)) {
-                    auto store_vreg = code_gen_->createVirtualReg(value_type, curr_function_);
+                    auto store_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
                     auto store_inst = new StoreInst(MemIndexType::PostiveIndex, bb.get(), store_vreg, code_gen_->sp_reg_, new ImmNumber(- curr_function_->getStackSize() - spilled_stack_size_));
                     already_spilled_.insert(store_vreg);
-
+                    MachineInst::replaceDefs(inst, dynamic_cast<VirtualReg *>(spill_node), store_vreg);
                     // insert指令
-
+                    insert_after.insert({inst, store_inst});
+                    insert_it.insert({inst, it});
                 }
 
                 if (uses.count(spill_node)) {
-
+                    auto load_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
+                    auto load_inst = new LoadInst(bb.get(), load_vreg, code_gen_->sp_reg_, new ImmNumber(- curr_function_->getStackSize() - spilled_stack_size_));
+                    already_spilled_.insert(load_vreg);
+                    MachineInst::replaceUses(inst, dynamic_cast<VirtualReg *>(spill_node), load_vreg);
+                    // insert指令
+                    insert_before.insert({inst, load_inst});
+                    insert_it.insert({inst, it});
                 }
             }
+
+            for (auto [inserted, inst]: insert_before) {
+                auto find_inserted_it = insert_it.find(inserted);
+                assert(find_inserted_it != insert_it.end());
+                bb->insertInstructionBefore(find_inserted_it->second, inst);
+            }
+
+            for (auto [inserted, inst]: insert_after) {
+                auto find_inserted_it = insert_it.find(inserted);
+                assert(find_inserted_it != insert_it.end());
+                bb->insertInstruction(find_inserted_it->second, inst);
+            }
+
         }
-
-
-
-
     }
 
 }
@@ -520,15 +546,17 @@ void RegsAllocator::init() {
     simplify_work_list_.clear();
     freeze_work_list_.clear();
     spill_work_list_.clear();
-    spilled_nodes_.clear();
     coalesced_nodes_.clear();
     colored_nodes_.clear();
+    spilled_nodes_.clear();
+    already_spilled_.clear();
+    select_stack_.clear();
+    // frozen_moves
+    active_moves_.clear();
+    worklist_moves_.clear();
     coalesced_moves_.clear();
     constrained_moves_.clear();
-    // frozen_moves
-    select_stack_.clear();
-    worklist_moves_.clear();
-    active_moves_.clear();
+
     adj_set_.clear();
     adj_list_.clear();
     degree_.clear();
@@ -539,7 +567,6 @@ void RegsAllocator::init() {
     while_loop_depth_map.clear();
 
     spilled_stack_size_ = 0;
-
 }
 
 void RegsAllocator::runOnMachineFunction(MachineFunction *function) {

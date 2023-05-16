@@ -60,7 +60,7 @@ VirtualReg *CodeGen::createVirtualReg(MachineOperand::ValueType value_type, Valu
     return virtual_reg;
 }
 
-VirtualReg *CodeGen::createVirtualReg(MachineOperand::ValueType value_type, MachineFunction *function) {
+VirtualReg *CodeGen::createVirtualReg(MachineFunction *function, MachineOperand::ValueType value_type) {
     auto vreg_no = function->getVirtualRegs().size();
     VirtualReg *virtual_reg = new VirtualReg(vreg_no, value_type);
     function->addVirtualReg(virtual_reg);

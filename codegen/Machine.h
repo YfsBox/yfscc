@@ -86,6 +86,8 @@ public:
 
     void insertInstruction(MachineInstListIt it, MachineInst *inst);
 
+    void insertInstructionBefore(MachineInstListIt it, MachineInst *inst);
+
     MachineInstListIt getInstBackIt() {
         MachineInstListIt back_it = instructions_.end();
         --back_it;
@@ -93,6 +95,10 @@ public:
     }
 
     const std::list<MachineInstPtr> &getInstructionList() const {
+        return instructions_;
+    }
+
+    std::list<MachineInstPtr> &getInstructionListNonConst() {
         return instructions_;
     }
 

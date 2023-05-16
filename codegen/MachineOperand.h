@@ -117,7 +117,7 @@ public:
         return is_colored_;
     }
 
-    void replaceWith(const VirtualReg &vreg);
+    void replaceWith(VirtualReg *vreg);
 
 private:
     bool is_colored_;
