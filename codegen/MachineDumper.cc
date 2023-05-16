@@ -131,6 +131,10 @@ void MachineDumper::dump(const MachineReg *operand) {
 }
 
 void MachineDumper::dump(const VirtualReg *operand) {
+    if (operand->isColored()) {
+        fout_ << MachineReg::machineReg2RegName(operand->getColoredReg());
+        return;
+    }
     if (operand->getValueType() == MachineOperand::Float) {
         fout_ << "vfreg" << operand->getRegId();
     } else {

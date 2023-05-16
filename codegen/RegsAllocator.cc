@@ -31,7 +31,6 @@ RegsAllocator::RegsAllocator(MachineModule *module, CodeGen *codegen):
     };  // 没有特殊用途的寄存器，所以全部用上
 }
 
-
 bool RegsAllocator::isEqual(const BitSet &lhs, const BitSet &rhs) {
     if (lhs.size() != rhs.size()) {
         return false;
@@ -142,12 +141,27 @@ void RegsAllocator::addEdge(MachineOperand *a, MachineOperand *b) {
     }
 }
 
+static void printRegStr(MachineOperand *operand) {
+    if (operand->getOperandType() == MachineOperand::MachineReg) {
+        printf("%s", dynamic_cast<MachineReg *>(operand)->machieReg2RegName().c_str());
+    } else if (operand->getOperandType() == MachineOperand::VirtualReg) {
+        printf("vreg%d", dynamic_cast<VirtualReg *>(operand)->getRegId());
+    }
+}
+
 void RegsAllocator::build() {
     for (auto &mc_basicblock: curr_function_->getMachineBasicBlock()) {
         auto live = live_out_[mc_basicblock.get()];
         auto &mc_inst_list = mc_basicblock->getInstructionList();
 
         for (auto it = mc_inst_list.rbegin(); it != mc_inst_list.rend(); ++it) {
+            printf("###the live set is:\n");
+            for (auto operand: live) {
+                printRegStr(operand);
+                printf("\t");
+            }
+            printf("\n");
+
             MachineInst *mc_inst = it->get();
             auto defs = MachineInst::getDefs(mc_inst, allocate_float_);
             auto uses = MachineInst::getUses(mc_inst, allocate_float_);
@@ -197,8 +211,7 @@ bool RegsAllocator::moveRelated(MachineOperand *operand) {
 
 void RegsAllocator::mkWorkList() {      // 将不同类型的变量进行分类到不同的集合中
     for (auto init: initial_) {
-        initial_.erase(init);
-        if (degree_[init] > k_) {
+        if (degree_[init] >= k_) {
             spill_work_list_.insert(init);
         } else if (moveRelated(init)) {         // 如果这个变量涉及到move语句
             freeze_work_list_.insert(init);
@@ -209,17 +222,14 @@ void RegsAllocator::mkWorkList() {      // 将不同类型的变量进行分类�
 }
 // 获取一个节点的邻居的集合，具体算法是通过将原冲突图，去掉移除到栈上以及已经合并的部分
 RegsAllocator::OperandSet RegsAllocator::adjacent(MachineOperand *operand) {
-    // OperandSet tmp_set;
-    // std::set_union(select_stack_.begin(), select_stack_.end(), coalesced_nodes_.begin(), coalesced_nodes_.end(), tmp_set.begin());
     OperandSet result = adj_list_[operand];
-    // std::set_difference(adj_list_[operand].begin(), adj_list_[operand].end(), tmp_set.begin(), tmp_set.end(), result.begin());
     for (auto node: select_stack_.set_) {
         result.erase(node);
     }
     for (auto node: coalesced_nodes_) {
         result.erase(node);
     }
-
+    // 也就是说需要去除select_stack以及coalesced中的
     return result;
 }
 
@@ -315,7 +325,7 @@ void RegsAllocator::combine(MachineOperand *u, MachineOperand *v) {
     for (auto node: move_list_[v]) {
         move_list_[u].insert(node);
     }
-    enableMoves({v});
+    // enableMoves({v});
     auto adj = adjacent(v);
     for (auto t: adj) {
         addEdge(t, u);
@@ -328,7 +338,7 @@ void RegsAllocator::combine(MachineOperand *u, MachineOperand *v) {
     }
 }
 
-bool RegsAllocator::conservative(const BitSet &nodes) {
+bool RegsAllocator::conservative(const OperandSet &nodes) {
     int k = 0;
     for (auto node: nodes) {
         if (degree_[node] >= k_) {
@@ -572,6 +582,7 @@ void RegsAllocator::init() {
 void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
     init();
     analyseLiveness(function);
+
     // set
     auto machine_reg_map = machine_module_->getMachineRegMap();
     for (auto &[reg, reg_operand]: machine_reg_map) {       // 将所有的寄存器都放入进入比较合适
@@ -587,8 +598,39 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
         }
     }
 
+    printf("---------------------inital virtual regs------------------------\n");
+    for (auto init: initial_) {
+        auto vreg = dynamic_cast<VirtualReg*> (init);
+        assert(vreg);
+        printf("vreg%d\t", vreg->getRegId());
+    }
+    printf("\n");
+
+    if (initial_.empty()) {
+        return;
+    }
+
     curr_function_ = function;
     build();
+    printf("-----------------the interface graph-------------------\n");
+    for (auto node_list: adj_set_) {
+        if (node_list.first->getOperandType() == MachineOperand::MachineReg) {
+            printf("%s", dynamic_cast<MachineReg*>(node_list.first)->machieReg2RegName().c_str());
+        } else {
+            printf("vreg%d", dynamic_cast<VirtualReg *>(node_list.first)->getRegId());
+        }
+        printf(":\t");
+        for (auto node: node_list.second) {
+            if (node->getOperandType() == MachineOperand::MachineReg) {
+                printf("%s", dynamic_cast<MachineReg*>(node)->machieReg2RegName().c_str());
+            } else {
+                printf("vreg%d", dynamic_cast<VirtualReg *>(node)->getRegId());
+            }
+            printf("\t");
+        }
+        printf("\n");
+    }
+
     mkWorkList();
 
     do {
@@ -609,11 +651,23 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
         rewriteProgram();
         runOnMachineFunction(function);
     } else {
+        printf("-------------the colors is here-------------\n");
+        for (auto &[reg, color]: color_) {
+            if (reg->getOperandType() == MachineOperand::MachineReg) {
+                auto mc_reg = dynamic_cast<MachineReg *>(reg);
+                printf("%s: colored %d\n", mc_reg->machieReg2RegName().c_str(), color);
+            } else if (reg->getOperandType() == MachineOperand::VirtualReg){
+                auto vreg = dynamic_cast<VirtualReg *>(reg);
+                printf("vreg%d: colored %d\n", vreg->getRegId(), color);
+            }
+        }
 
-
-
+        for (auto &[reg, color]: color_) {
+            if (auto vreg = dynamic_cast<VirtualReg *>(reg); vreg) {
+                vreg->color(color);
+            }
+        }
     }
-
 }
 
 

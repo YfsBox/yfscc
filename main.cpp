@@ -7,6 +7,8 @@
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
+#include "codegen/RegsAllocator.h"
+
 
 extern int yyparse();
 extern std::shared_ptr<CompUnit> root;
@@ -45,7 +47,13 @@ int main(int argc, char **argv) {
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();
 
-    MachineDumper mcdumper(codegen.getMCModule(), target_file);
+    MachineDumper vmcdumper(codegen.getMCModule(), "yfscc.v.s");
+    vmcdumper.dump();
+
+    RegsAllocator reg_alloc(codegen.getMCModule(), &codegen);
+    reg_alloc.allocate();
+
+    MachineDumper mcdumper(codegen.getMCModule(), "yfscc.s");
     mcdumper.dump();
     // yylex();
     return 0;

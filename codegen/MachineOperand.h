@@ -97,6 +97,8 @@ public:
         return reg_;
     }
 
+    static std::string machineReg2RegName(MachineReg::Reg reg);
+
     std::string machieReg2RegName() const;
 
 private:
@@ -117,7 +119,16 @@ public:
         return is_colored_;
     }
 
+    MachineReg::Reg getColoredReg() const {
+        return colored_mcreg_;
+    }
+
     void replaceWith(VirtualReg *vreg);
+
+    void color(MachineReg::Reg reg) {
+        is_colored_ = true;
+        colored_mcreg_ = reg;
+    }
 
 private:
     bool is_colored_;

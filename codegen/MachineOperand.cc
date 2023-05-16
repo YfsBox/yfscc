@@ -30,7 +30,8 @@ ImmNumber::~ImmNumber() = default;
 VirtualReg::VirtualReg(int reg_id, ValueType value_type):
     MachineOperand(value_type, OperandType::VirtualReg),
     reg_id_(reg_id),
-    is_colored_(false){
+    is_colored_(false),
+    colored_mcreg_(MachineReg::Reg::undef){
 
 }
 
@@ -58,13 +59,13 @@ MachineReg::MachineReg(Reg reg):
     }
 }
 
-std::string MachineReg::machieReg2RegName() const {
-    if (reg_ >= r0 && reg_ <= r10) {
-        return "r" + std::to_string(reg_ - r0);   
-    } else if (reg_ >= s0 && reg_ <= s31) {
-        return "s" + std::to_string(reg_ - s0);
+std::string MachineReg::machineReg2RegName(MachineReg::Reg reg) {
+    if (reg >= r0 && reg <= r10) {
+        return "r" + std::to_string(reg - r0);
+    } else if (reg >= s0 && reg <= s31) {
+        return "s" + std::to_string(reg - s0);
     }
-    switch (reg_) {
+    switch (reg) {
         case fp:
             return "fp";
         case ip:
@@ -77,6 +78,10 @@ std::string MachineReg::machieReg2RegName() const {
             return "pc";
     }
     return "";
+}
+
+std::string MachineReg::machieReg2RegName() const {
+    return machineReg2RegName(reg_);
 }
 
 MachineReg::~MachineReg() = default;

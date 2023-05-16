@@ -36,7 +36,9 @@ std::unordered_set<MachineOperand *> MachineInst::getUses(MachineInst *inst, boo
         }
         case MachineInstType::Load:{
             auto load_inst = dynamic_cast<LoadInst *>(inst);
-            operands.insert(load_inst->getOffset());
+            if (load_inst->getOffset()) {
+                operands.insert(load_inst->getOffset());
+            }
             operands.insert(load_inst->getBase());
             break;
         }
@@ -46,7 +48,9 @@ std::unordered_set<MachineOperand *> MachineInst::getUses(MachineInst *inst, boo
         case MachineInstType::Store:{
             auto store_inst = dynamic_cast<StoreInst*>(inst);
             operands.insert(store_inst->getBase());
-            operands.insert(store_inst->getOffset());
+            if (store_inst->getOffset()) {
+                operands.insert(store_inst->getOffset());
+            }
             operands.insert(store_inst->getValue());
             break;
         }
