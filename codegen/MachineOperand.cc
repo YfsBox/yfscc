@@ -29,8 +29,15 @@ ImmNumber::~ImmNumber() = default;
 
 VirtualReg::VirtualReg(int reg_id, ValueType value_type):
     MachineOperand(value_type, OperandType::VirtualReg),
-    reg_id_(reg_id){
+    reg_id_(reg_id),
+    is_colored_(false){
 
+}
+
+void VirtualReg::replaceWith(const VirtualReg &vreg) {
+    this->reg_id_ = vreg.reg_id_;
+    this->is_colored_ = vreg.is_colored_;
+    this->colored_mcreg_ = vreg.colored_mcreg_;
 }
 
 Label::Label(const std::string &name):

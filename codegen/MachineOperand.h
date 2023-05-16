@@ -39,20 +39,6 @@ protected:
     OperandType operand_type_;
 };
 
-class VirtualReg: public MachineOperand {
-public:
-    VirtualReg(int reg_id, ValueType value_type);
-
-    ~VirtualReg() = default;
-
-    int getRegId() const {
-        return reg_id_;
-    }
-
-private:
-    int reg_id_;
-};
-
 class ImmNumber: public MachineOperand {
 public:
     ImmNumber(int32_t value);
@@ -115,6 +101,30 @@ public:
 
 private:
     Reg reg_;
+};
+
+class VirtualReg: public MachineOperand {
+public:
+    VirtualReg(int reg_id, ValueType value_type);
+
+    ~VirtualReg() = default;
+
+    int getRegId() const {
+        return reg_id_;
+    }
+
+    bool isColored() const {
+        return is_colored_;
+    }
+
+    void replaceWith(const VirtualReg &vreg);
+
+private:
+    bool is_colored_;
+
+    int reg_id_;
+
+    MachineReg::Reg colored_mcreg_;
 };
 
 #endif //YFSCC_MACHINEOPERAND_H
