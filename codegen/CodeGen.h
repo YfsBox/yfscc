@@ -34,8 +34,12 @@ class CastInstruction;
 
 class VirtualReg;
 
+class RegsAllocator;
+
 class CodeGen {
 public:
+    friend class RegsAllocator;
+
     using MachineModulePtr = std::unique_ptr<MachineModule>;
 
     using GlobalVarLabelPtr = std::unique_ptr<Label>;
@@ -120,6 +124,8 @@ private:
     MachineReg *getMachineReg(bool isfloat, int reg_no);
 
     VirtualReg *createVirtualReg(MachineOperand::ValueType value_type, Value *value = nullptr);
+
+    VirtualReg *createVirtualReg(MachineOperand::ValueType value_type, MachineFunction *function);
 
     MachineOperand *constant2VirtualReg(int32_t const_value, bool can_be_imm);
 

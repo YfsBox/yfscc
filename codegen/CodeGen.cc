@@ -60,6 +60,13 @@ VirtualReg *CodeGen::createVirtualReg(MachineOperand::ValueType value_type, Valu
     return virtual_reg;
 }
 
+VirtualReg *CodeGen::createVirtualReg(MachineOperand::ValueType value_type, MachineFunction *function) {
+    auto vreg_no = function->getVirtualRegs().size();
+    VirtualReg *virtual_reg = new VirtualReg(vreg_no, value_type);
+    function->addVirtualReg(virtual_reg);
+    return virtual_reg;
+}
+
 MachineOperand *CodeGen::constant2VirtualReg(int32_t const_value, bool can_be_imm) {
     MachineOperand *dst_reg;
     int32_t high_value = getHigh(const_value);
@@ -299,6 +306,8 @@ void CodeGen::visit(Function *function) {
         auto bx_inst = new BranchInst(exit_basicblock, lr_reg_, BranchInst::BrNoCond, BranchInst::Bx);
         exit_basicblock->addInstruction(bx_inst);
     }
+
+    curr_machine_function_->setStackSize(stack_offset_);
 
 }
 
