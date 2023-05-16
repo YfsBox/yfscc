@@ -122,6 +122,10 @@ public:
         belongs_to_loops_ = belongs_to_loops;
     }
 
+    MachineFunction *getParent() const {
+        return parent_;
+    }
+
 private:
     int32_t loop_depth_;
 

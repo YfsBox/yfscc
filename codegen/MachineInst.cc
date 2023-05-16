@@ -3,6 +3,7 @@
 //
 #include <cassert>
 #include <unordered_set>
+#include "Machine.h"
 #include "MachineInst.h"
 #include "MachineOperand.h"
 #include "../common/Utils.h"
@@ -58,6 +59,19 @@ std::unordered_set<MachineOperand *> MachineInst::getUses(MachineInst *inst, boo
             auto cmp_inst = dynamic_cast<CmpInst *>(inst);
             operands.insert(cmp_inst->getLhs());
             operands.insert(cmp_inst->getRhs());
+            break;
+        }
+        case MachineInstType::Branch: {
+            if (dynamic_cast<BranchInst *>(inst)->getBranchType() == BranchInst::Bl) {
+                auto mc_module = inst->getParent()->getParent()->getModule();       // 获取Module
+                assert(mc_module);
+                for (auto i = 0; i < 4; ++i) {
+                    MachineReg::Reg mreg = static_cast<MachineReg::Reg>(MachineReg::r0 + i);
+                    auto mc_reg = mc_module->getMachineReg(mreg);
+                    operands.insert(mc_reg);
+                }
+            }
+            break;
         }
         default:
             break;
@@ -103,6 +117,20 @@ std::unordered_set<MachineOperand *> MachineInst::getDefs(MachineInst *inst, boo
             break;
         case MachineInstType::Clz:
             operands.insert(dynamic_cast<ClzInst*>(inst)->getDst());
+            break;
+        case MachineInstType::Branch:{
+            if (dynamic_cast<BranchInst *>(inst)->getBranchType() == BranchInst::Bl) {
+                auto mc_module = inst->getParent()->getParent()->getModule();       // 获取Module
+                assert(mc_module);
+                for (auto i = 0; i < 4; ++i) {
+                    MachineReg::Reg mreg = static_cast<MachineReg::Reg>(MachineReg::r0 + i);
+                    auto mc_reg = mc_module->getMachineReg(mreg);
+                    operands.insert(mc_reg);
+                }
+                operands.insert(mc_module->getMachineReg(MachineReg::r12));
+            }
+            break;
+        }
         default:
             break;
     }

@@ -155,7 +155,7 @@ void CodeGen::visit(Module *module) {
 }
 
 void CodeGen::visit(BasicBlock *block) {
-    curr_machine_basic_block_ = new MachineBasicBlock(curr_machine_function_, block->getName());
+    curr_machine_basic_block_ = new MachineBasicBlock(curr_machine_function_, curr_machine_function_->getFunctionName() + "." + block->getName());
     curr_machine_basic_block_->setLoopDepth(block->getWhileLoopDepth());
     for (auto &inst: block->getInstructionList()) {
         visit(inst.get());
@@ -237,7 +237,7 @@ void CodeGen::visit(Function *function) {
             vreg = createVirtualReg(MachineOperand::Float, arg);
             // printf("the arg %d in function %s to vreg %d\n", i, function->getName().c_str(), dynamic_cast<VirtualReg *>(vreg)->getRegId());
             if (float_arg_reg_cnt < 16) {
-                auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::F2F, getMachineReg(true, float_arg_reg_cnt), vreg);
+                auto mov_inst = new MoveInst(nullptr, MoveInst::MoveType::F2F, getMachineReg(true, float_arg_reg_cnt), vreg);
                 args_move_insts.push_back(mov_inst);
                 float_arg_reg_cnt++;
             } else {
@@ -247,7 +247,7 @@ void CodeGen::visit(Function *function) {
             vreg = createVirtualReg(MachineOperand::Int, arg);
             // printf("the arg %d in function %s to vreg %d\n", i, function->getName().c_str(), dynamic_cast<VirtualReg *>(vreg)->getRegId());
             if (int_arg_reg_cnt < 4) {
-                auto mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::I2I, getMachineReg(false, int_arg_reg_cnt), vreg);
+                auto mov_inst = new MoveInst(nullptr, MoveInst::MoveType::I2I, getMachineReg(false, int_arg_reg_cnt), vreg);
                 args_move_insts.push_back(mov_inst);
                 int_arg_reg_cnt++;
             } else {
@@ -261,7 +261,7 @@ void CodeGen::visit(Function *function) {
         auto vreg = args_onstack_vregs[i];
         LoadInst *load_inst;
         int32_t offset_cnt = args_onstack_cnt - i - 1;
-        load_inst = new LoadInst(curr_machine_basic_block_, vreg, fp_reg_, new ImmNumber(push_regs_offset_ + 4 * offset_cnt));
+        load_inst = new LoadInst(nullptr, vreg, fp_reg_, new ImmNumber(push_regs_offset_ + 4 * offset_cnt));
         args_load_insts.push_back(load_inst);
     }
 
@@ -285,9 +285,11 @@ void CodeGen::visit(Function *function) {
     ImmNumber *offset_imm = new ImmNumber(mov_stack_offset);
 
     for (auto load_inst: args_load_insts) {
+        load_inst->setParent(enter_basicblock);
         enter_basicblock->addFrontInstruction(load_inst);
     }
     for (auto mov_inst: args_move_insts) {
+        mov_inst->setParent(enter_basicblock);
         enter_basicblock->addFrontInstruction(mov_inst);
     }
 
@@ -681,8 +683,8 @@ void CodeGen::visit(AllocaInstruction *inst) {      // 首先需要在栈上分�
 void CodeGen::visit(BranchInstruction *inst) {
     if (inst->isCondBranch()) {
         Label *branch1, *branch2;
-        branch1 = new Label(inst->getTrueLabel()->getName());
-        branch2 = new Label(inst->getFalseLabel()->getName());
+        branch1 = new Label(curr_machine_function_->getFunctionName() + "." + inst->getTrueLabel()->getName());
+        branch2 = new Label(curr_machine_function_->getFunctionName() + "." + inst->getFalseLabel()->getName());
 
         BranchInst *branch_inst1, *branch_inst2;
         branch_inst1 = new BranchInst(curr_machine_basic_block_, branch1);
@@ -722,7 +724,7 @@ void CodeGen::visit(BranchInstruction *inst) {
         addMachineInst(branch_inst1);
         addMachineInst(branch_inst2);
     } else {
-        Label *branch = new Label(inst->getLabel()->getName());
+        Label *branch = new Label(curr_machine_function_->getFunctionName() + "." + inst->getLabel()->getName());
         auto branch_inst = new BranchInst(curr_machine_basic_block_, branch);
         addMachineInst(branch_inst);
     }

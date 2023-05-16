@@ -112,7 +112,8 @@ IrFactory::ValuePtr IrFactory::createModInstruction(Value *left, Value *right, B
 
 IrFactory::ValuePtr IrFactory::createBasicBlock(const std::string &name) {
     context_->block_no_++;
-    auto new_bb = new BasicBlock(context_->curr_function_, name + std::to_string(context_->block_no_));
+    std::string bb_name = name + std::to_string(context_->block_no_);
+    auto new_bb = new BasicBlock(context_->curr_function_, bb_name);
     new_bb->setWhileLoopDepth(context_->while_loop_depth_);
     return new_bb;
 }

@@ -54,6 +54,10 @@ public:
         return parent_;
     }
 
+    void setParent(MachineBasicBlock *parent) {
+        parent_ = parent;
+    }
+
     void setValueType(ValueType vtype) {
         value_type_ = vtype;
     }

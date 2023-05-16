@@ -33,6 +33,7 @@ void MachineBasicBlock::addInstruction(MachineInst *inst) {
 }
 
 void MachineBasicBlock::addFrontInstruction(MachineInst *inst) {
+    assert(inst);
     instructions_.push_front(GET_UNIQUEPTR(inst));
 }
 

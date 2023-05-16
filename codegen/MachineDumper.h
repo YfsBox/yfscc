@@ -101,6 +101,8 @@ public:
 private:
     MachineModule *module_;
 
+    MachineFunction *curr_function_;
+
     std::string out_file_name_;
 
     std::ofstream fout_;

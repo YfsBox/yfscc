@@ -240,7 +240,7 @@ void IrBuilder::dealExprAsCond(const std::shared_ptr<Expression> &expr) {
         }
         auto new_br_inst = IrFactory::createCondBrInstruction(expr_value, nullptr, nullptr);
         addInstruction(new_br_inst);
-        auto new_block = IrFactory::createBasicBlock("lebal.");
+        auto new_block = IrFactory::createBasicBlock("lb.");
 
         setCurrBasicBlock(new_block);
         addBasicBlock(new_block);
@@ -1083,15 +1083,15 @@ void IrBuilder::visit(const std::shared_ptr<BreakStatement> &stmt) {
 }
 
 void IrBuilder::visit(const std::shared_ptr<WhileStatement> &stmt) {
-    auto while_start_bb_value = IrFactory::createBasicBlock("while.start.");
+    auto while_start_bb_value = IrFactory::createBasicBlock("ws.");
     BasicBlock *while_start_bb = dynamic_cast<BasicBlock *>(while_start_bb_value);
 
     context_->while_loop_depth_++;
-    auto while_then_bb_value = IrFactory::createBasicBlock("while.body.");
+    auto while_then_bb_value = IrFactory::createBasicBlock("wb.");
     context_->while_loop_depth_--;
     BasicBlock *while_then_bb = dynamic_cast<BasicBlock *>(while_then_bb_value);
 
-    auto while_next_bb_value = IrFactory::createBasicBlock("while.next.");
+    auto while_next_bb_value = IrFactory::createBasicBlock("wn.");
     BasicBlock *while_next_bb = dynamic_cast<BasicBlock *>(while_next_bb_value);
 
     /*BasicBlock::bindBasicBlock(context_->curr_bb_, while_start_bb);
@@ -1182,14 +1182,14 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
     curr_top_expr_ = nullptr;
     disableDealCond();
 
-    auto then_value = IrFactory::createBasicBlock("ifelse.then.");
+    auto then_value = IrFactory::createBasicBlock("it.");
     BasicBlock *then_bb = dynamic_cast<BasicBlock *>(then_value);
-    auto next_value = IrFactory::createBasicBlock("ifelse.next.");
+    auto next_value = IrFactory::createBasicBlock("in.");
     BasicBlock *next_bb = dynamic_cast<BasicBlock *>(next_value);
     //BasicBlock::bindBasicBlock(then_bb, next_bb);
 
     if (stmt->hasElse()) {
-        auto else_value = IrFactory::createBasicBlock("ifelse.else.");
+        auto else_value = IrFactory::createBasicBlock("ie.");
         BasicBlock *else_bb = dynamic_cast<BasicBlock *>(else_value);
         // BasicBlock::bindBasicBlock(else_bb, next_bb);
 

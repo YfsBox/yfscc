@@ -155,12 +155,12 @@ void RegsAllocator::build() {
         auto &mc_inst_list = mc_basicblock->getInstructionList();
 
         for (auto it = mc_inst_list.rbegin(); it != mc_inst_list.rend(); ++it) {
-            printf("###the live set is:\n");
+            /*printf("###the live set is:\n");
             for (auto operand: live) {
                 printRegStr(operand);
                 printf("\t");
             }
-            printf("\n");
+            printf("\n");*/
 
             MachineInst *mc_inst = it->get();
             auto defs = MachineInst::getDefs(mc_inst, allocate_float_);
@@ -180,11 +180,13 @@ void RegsAllocator::build() {
 
             for (auto def: defs) {          // 用于计算spill cost
                 def_use_count_map_[def]++;
+                // assert(mc_inst->getParent());
                 while_loop_depth_map[def] = std::max(while_loop_depth_map[def], mc_inst->getParent()->getLoopDepth());
             }
 
             for (auto use: uses) {
                 def_use_count_map_[use]++;
+                // assert(mc_inst->getParent());
                 while_loop_depth_map[use] = std::max(while_loop_depth_map[use], mc_inst->getParent()->getLoopDepth());
             }
             // add edges
@@ -522,12 +524,14 @@ void RegsAllocator::rewriteProgram() {
             for (auto [inserted, inst]: insert_before) {
                 auto find_inserted_it = insert_it.find(inserted);
                 assert(find_inserted_it != insert_it.end());
+                assert(inst->getParent());
                 bb->insertInstructionBefore(find_inserted_it->second, inst);
             }
 
             for (auto [inserted, inst]: insert_after) {
                 auto find_inserted_it = insert_it.find(inserted);
                 assert(find_inserted_it != insert_it.end());
+                assert(inst->getParent());
                 bb->insertInstruction(find_inserted_it->second, inst);
             }
 
@@ -598,13 +602,13 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
         }
     }
 
-    printf("---------------------inital virtual regs------------------------\n");
+    /*printf("---------------------inital virtual regs------------------------\n");
     for (auto init: initial_) {
         auto vreg = dynamic_cast<VirtualReg*> (init);
         assert(vreg);
         printf("vreg%d\t", vreg->getRegId());
     }
-    printf("\n");
+    printf("\n");*/
 
     if (initial_.empty()) {
         return;
@@ -612,7 +616,7 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
 
     curr_function_ = function;
     build();
-    printf("-----------------the interface graph-------------------\n");
+    /*printf("-----------------the interface graph-------------------\n");
     for (auto node_list: adj_set_) {
         if (node_list.first->getOperandType() == MachineOperand::MachineReg) {
             printf("%s", dynamic_cast<MachineReg*>(node_list.first)->machieReg2RegName().c_str());
@@ -629,7 +633,7 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
             printf("\t");
         }
         printf("\n");
-    }
+    }*/
 
     mkWorkList();
 
@@ -651,7 +655,7 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
         rewriteProgram();
         runOnMachineFunction(function);
     } else {
-        printf("-------------the colors is here-------------\n");
+        /*printf("-------------the colors is here-------------\n");
         for (auto &[reg, color]: color_) {
             if (reg->getOperandType() == MachineOperand::MachineReg) {
                 auto mc_reg = dynamic_cast<MachineReg *>(reg);
@@ -660,7 +664,7 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
                 auto vreg = dynamic_cast<VirtualReg *>(reg);
                 printf("vreg%d: colored %d\n", vreg->getRegId(), color);
             }
-        }
+        }*/
 
         for (auto &[reg, color]: color_) {
             if (auto vreg = dynamic_cast<VirtualReg *>(reg); vreg) {

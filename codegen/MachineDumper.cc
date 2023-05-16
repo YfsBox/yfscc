@@ -20,6 +20,7 @@
 
 MachineDumper::MachineDumper(MachineModule *module, const std::string &file_name):
     module_(module),
+    curr_function_(nullptr),
     global_set_(module_->getIRModule()->getGlobalSet()),
     out_file_name_(file_name),
     fout_(file_name){
@@ -44,6 +45,7 @@ void MachineDumper::dump(const MachineModule *module) {
 
 void MachineDumper::dump(const MachineFunction *function) {
     fout_ << function->getFunctionName() << ":\n";
+    curr_function_ = const_cast<MachineFunction *>(function);
     const auto &basicblocks = function->getMachineBasicBlock();
     for (auto &basicblock: basicblocks) {
         dump(basicblock.get());
@@ -60,6 +62,9 @@ void MachineDumper::dump(const MachineBasicBlock *basicblock) {
 
 void MachineDumper::dump(const MachineInst *inst) {
     auto inst_type = inst->getMachineInstType();
+    if (inst->getParent() == nullptr) {
+        fout_ << "not parent";
+    }
     switch (inst_type) {
         case MachineInst::Move:
             dump(dynamic_cast<const MoveInst *>(inst));
@@ -343,7 +348,11 @@ void MachineDumper::dump(const CallInst *inst) {
 }
 
 void MachineDumper::dump(const PopInst *inst) {
-    fout_ << "\tpop\t" << "{";
+    fout_ << "\t";
+    if (inst->getValueType() == MachineInst::Float) {
+        fout_ << "v";
+    }
+    fout_ << "pop\t" << "{";
     auto reg_size = inst->getRegsSize();
     for(int i = 0; i < reg_size; i++){
         dump(inst->getReg(i));
@@ -421,7 +430,7 @@ void MachineDumper::dump(const VnegInst *inst) {
 }
 
 void MachineDumper::dumpGlobals() {
-    fout_ << ".data\n.align2\n";
+    fout_ << ".data\n.align 2\n";
     for (auto global: global_set_) {
         fout_ << global->getName() << ":\n";
         if (dynamic_cast<ConstantVar *>(global->getConstInit())) {
