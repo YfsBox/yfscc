@@ -7,9 +7,12 @@
 
 #include <unordered_set>
 #include <unordered_map>
+#include <set>
 #include <deque>
 #include "Machine.h"
 #include "MachineOperand.h"
+
+class CodeGen;
 
 class RegsAllocator {
 public:
@@ -23,13 +26,18 @@ public:
 
     using InstSet = std::unordered_set<MachineInst *>;
 
-    RegsAllocator(MachineModule *module): machine_module_(module) {}
+    RegsAllocator(MachineModule *module, CodeGen *codegen): machine_module_(module), code_gen_(codegen) {}
 
     ~RegsAllocator() = default;
 
     void allocate();
 
 private:
+
+    static std::set<MachineReg::Reg> float_regs_set_;
+
+    static std::set<MachineReg::Reg> int_regs_set_;
+
     void analyseLiveness(MachineFunction *function);
 
     void init();
@@ -58,6 +66,8 @@ private:
 
     bool isPrecolored(MachineOperand *operand);
 
+    bool conservative(const BitSet &nodes);
+
     OperandSet adjacent(MachineOperand *operand);
 
     InstSet nodeMoves(MachineOperand *operand);
@@ -85,6 +95,8 @@ private:
     static bool isEqual(const BitSet &lhs, const BitSet &rhs);
 
     MachineModule *machine_module_;
+
+    CodeGen *code_gen_;
 
     MachineFunction *curr_function_;
 
@@ -133,6 +145,8 @@ private:
     std::unordered_map<MachineOperand *, InstSet> move_list_;       // 某个虚拟寄存器所处的move指令集合
 
     int32_t k_;             // 可以分配的寄存器数量
+
+    int32_t spilled_stack_size_;
 
     bool allocate_float_;
 
