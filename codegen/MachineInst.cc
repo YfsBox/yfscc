@@ -1,6 +1,7 @@
 //
 // Created by 杨丰硕 on 2023/5/2.
 //
+#include <cassert>
 #include <unordered_set>
 #include "MachineInst.h"
 #include "MachineOperand.h"
@@ -70,6 +71,13 @@ std::unordered_set<MachineOperand *> MachineInst::getUses(MachineInst *inst, boo
     return result;
 }
 
+std::unordered_set<MachineOperand *> MachineInst::getUses(MachineInst *inst) {
+    auto uses1 = getUses(inst, true);
+    auto uses2 = getUses(inst, false);
+    uses1.insert(uses2.begin(), uses2.end());
+    return uses1;
+}
+
 // 不考虑非Virtual寄存器的话
 std::unordered_set<MachineOperand *> MachineInst::getDefs(MachineInst *inst, bool is_float) {
     std::unordered_set<MachineOperand *> operands;
@@ -105,6 +113,35 @@ std::unordered_set<MachineOperand *> MachineInst::getDefs(MachineInst *inst, boo
     }
 
     return result;
+}
+
+std::unordered_set<MachineOperand *> MachineInst::getDefs(MachineInst *inst) {
+    auto defs1 = getDefs(inst, true);
+    auto defs2 = getDefs(inst, false);
+    defs1.insert(defs2.begin(), defs2.end());
+    return defs1;
+}
+
+void MachineInst::replaceDefs(MachineInst *inst, VirtualReg *old_operand, VirtualReg *new_operand) {
+    auto defs = getDefs(inst);
+    for (auto def: defs) {
+        if (def == old_operand) {
+            auto vreg = dynamic_cast<VirtualReg *>(def);
+            assert(vreg);
+            vreg->replaceWith(*new_operand);
+        }
+    }
+}
+
+void MachineInst::replaceUses(MachineInst *inst, VirtualReg *old_operand, VirtualReg *new_operand) {
+    auto uses = getUses(inst);
+    for (auto use: uses) {
+        if (use == old_operand) {
+            auto vreg = dynamic_cast<VirtualReg *>(use);
+            assert(vreg);
+            vreg->replaceWith(*new_operand);
+        }
+    }
 }
 
 MachineInst::ValueType MachineInst::getValueType(MachineOperand *operand) {

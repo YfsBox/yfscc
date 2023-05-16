@@ -14,6 +14,7 @@ class MachineOperand;
 class MachineBasicBlock;
 class MachineReg;
 class Label;
+class VirtualReg;
 
 class MachineInst {
 public:
@@ -64,6 +65,14 @@ public:
     static std::unordered_set<MachineOperand *> getUses(MachineInst *inst, bool is_float);
 
     static std::unordered_set<MachineOperand *> getDefs(MachineInst *inst, bool is_float);
+
+    static std::unordered_set<MachineOperand *> getUses(MachineInst *inst);
+
+    static std::unordered_set<MachineOperand *> getDefs(MachineInst *inst);
+
+    static void replaceDefs(MachineInst *inst, VirtualReg *old_operand, VirtualReg *new_operand);
+
+    static void replaceUses(MachineInst *inst, VirtualReg *old_operand, VirtualReg *new_operand);
 
 protected:
 
