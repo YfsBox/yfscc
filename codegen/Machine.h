@@ -183,7 +183,17 @@ public:
         return virtual_regs_;
     }
 
+    void setStackSize(int32_t stack_size) {
+        stack_size_ = stack_size;
+    }
+
+    int32_t getStackSize() const {
+        return stack_size_;
+    }
+
 private:
+    int32_t stack_size_;
+
     std::string function_name_;
 
     MachineModule *module_;
