@@ -766,9 +766,6 @@ void CodeGen::visit(SetCondInstruction *inst) {     // 一般紧接着就是跳�
 
     auto lhs_value = inst->getLeft();
     auto rhs_value = inst->getRight();
-    if (dynamic_cast<ConstantVar *>(lhs_value) && !dynamic_cast<ConstantVar *>(rhs_value)) {
-        std::swap(lhs_value, rhs_value);
-    }
 
     auto lhs = value2MachineOperand(lhs_value, false);
     assert(lhs);

@@ -28,15 +28,26 @@ set(FRONTEND_SRC
         ir/Constant.cc
         ir/Function.cc
         ir/GlobalVariable.cc
-        ir/Instruction.cc
         ir/IrFactory.cc
+        ir/Instruction.cc
         ir/IrBuilder.cc
         ir/IrDumper.cc
 )
 
-add_library(frontend ${FRONTEND_SRC})
+set(BACKEND_SRC
+        codegen/CodeGen.cc
+        codegen/Machine.cc
+        codegen/MachineOperand.cc
+        codegen/RegsAllocator.cc
+        codegen/MachineDumper.cc
+        codegen/MachineInst.cc
+)
 
-add_subdirectory(test)
+add_library(frontend ${FRONTEND_SRC})
+add_library(backend ${BACKEND_SRC})
+target_link_libraries(backend frontend)
+
+
 
 add_executable(yfscc main.cpp)
-target_link_libraries(yfscc fl frontend)
+target_link_libraries(yfscc backend)
