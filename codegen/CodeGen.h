@@ -115,6 +115,12 @@ private:
 
     bool isImmNeedSplitMove(int32_t imm_value);
 
+    bool canImmInBinary(int32_t value) {
+        return value >= -1020 && value <= 1020;
+    }
+
+    MachineOperand *getImmOperandInBinary(int32_t value, MachineBasicBlock *bb, std::vector<MachineInst *> *moves = nullptr);
+
     void addMachineInst(MachineInst *inst) {
         curr_machine_basic_block_->addInstruction(inst);
     }

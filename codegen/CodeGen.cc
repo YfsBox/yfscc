@@ -217,6 +217,25 @@ void CodeGen::visit(Constant *constant) {
     setCurrMachineOperand(const_reg);
 }
 
+MachineOperand *CodeGen::getImmOperandInBinary(int32_t value, MachineBasicBlock *bb, std::vector<MachineInst *> *moves) {
+    MachineOperand *result = nullptr;
+    if (canImmInBinary(value)) {
+        result = new ImmNumber(value);
+    } else {
+        result= module_->getMachineReg(MachineReg::ip);
+        auto mov1_inst = new MoveInst(bb, MoveInst::L2I, new ImmNumber(getLow(value)), result);
+        auto mov2_inst = new MoveInst(bb, MoveInst::H2I, new ImmNumber(getHigh(value)), result);
+        if (moves) {
+            moves->push_back(mov1_inst);
+            moves->push_back(mov2_inst);
+        } else {
+            bb->addInstruction(mov1_inst);
+            bb->addInstruction(mov2_inst);
+        }
+    }
+    return result;
+}
+
 void CodeGen::visit(Function *function) {
     curr_machine_function_ = new MachineFunction(module_.get(), function->getName());
     virtual_reg_id_ = -1;
@@ -282,7 +301,6 @@ void CodeGen::visit(Function *function) {
     // 一个函数在进入和退出时所需要的额外指令
     int32_t mov_stack_offset = stack_offset_ - old_stack_offset;
     MachineBasicBlock *enter_basicblock = curr_machine_function_->getEnterBasicBlock();
-    ImmNumber *offset_imm = new ImmNumber(mov_stack_offset);
 
     for (auto load_inst: args_load_insts) {
         load_inst->setParent(enter_basicblock);
@@ -292,15 +310,21 @@ void CodeGen::visit(Function *function) {
         mov_inst->setParent(enter_basicblock);
         enter_basicblock->addFrontInstruction(mov_inst);
     }
+    std::vector<MachineInst *> moves;
+    enter_basicblock->addFrontInstruction(new BinaryInst(enter_basicblock, BinaryInst::ISub, sp_reg_, sp_reg_, getImmOperandInBinary(mov_stack_offset, enter_basicblock, &moves)));
+    assert(moves.size() == 2 || moves.empty());
+    if (!moves.empty()) {
+        enter_basicblock->addFrontInstruction(moves[0]);
+        enter_basicblock->addFrontInstruction(moves[1]);
+    }
 
-    enter_basicblock->addFrontInstruction(new BinaryInst(enter_basicblock, BinaryInst::ISub, sp_reg_, sp_reg_, offset_imm));
     enter_basicblock->addFrontInstruction(new MoveInst(enter_basicblock, sp_reg_, fp_reg_));
 
     addPushInst(enter_basicblock);
 
     for (int i = 0; i < curr_machine_function_->getExitBasicBlockSize(); ++i) {
         auto exit_basicblock = curr_machine_function_->getExitBasicBlock(i);
-        exit_basicblock->addInstruction(new BinaryInst(exit_basicblock, BinaryInst::IAdd, sp_reg_, sp_reg_, offset_imm));
+        exit_basicblock->addInstruction(new BinaryInst(exit_basicblock, BinaryInst::IAdd, sp_reg_, sp_reg_, getImmOperandInBinary(mov_stack_offset, exit_basicblock)));
         exit_basicblock->addInstruction(new MoveInst(exit_basicblock, fp_reg_, sp_reg_));
 
         addPopInst(exit_basicblock);
@@ -337,7 +361,7 @@ void CodeGen::visit(GEPInstruction *inst) {
                 continue;
             }
             auto base_add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, dst_base_reg, dst_base_reg,
-                                                constant2VirtualReg(addbase_offset * const_index_number * 4, true));
+                                                getImmOperandInBinary(addbase_offset * const_index_number * 4, curr_machine_basic_block_));
             addMachineInst(base_add_inst);
         } else {
             auto const_index_reg = value2MachineOperand(index, false);
@@ -401,11 +425,12 @@ void CodeGen::visit(CallInstruction *inst) {
         align_offset = true;
         addMachineInst(new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, sp_reg_, sp_reg_, new ImmNumber(4)));
     }
-    ImmNumber *stack_offset_imm = nullptr;
+    // MachineOperand *stack_offset_imm = nullptr;
+    int32_t saved_stack_offset = stack_offset;
     if (stack_offset != 0) {
-        stack_offset_imm = new ImmNumber(stack_offset);
+        // stack_offset_imm = new ImmNumber(stack_offset);
         auto sub_stack_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, sp_reg_, sp_reg_,
-                                             stack_offset_imm);
+                                             getImmOperandInBinary(stack_offset, curr_machine_basic_block_));
         addMachineInst(sub_stack_inst);
     }
 
@@ -455,9 +480,9 @@ void CodeGen::visit(CallInstruction *inst) {
     auto branch_funciton_inst = new BranchInst(curr_machine_basic_block_, new Label(function->getName()), BranchInst::BrNoCond, BranchInst::BranchType::Bl);
     addMachineInst(branch_funciton_inst);
 
-    if (stack_offset_imm) {
+    if (saved_stack_offset) {
         auto add_stack_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, sp_reg_, sp_reg_,
-                                             stack_offset_imm);
+                                             getImmOperandInBinary(saved_stack_offset, curr_machine_basic_block_));
         addMachineInst(add_stack_inst);     // 恢复stack
     }
 
@@ -673,7 +698,7 @@ void CodeGen::visit(AllocaInstruction *inst) {      // 首先需要在栈上分�
         }
     }
     stack_move_offset *= 4;
-    auto offset = new ImmNumber(moveStackOffset(stack_move_offset));
+    auto offset = getImmOperandInBinary(moveStackOffset(stack_move_offset), curr_machine_basic_block_);
     auto sub_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, dst_reg, fp_reg_, offset);
     value_machinereg_map_[inst] = dst_reg;
     setCurrMachineOperand(dst_reg);
@@ -747,7 +772,7 @@ void CodeGen::visit(SetCondInstruction *inst) {     // 一般紧接着就是跳�
 
     auto lhs = value2MachineOperand(lhs_value, false);
     assert(lhs);
-    auto rhs = value2MachineOperand(rhs_value, true);
+    auto rhs = value2MachineOperand(rhs_value, false);
     assert(rhs);
 
     cmp_inst->setLhs(lhs);
