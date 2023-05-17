@@ -101,14 +101,14 @@ std::vector<Value *> IrBuilder::arrayIndex2IndexVec(int32_t index) const {
     assert(array_value);
     int dimension_size = array_value->getDimensionSize();
     index_vecs.resize(dimension_size);
-    int dimension_product = array_value->getDimensionSize(dimension_size - 1);
-    index_vecs[dimension_size - 1] = IrFactory::createIConstantVar(index % dimension_product);
 
-    for (int i = dimension_size - 2; i >= 0; --i) {
-        index_vecs[i] = IrFactory::createIConstantVar(index / dimension_product);
-        dimension_product *= array_value->getDimensionSize(i);
+    for (int i = dimension_size - 1; i >= 0; --i) {
+        auto dimension_number = array_value->getDimensionSize(i);
+        index_vecs[i] = IrFactory::createIConstantVar(index % dimension_number);
+        index /= dimension_number;
         // printf("The Index Vector[%d] is %d, the dimension size is %d\n", i, index % dimension_product, array_value->getDimensionSize(i));
     }
+
     return index_vecs;
 }
 
@@ -1063,7 +1063,7 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
             for (auto &[start, end]: arrayval->zero_init_intervals_) {
                 int32_t len = end - start;
                 assert(len >= 0);
-                auto offset_const_value = IrFactory::createIConstantVar(start * 4);
+                auto offset_const_value = IrFactory::createIConstantVar(0);
                 auto size_const_value = IrFactory::createIConstantVar(len * 4);
                 auto gep_start_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
                                             IrFactory::createIGEPInstruction(array_base, false, arrayIndex2IndexVec(start)):
