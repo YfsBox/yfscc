@@ -18,8 +18,8 @@ RegsAllocator::RegsAllocator(MachineModule *module, CodeGen *codegen):
     int_regs_set_ = {
             MachineReg::r0, MachineReg::r1, MachineReg::r2, MachineReg::r3, MachineReg::r4,
             MachineReg::r5, MachineReg::r6, MachineReg::r7, MachineReg::r8, MachineReg::r9,
-            MachineReg::r10, MachineReg::r11, MachineReg::r12, MachineReg::r14,
-    };      // 没有r13、r15，也就是没有sp、pc
+            MachineReg::r10, MachineReg::r12, MachineReg::r14,
+    };      // 没有r11, r13、r15，也就是没有fp、sp、pc
     float_regs_set_ = {
             MachineReg::s0, MachineReg::s1, MachineReg::s2, MachineReg::s3, MachineReg::s4,
             MachineReg::s5, MachineReg::s6, MachineReg::s7, MachineReg::s8, MachineReg::s9,
@@ -584,6 +584,7 @@ void RegsAllocator::init() {
 }
 
 void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
+    // printf("begin a allcate on a function\n");
     init();
     analyseLiveness(function);
 
