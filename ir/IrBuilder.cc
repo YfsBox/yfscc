@@ -724,10 +724,6 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
         visit(expr->getRightExpr());        // 处理右边
         right = curr_value_;
         right_type = expr->getRightExpr()->expr_type_;
-        if (auto right_inst = dynamic_cast<Instruction *>(right)) {
-            printf("right ssa no is %s\n", right_inst->getName().c_str());
-            printf("the type of right expr is %d in basicblock %s\n", right_type, context_->curr_bb_->getName().c_str());
-        }
 
         if (right->isBool()) {
             right = IrFactory::createIZextInstruction(right);

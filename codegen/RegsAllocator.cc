@@ -146,6 +146,8 @@ static void printRegStr(MachineOperand *operand) {
         printf("%s", dynamic_cast<MachineReg *>(operand)->machieReg2RegName().c_str());
     } else if (operand->getOperandType() == MachineOperand::VirtualReg) {
         printf("vreg%d", dynamic_cast<VirtualReg *>(operand)->getRegId());
+    } else {
+        printf("not valid operand: %d", operand->getOperandType());
     }
 }
 
@@ -155,26 +157,23 @@ void RegsAllocator::build() {
         auto &mc_inst_list = mc_basicblock->getInstructionList();
 
         for (auto it = mc_inst_list.rbegin(); it != mc_inst_list.rend(); ++it) {
-            /*printf("###the live set is:\n");
-            for (auto operand: live) {
-                printRegStr(operand);
-                printf("\t");
-            }
-            printf("\n");*/
 
             MachineInst *mc_inst = it->get();
             auto defs = MachineInst::getDefs(mc_inst, allocate_float_);
             auto uses = MachineInst::getUses(mc_inst, allocate_float_);
-            if (mc_inst->getMachineInstType() == MachineInst::Move && dynamic_cast<MoveInst *>(mc_inst)->getMoveType() != MoveInst::F_I) {
-                for (auto use : uses) {     // live :=  live \ use(I)
-                    live.erase(use);
-                    move_list_[use].insert(mc_inst);
-                }
+            if (mc_inst->getMachineInstType() == MachineInst::Move) {
+                auto move_inst = dynamic_cast<MoveInst *>(mc_inst);
+                if (isNeedAlloca(move_inst->getSrc()) && isNeedAlloca(move_inst->getDst())) {
+                    for (auto use: uses) {     // live :=  live \ use(I)
+                        live.erase(use);
+                        move_list_[use].insert(mc_inst);
+                    }
 
-                for (auto def: defs) {
-                    move_list_[def].insert(mc_inst);
+                    for (auto def: defs) {
+                        move_list_[def].insert(mc_inst);
+                    }
+                    worklist_moves_.insert(mc_inst);
                 }
-                worklist_moves_.insert(mc_inst);
             }
             live.insert(defs.begin(), defs.end());
 
@@ -300,6 +299,7 @@ void RegsAllocator::simplify() {
 
 MachineOperand *RegsAllocator::getAlias(MachineOperand *operand) {
     if (coalesced_nodes_.count(operand)) {
+        assert(alias_.find(operand) != alias_.end());
         return getAlias(alias_[operand]);
     }
     return operand;
@@ -323,11 +323,12 @@ void RegsAllocator::combine(MachineOperand *u, MachineOperand *v) {
         spill_work_list_.erase(v);
     }
     coalesced_nodes_.insert(v);
-    alias_[v] = u;
+
+    alias_.insert({v, u});
     for (auto node: move_list_[v]) {
         move_list_[u].insert(node);
     }
-    // enableMoves({v});
+
     auto adj = adjacent(v);
     for (auto t: adj) {
         addEdge(t, u);
@@ -357,16 +358,10 @@ void RegsAllocator::coalesce() {
     auto move_inst = dynamic_cast<MoveInst *>(m);
     assert(move_inst);
 
-    auto x = getAlias(move_inst->getSrc());
-    auto y = getAlias(move_inst->getDst());
-
-    MachineOperand *u, *v;
-    if (isPrecolored(y)) {
-        u = y;
-        v = x;
-    } else {
-        u = x;
-        v = y;
+    auto u = getAlias(move_inst->getSrc());
+    auto v = getAlias(move_inst->getDst());
+    if (isPrecolored(v)) {
+        std::swap(u, v);
     }
 
     bool okok = false;
@@ -391,6 +386,7 @@ void RegsAllocator::coalesce() {
         addWorkList(v);
     } else if ((isPrecolored(u) && okok) || (!isPrecolored(u) && conservative(join)))  {
         coalesced_moves_.insert(m);
+        assert(u && v);
         combine(u, v);
         addWorkList(u);
     } else {
@@ -665,6 +661,15 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
                 auto vreg = dynamic_cast<VirtualReg *>(reg);
                 printf("vreg%d: colored %d\n", vreg->getRegId(), color);
             }
+        }
+        printf("-------------the moves is here-------------\n");
+        for (auto &mov: coalesced_moves_) {
+            auto mov_inst = dynamic_cast<MoveInst *>(mov);
+            printf("mov inst:\t");
+            printRegStr(mov_inst->getDst());
+            printf(",\t");
+            printRegStr(mov_inst->getSrc());
+            printf("\n");
         }*/
 
         for (auto &[reg, color]: color_) {
