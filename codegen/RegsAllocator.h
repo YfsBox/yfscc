@@ -13,6 +13,7 @@
 #include "MachineOperand.h"
 
 class CodeGen;
+class MachineDumper;
 
 class RegsAllocator {
 public:
@@ -31,6 +32,9 @@ public:
     ~RegsAllocator() = default;
 
     void allocate();
+
+    // for test
+    MachineDumper *dumper_;
 
 private:
 

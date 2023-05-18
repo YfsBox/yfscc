@@ -154,10 +154,10 @@ std::unordered_set<MachineOperand *> MachineInst::getDefs(MachineInst *inst) {
     return defs1;
 }
 
-void MachineInst::replaceDefs(MachineInst *inst, VirtualReg *old_operand, VirtualReg *new_operand) {
+/*void MachineInst::replaceDefs(MachineInst *inst, VirtualReg *old_operand, VirtualReg *new_operand) {
     assert(old_operand);
     assert(new_operand);
-    auto defs = getDefs(inst);
+    /*auto defs = getDefs(inst);
     for (auto def: defs) {
         if (def == old_operand) {
             auto vreg = dynamic_cast<VirtualReg *>(def);
@@ -166,7 +166,6 @@ void MachineInst::replaceDefs(MachineInst *inst, VirtualReg *old_operand, Virtua
         }
     }
 }
-
 void MachineInst::replaceUses(MachineInst *inst, VirtualReg *old_operand, VirtualReg *new_operand) {
     assert(old_operand);
     assert(new_operand);
@@ -178,7 +177,7 @@ void MachineInst::replaceUses(MachineInst *inst, VirtualReg *old_operand, Virtua
             vreg->replaceWith(new_operand);
         }
     }
-}
+}*/
 
 MachineInst::ValueType MachineInst::getValueType(MachineOperand *operand) {
     if (operand == nullptr || operand->getValueType() == MachineOperand::Undef) {

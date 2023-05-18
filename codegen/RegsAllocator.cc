@@ -10,6 +10,7 @@
 #include "MachineInst.h"
 #include "MachineOperand.h"
 #include "RegsAllocator.h"
+#include "MachineDumper.h"
 #include "../ir/BasicBlock.h"
 
 RegsAllocator::RegsAllocator(MachineModule *module, CodeGen *codegen):
@@ -163,7 +164,10 @@ void RegsAllocator::build() {
             auto uses = MachineInst::getUses(mc_inst, allocate_float_);
             if (mc_inst->getMachineInstType() == MachineInst::Move) {
                 auto move_inst = dynamic_cast<MoveInst *>(mc_inst);
-                if (isNeedAlloca(move_inst->getSrc()) && isNeedAlloca(move_inst->getDst())) {
+                if (((move_inst->getMoveType() == MoveInst::F2F && allocate_float_)
+                || (move_inst->getMoveType() == MoveInst::I2I && !allocate_float_))
+                && isNeedAlloca(move_inst->getSrc())
+                && isNeedAlloca(move_inst->getDst())) {
                     for (auto use: uses) {     // live :=  live \ use(I)
                         live.erase(use);
                         move_list_[use].insert(mc_inst);
@@ -424,7 +428,7 @@ void RegsAllocator::freezeMoves(MachineOperand *operand) {
 }
 
 void RegsAllocator::selectSpill() {
-    MachineOperand *m;          // 采用某种策略选出一个spill的节点
+    MachineOperand *m = nullptr;          // 采用某种策略选出一个spill的节点
     int32_t min_cost = INT32_MAX;
 
     for (auto spill: spill_work_list_) {            // 从中选出一个spill代价最小的
@@ -478,10 +482,12 @@ void RegsAllocator::assignColors() {
 }
 
 void RegsAllocator::rewriteProgram() {
+
     for (auto spill_node: spilled_nodes_) {         // 确定为需要溢出的节点
         already_spilled_.insert(spill_node);            // 插入到已经溢出的队列
         spilled_stack_size_ += 4;           // spill维护的stack偏移量
 
+        printf("insert load or store inst......\n");
         for (auto &bb: curr_function_->getMachineBasicBlock()) {
             auto &inst_list = bb->getInstructionListNonConst();
 
@@ -498,9 +504,11 @@ void RegsAllocator::rewriteProgram() {
 
                 if (defs.count(spill_node)) {
                     auto store_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
-                    auto store_inst = new StoreInst(MemIndexType::PostiveIndex, bb.get(), store_vreg, code_gen_->sp_reg_, new ImmNumber(- curr_function_->getStackSize() - spilled_stack_size_));
+                    printf("the new vreg is %d, insert before vreg%d inst\n", store_vreg->getRegId(), dynamic_cast<VirtualReg *>(spill_node)->getRegId());
+                    auto store_inst = new StoreInst(MemIndexType::PostiveIndex, bb.get(), store_vreg, code_gen_->fp_reg_, new ImmNumber(- curr_function_->getStackSize() - spilled_stack_size_));
                     already_spilled_.insert(store_vreg);
-                    MachineInst::replaceDefs(inst, dynamic_cast<VirtualReg *>(spill_node), store_vreg);
+                    // MachineInst::replaceDefs(inst, dynamic_cast<VirtualReg *>(spill_node), store_vreg);
+                    inst->replaceDefs(spill_node, store_vreg);
                     // insert指令
                     insert_after.insert({inst, store_inst});
                     insert_it.insert({inst, it});
@@ -508,10 +516,11 @@ void RegsAllocator::rewriteProgram() {
 
                 if (uses.count(spill_node)) {
                     auto load_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
-                    auto load_inst = new LoadInst(bb.get(), load_vreg, code_gen_->sp_reg_, new ImmNumber(- curr_function_->getStackSize() - spilled_stack_size_));
+                    // printf("the new vreg is %d, insert before vreg%d inst\n", load_vreg->getRegId(),  dynamic_cast<VirtualReg *>(spill_node)->getRegId());
+                    auto load_inst = new LoadInst(bb.get(), load_vreg, code_gen_->fp_reg_, new ImmNumber(- curr_function_->getStackSize() - spilled_stack_size_));
                     already_spilled_.insert(load_vreg);
-                    MachineInst::replaceUses(inst, dynamic_cast<VirtualReg *>(spill_node), load_vreg);
-                    // insert指令
+                    // MachineInst::replaceUses(inst, dynamic_cast<VirtualReg *>(spill_node), load_vreg);
+                    inst->replaceUses(spill_node, load_vreg);
                     insert_before.insert({inst, load_inst});
                     insert_it.insert({inst, it});
                 }
@@ -533,7 +542,6 @@ void RegsAllocator::rewriteProgram() {
 
         }
     }
-
 }
 
 
@@ -555,11 +563,11 @@ void RegsAllocator::init() {
     initial_.clear();
     simplify_work_list_.clear();
     freeze_work_list_.clear();
+    frozen_moves_.clear();
     spill_work_list_.clear();
     coalesced_nodes_.clear();
     colored_nodes_.clear();
     spilled_nodes_.clear();
-    already_spilled_.clear();
     select_stack_.clear();
     // frozen_moves
     active_moves_.clear();
@@ -580,8 +588,9 @@ void RegsAllocator::init() {
 }
 
 void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
-    // printf("begin a allcate on a function\n");
+    printf("begin a allcate on a function %d\n", allocate_float_);
     init();
+    printf("analyseLiveness......\n");
     analyseLiveness(function);
 
     // set
@@ -598,14 +607,6 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
             initial_.insert(vir_reg);
         }
     }
-
-    /*printf("---------------------inital virtual regs------------------------\n");
-    for (auto init: initial_) {
-        auto vreg = dynamic_cast<VirtualReg*> (init);
-        assert(vreg);
-        printf("vreg%d\t", vreg->getRegId());
-    }
-    printf("\n");*/
 
     if (initial_.empty()) {
         return;
@@ -636,12 +637,16 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
 
     do {
         if (!simplify_work_list_.empty()) {
+            printf("simplify\n");
             simplify();
         } else if (!worklist_moves_.empty()) {
+            printf("coalesce\n");
             coalesce();
         } else if (!freeze_work_list_.empty()) {
+            printf("freeze\n");
             freeze();
         } else if (!spill_work_list_.empty()) {
+            printf("selectSpill\n");
             selectSpill();
         }
     } while (!simplify_work_list_.empty() || !worklist_moves_.empty() || !freeze_work_list_.empty() || !spill_work_list_.empty());
@@ -671,6 +676,8 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
             printRegStr(mov_inst->getSrc());
             printf("\n");
         }*/
+        // 对于出现过spilled的情况，需要额外地再分配出栈空间
+
 
         for (auto &[reg, color]: color_) {
             if (auto vreg = dynamic_cast<VirtualReg *>(reg); vreg) {

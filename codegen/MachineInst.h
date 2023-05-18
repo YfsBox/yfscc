@@ -74,9 +74,9 @@ public:
 
     static std::unordered_set<MachineOperand *> getDefs(MachineInst *inst);
 
-    static void replaceDefs(MachineInst *inst, VirtualReg *old_operand, VirtualReg *new_operand);
+    virtual void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) = 0;
 
-    static void replaceUses(MachineInst *inst, VirtualReg *old_operand, VirtualReg *new_operand);
+    virtual void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) = 0;
 
 protected:
 
@@ -135,6 +135,18 @@ public:
         return mov_cond_;
     }
 
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (dst_ == old_operand) {
+            dst_ = new_operand;
+        }
+    }
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (src_ == old_operand) {
+            src_ = new_operand;
+        }
+    }
+
 private:
     MoveCond mov_cond_;
     MoveType mov_type_;
@@ -154,6 +166,18 @@ public:
 
     MachineOperand *getSrc() const {
         return src_;
+    }
+
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (dst_ == old_operand) {
+            dst_ = new_operand;
+        }
+    }
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (src_ == old_operand) {
+            src_ = new_operand;
+        }
     }
     
 private:
@@ -200,6 +224,20 @@ public:
         return binary_op_type_;
     }
 
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (dst_ == old_operand) {
+            dst_ = new_operand;
+        }
+    }
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (lhs_ == old_operand) {
+            lhs_ = new_operand;
+        }
+        if (rhs_ == old_operand) {
+            rhs_ = new_operand;
+        }
+    }
 
 private:
     BinaryOp binary_op_type_;
@@ -230,6 +268,17 @@ public:
         return rhs_;
     }
 
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {}
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (lhs_ == old_operand) {
+            lhs_ = new_operand;
+        }
+        if (rhs_ == old_operand) {
+            rhs_ = new_operand;
+        }
+    }
+
 private:
     OperandPtr lhs_;
     OperandPtr rhs_;
@@ -244,6 +293,10 @@ public:
     Label *getCallLabel() const {
         return call_label_;
     }
+
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {}
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {}
 
 private:
     Label *call_label_;
@@ -287,6 +340,10 @@ public:
         return br_operand_;
     }
 
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {}
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {}
+
 private:
     BranchCond br_cond_;
 
@@ -300,6 +357,10 @@ public:
     RetInst(MachineBasicBlock *parent);
 
     ~RetInst();
+
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {}
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {}
 
 private:
 };
@@ -326,6 +387,10 @@ public:
         return regs_list_[idx];
     }
 
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {}
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {}
+
 private:
     PushRegsList regs_list_;
 };
@@ -347,6 +412,10 @@ public:
     MachineReg *getReg(int idx) const {
         return regs_list_[idx];
     }
+
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {}
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {}
 
 private:
     std::vector<MachineReg *> regs_list_;
@@ -381,6 +450,20 @@ public:
         return value_;
     }
 
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {}
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (value_ == old_operand) {
+            value_ = new_operand;
+        }
+        if (base_ == old_operand) {
+            base_ = new_operand;
+        }
+        if (offset_ == old_operand) {
+            offset_ = new_operand;
+        }
+    }
+
 private:
     MemIndexType index_type_;
     OperandPtr value_;
@@ -406,6 +489,21 @@ public:
         return offset_;
     }
 
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (dst_ == old_operand) {
+            dst_ = new_operand;
+        }
+    }
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (base_ == old_operand) {
+            base_ = new_operand;
+        }
+        if (offset_ == old_operand) {
+            offset_ = new_operand;
+        }
+    }
+
 private:
     MemIndexType index_type_;
     OperandPtr dst_;
@@ -425,6 +523,18 @@ public:
 
     MachineOperand *getDst() const {
         return dst_;
+    }
+
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (dst_ == old_operand) {
+            dst_ = new_operand;
+        }
+    }
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (src_ == old_operand) {
+            src_ = new_operand;
+        }
     }
 
 private:
@@ -453,6 +563,18 @@ public:
 
     CvtType getCvtType() const {
         return cvt_type_;
+    }
+
+    void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (dst_ == old_operand) {
+            dst_ = new_operand;
+        }
+    }
+
+    void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {
+        if (src_ == old_operand) {
+            src_ = new_operand;
+        }
     }
 
 private:
