@@ -80,8 +80,8 @@ MachineOperand *CodeGen::constant2VirtualReg(int32_t const_value, bool can_be_im
         auto movh_inst = new MoveInst(curr_machine_basic_block_, MoveInst::H2I, h_imm, dst_reg);
         auto movl_inst = new MoveInst(curr_machine_basic_block_, MoveInst::L2I, l_imm, dst_reg);
 
-        addMachineInst(movh_inst);
         addMachineInst(movl_inst);
+        addMachineInst(movh_inst);
     } else {
         auto imm = new ImmNumber(const_value);
         dst_reg = imm;
@@ -314,8 +314,8 @@ void CodeGen::visit(Function *function) {
     enter_basicblock->addFrontInstruction(new BinaryInst(enter_basicblock, BinaryInst::ISub, sp_reg_, sp_reg_, getImmOperandInBinary(mov_stack_offset, enter_basicblock, &moves)));
     assert(moves.size() == 2 || moves.empty());
     if (!moves.empty()) {
-        enter_basicblock->addFrontInstruction(moves[0]);
         enter_basicblock->addFrontInstruction(moves[1]);
+        enter_basicblock->addFrontInstruction(moves[0]);        // 低
     }
 
     enter_basicblock->addFrontInstruction(new MoveInst(enter_basicblock, sp_reg_, fp_reg_));
