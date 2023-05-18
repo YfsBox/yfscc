@@ -45,6 +45,15 @@ bool RegsAllocator::isEqual(const BitSet &lhs, const BitSet &rhs) {
     return true;
 }
 
+bool RegsAllocator::needAllocateForFloat() {
+    for (auto vir_reg: curr_function_->getVirtualRegs()) {            // 需要根据当前是否处理float来分开处理
+        if (vir_reg->getValueType() == MachineOperand::Int) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void RegsAllocator::analyseLiveness(MachineFunction *function) {            // 数据流分析中，会对float和int类型的变量进行区分
     live_in_.clear();           // 其中在获取def、use时，也就需要区分不同的类型
     live_out_.clear();
@@ -60,8 +69,8 @@ void RegsAllocator::analyseLiveness(MachineFunction *function) {            // �
         BitSet tmp_use_sets;
         BitSet tmp_def_sets;
         for (auto &inst: insts) {
-            auto inst_defs = MachineInst::getDefs(inst.get());
-            auto inst_uses = MachineInst::getUses(inst.get());
+            auto inst_defs = MachineInst::getDefs(inst.get(), allocate_float_);
+            auto inst_uses = MachineInst::getUses(inst.get(), allocate_float_);
 
             for (auto use: inst_uses) {
                 if (use->getOperandType() == MachineOperand::VirtualReg && tmp_def_sets.find(use) == tmp_def_sets.end()) {
@@ -562,6 +571,7 @@ void RegsAllocator::allocate() {
     for (auto &func: machine_module_->getMachineFunctions()) {
         runOnMachineFunction(func.get());
     }
+
 }
 
 void RegsAllocator::init() {
@@ -608,8 +618,11 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
         }
     }
 
+    // printf("the initial regs(%d) is here:\n", allocate_float_);
     for (auto vir_reg: function->getVirtualRegs()) {            // 需要根据当前是否处理float来分开处理
         if ((!allocate_float_ && vir_reg->getValueType() == MachineOperand::Int) || (allocate_float_ && vir_reg->getValueType() == MachineOperand::Float)) {
+            // printRegStr(vir_reg);
+            // printf("\n");
             initial_.insert(vir_reg);
         }
     }
@@ -685,7 +698,10 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
         // 对于出现过spilled的情况，需要额外地再分配出栈空间
 
         // printf("the stack size is %d brefore and the spilled stack size is %d\n", curr_function_->getStackSize(), spilled_stack_size_);
-        code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_);
+        // dumper_->dump(curr_function_);
+        if ((allocate_float_ && !needAllocateForFloat()) || !allocate_float_) {
+            code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_);
+        }
 
         for (auto &[reg, color]: color_) {
             if (auto vreg = dynamic_cast<VirtualReg *>(reg); vreg) {

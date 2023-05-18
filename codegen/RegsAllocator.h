@@ -68,6 +68,8 @@ private:
         }
     };
 
+    bool needAllocateForFloat();
+
     void analyseLiveness(MachineFunction *function);
 
     void init();
