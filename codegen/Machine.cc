@@ -50,7 +50,6 @@ void MachineBasicBlock::insertInstructionBefore(MachineInstListIt it, MachineIns
 MachineFunction::MachineFunction(MachineModule *module, const std::string &name):
     function_name_(name),
     module_(module){
-
 }
 
 void MachineFunction::addBasicBlock(MachineBasicBlock *basic_block) {

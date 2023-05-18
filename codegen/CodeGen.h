@@ -100,6 +100,16 @@ public:
         return module_.get();
     }
 
+    MachineOperand *getImmOperandInBinary(int32_t value, MachineBasicBlock *bb, std::vector<MachineInst *> *moves = nullptr);
+
+    void addInstAboutStack(MachineFunction *function, int32_t offset);
+
+    void addRetBranchInExitBlocks(MachineFunction *function);
+
+    void addPushInst(MachineBasicBlock *basicblock);
+
+    void addPopInst(MachineBasicBlock *basicblock);
+
 private:
 
     static constexpr const int push_regs_offset_ = 68;
@@ -119,8 +129,6 @@ private:
         return value >= -1020 && value <= 1020;
     }
 
-    MachineOperand *getImmOperandInBinary(int32_t value, MachineBasicBlock *bb, std::vector<MachineInst *> *moves = nullptr);
-
     void addMachineInst(MachineInst *inst) {
         curr_machine_basic_block_->addInstruction(inst);
     }
@@ -138,10 +146,6 @@ private:
     MachineOperand *loadGlobalVarAddr(GlobalVariable *global);
 
     MachineOperand *value2MachineOperand(Value *value, bool can_be_imm, bool *is_float = nullptr);
-
-    void addPushInst(MachineBasicBlock *basicblock);
-
-    void addPopInst(MachineBasicBlock *basicblock);
 
     int virtual_reg_id_;
 

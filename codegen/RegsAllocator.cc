@@ -487,12 +487,12 @@ void RegsAllocator::rewriteProgram() {
         already_spilled_.insert(spill_node);            // 插入到已经溢出的队列
         spilled_stack_size_ += 4;           // spill维护的stack偏移量
 
-        printf("insert load or store inst......\n");
+        // printf("insert load or store inst......\n");
         for (auto &bb: curr_function_->getMachineBasicBlock()) {
             auto &inst_list = bb->getInstructionListNonConst();
 
-            std::unordered_map<MachineInst *, MachineInst *> insert_before;
-            std::unordered_map<MachineInst *, MachineInst *> insert_after;
+            std::unordered_map<MachineInst *, std::vector<MachineInst *>> insert_before;
+            std::unordered_map<MachineInst *, std::vector<MachineInst *>> insert_after;
             std::unordered_map<MachineInst *, MachineBasicBlock::MachineInstListIt> insert_it;
 
             for (auto it = inst_list.begin(); it != inst_list.end(); ++it) {
@@ -502,42 +502,49 @@ void RegsAllocator::rewriteProgram() {
 
                 MachineOperand::ValueType value_type = allocate_float_ ? MachineOperand::Float : MachineOperand::Int;
 
+                std::vector<MachineInst *> moves_offset_insts;
+                auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts);
                 if (defs.count(spill_node)) {
                     auto store_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
-                    printf("the new vreg is %d, insert before vreg%d inst\n", store_vreg->getRegId(), dynamic_cast<VirtualReg *>(spill_node)->getRegId());
-                    auto store_inst = new StoreInst(MemIndexType::PostiveIndex, bb.get(), store_vreg, code_gen_->fp_reg_, new ImmNumber(- curr_function_->getStackSize() - spilled_stack_size_));
+                    // printf("the new vreg is %d, insert before vreg%d inst\n", store_vreg->getRegId(), dynamic_cast<VirtualReg *>(spill_node)->getRegId());
+
+                    auto store_inst = new StoreInst(MemIndexType::PostiveIndex, bb.get(), store_vreg, code_gen_->fp_reg_, offset_reg);
                     already_spilled_.insert(store_vreg);
                     // MachineInst::replaceDefs(inst, dynamic_cast<VirtualReg *>(spill_node), store_vreg);
                     inst->replaceDefs(spill_node, store_vreg);
                     // insert指令
-                    insert_after.insert({inst, store_inst});
+                    moves_offset_insts.push_back(store_inst);
+                    insert_after.insert({inst, moves_offset_insts});
                     insert_it.insert({inst, it});
                 }
 
                 if (uses.count(spill_node)) {
                     auto load_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
                     // printf("the new vreg is %d, insert before vreg%d inst\n", load_vreg->getRegId(),  dynamic_cast<VirtualReg *>(spill_node)->getRegId());
-                    auto load_inst = new LoadInst(bb.get(), load_vreg, code_gen_->fp_reg_, new ImmNumber(- curr_function_->getStackSize() - spilled_stack_size_));
+                    auto load_inst = new LoadInst(bb.get(), load_vreg, code_gen_->fp_reg_, offset_reg);
                     already_spilled_.insert(load_vreg);
                     // MachineInst::replaceUses(inst, dynamic_cast<VirtualReg *>(spill_node), load_vreg);
                     inst->replaceUses(spill_node, load_vreg);
-                    insert_before.insert({inst, load_inst});
+                    moves_offset_insts.push_back(load_inst);
+                    insert_before.insert({inst, moves_offset_insts});
                     insert_it.insert({inst, it});
                 }
             }
 
-            for (auto [inserted, inst]: insert_before) {
+            for (auto [inserted, insts]: insert_before) {
                 auto find_inserted_it = insert_it.find(inserted);
                 assert(find_inserted_it != insert_it.end());
-                assert(inst->getParent());
-                bb->insertInstructionBefore(find_inserted_it->second, inst);
+                for (auto rit = insts.rbegin(); rit != insts.rend(); ++rit) {
+                    bb->insertInstructionBefore(find_inserted_it->second, *rit);
+                }
             }
 
-            for (auto [inserted, inst]: insert_after) {
+            for (auto [inserted, insts]: insert_after) {
                 auto find_inserted_it = insert_it.find(inserted);
                 assert(find_inserted_it != insert_it.end());
-                assert(inst->getParent());
-                bb->insertInstruction(find_inserted_it->second, inst);
+                for (auto inst: insts) {
+                    bb->insertInstruction(find_inserted_it->second, inst);
+                }
             }
 
         }
@@ -584,13 +591,12 @@ void RegsAllocator::init() {
     def_use_count_map_.clear();
     while_loop_depth_map.clear();
 
-    spilled_stack_size_ = 0;
 }
 
 void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
-    printf("begin a allcate on a function %d\n", allocate_float_);
+    // printf("begin a allcate on a function %d\n", allocate_float_);
     init();
-    printf("analyseLiveness......\n");
+    // printf("analyseLiveness......\n");
     analyseLiveness(function);
 
     // set
@@ -637,16 +643,16 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
 
     do {
         if (!simplify_work_list_.empty()) {
-            printf("simplify\n");
+            // printf("simplify\n");
             simplify();
         } else if (!worklist_moves_.empty()) {
-            printf("coalesce\n");
+            // printf("coalesce\n");
             coalesce();
         } else if (!freeze_work_list_.empty()) {
-            printf("freeze\n");
+            // printf("freeze\n");
             freeze();
         } else if (!spill_work_list_.empty()) {
-            printf("selectSpill\n");
+            // printf("selectSpill\n");
             selectSpill();
         }
     } while (!simplify_work_list_.empty() || !worklist_moves_.empty() || !freeze_work_list_.empty() || !spill_work_list_.empty());
@@ -678,6 +684,8 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
         }*/
         // 对于出现过spilled的情况，需要额外地再分配出栈空间
 
+        // printf("the stack size is %d brefore and the spilled stack size is %d\n", curr_function_->getStackSize(), spilled_stack_size_);
+        code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_);
 
         for (auto &[reg, color]: color_) {
             if (auto vreg = dynamic_cast<VirtualReg *>(reg); vreg) {

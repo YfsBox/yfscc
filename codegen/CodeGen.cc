@@ -226,7 +226,7 @@ MachineOperand *CodeGen::getImmOperandInBinary(int32_t value, MachineBasicBlock 
         auto mov1_inst = new MoveInst(bb, MoveInst::L2I, new ImmNumber(getLow(value)), result);
         auto mov2_inst = new MoveInst(bb, MoveInst::H2I, new ImmNumber(getHigh(value)), result);
         if (moves) {
-            moves->push_back(mov1_inst);
+            moves->push_back(mov1_inst);        //
             moves->push_back(mov2_inst);
         } else {
             bb->addInstruction(mov1_inst);
@@ -310,7 +310,8 @@ void CodeGen::visit(Function *function) {
         mov_inst->setParent(enter_basicblock);
         enter_basicblock->addFrontInstruction(mov_inst);
     }
-    std::vector<MachineInst *> moves;
+
+    /*std::vector<MachineInst *> moves;
     enter_basicblock->addFrontInstruction(new BinaryInst(enter_basicblock, BinaryInst::ISub, sp_reg_, sp_reg_, getImmOperandInBinary(mov_stack_offset, enter_basicblock, &moves)));
     assert(moves.size() == 2 || moves.empty());
     if (!moves.empty()) {
@@ -333,9 +334,36 @@ void CodeGen::visit(Function *function) {
         exit_basicblock->addInstruction(bx_inst);
     }
 
+    curr_machine_function_->setStackSize(stack_offset_);*/
+    // addInstAboutStack(curr_machine_function_, stack_offset_);
     curr_machine_function_->setStackSize(stack_offset_);
+}
+
+void CodeGen::addInstAboutStack(MachineFunction *function, int32_t offset) {
+    std::vector<MachineInst *> moves;
+    auto enter_block = function->getEnterBasicBlock();
+    enter_block->addFrontInstruction(new BinaryInst(enter_block, BinaryInst::ISub, sp_reg_, sp_reg_, getImmOperandInBinary(offset, enter_block, &moves)));
+    assert(moves.size() == 2 || moves.empty());
+    if (!moves.empty()) {
+        enter_block->addFrontInstruction(moves[1]);
+        enter_block->addFrontInstruction(moves[0]);        // 低
+    }
+    enter_block->addFrontInstruction(new MoveInst(enter_block, sp_reg_, fp_reg_));
+    addPushInst(enter_block);
+    for (int i = 0; i < function->getExitBasicBlockSize(); ++i) {
+        auto exit_basicblock = function->getExitBasicBlock(i);
+        exit_basicblock->addInstruction(new BinaryInst(exit_basicblock, BinaryInst::IAdd, sp_reg_, sp_reg_, getImmOperandInBinary(offset, exit_basicblock)));
+        exit_basicblock->addInstruction(new MoveInst(exit_basicblock, fp_reg_, sp_reg_));
+        addPopInst(exit_basicblock);
+        auto bx_inst = new BranchInst(exit_basicblock, lr_reg_, BranchInst::BrNoCond, BranchInst::Bx);
+        exit_basicblock->addInstruction(bx_inst);
+    }
+}
+
+void CodeGen::addRetBranchInExitBlocks(MachineFunction *function) {
 
 }
+
 
 void CodeGen::visit(GEPInstruction *inst) {
     auto base_ptr = inst->getPtr();

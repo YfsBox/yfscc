@@ -41,16 +41,15 @@ int main(int argc, char **argv) {
 
     IrBuilder irbuilder(std::cout, checker->getLibFunctionsMap());
     irbuilder.visit(root);
-    irbuilder.dump();
-
 
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();
 
     MachineDumper vmcdumper(codegen.getMCModule(), "yfscc.v.s");
-    vmcdumper.dump();
+    // vmcdumper.dump();
 
     RegsAllocator reg_alloc(codegen.getMCModule(), &codegen);
+    reg_alloc.dumper_ = &vmcdumper;
     reg_alloc.allocate();
 
     MachineDumper mcdumper(codegen.getMCModule(), "yfscc.s");
