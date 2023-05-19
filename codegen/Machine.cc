@@ -39,11 +39,13 @@ void MachineBasicBlock::addFrontInstruction(MachineInst *inst) {
 
 void MachineBasicBlock::insertInstruction(MachineInstListIt it, MachineInst *inst) {
     ++it;
+    assert(inst);
     instructions_.insert(it, GET_UNIQUEPTR(inst));
     --it;
 }
 
 void MachineBasicBlock::insertInstructionBefore(MachineInstListIt it, MachineInst *inst) {
+    assert(inst);
     instructions_.insert(it, GET_UNIQUEPTR(inst));
 }
 

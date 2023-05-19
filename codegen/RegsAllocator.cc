@@ -341,6 +341,7 @@ void RegsAllocator::combine(MachineOperand *u, MachineOperand *v) {
     for (auto node: move_list_[v]) {
         move_list_[u].insert(node);
     }
+    enableMoves({v});
 
     auto adj = adjacent(v);
     for (auto t: adj) {
@@ -511,9 +512,11 @@ void RegsAllocator::rewriteProgram() {
 
                 MachineOperand::ValueType value_type = allocate_float_ ? MachineOperand::Float : MachineOperand::Int;
 
-                std::vector<MachineInst *> moves_offset_insts;
-                auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts);
+                int32_t both_inserted = 0;
+
                 if (defs.count(spill_node)) {
+                    std::vector<MachineInst *> moves_offset_insts;
+                    auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts);
                     auto store_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
                     // printf("the new vreg is %d, insert before vreg%d inst\n", store_vreg->getRegId(), dynamic_cast<VirtualReg *>(spill_node)->getRegId());
 
@@ -525,9 +528,12 @@ void RegsAllocator::rewriteProgram() {
                     moves_offset_insts.push_back(store_inst);
                     insert_after.insert({inst, moves_offset_insts});
                     insert_it.insert({inst, it});
+                    both_inserted++;
                 }
 
                 if (uses.count(spill_node)) {
+                    std::vector<MachineInst *> moves_offset_insts;
+                    auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts);
                     auto load_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
                     // printf("the new vreg is %d, insert before vreg%d inst\n", load_vreg->getRegId(),  dynamic_cast<VirtualReg *>(spill_node)->getRegId());
                     auto load_inst = new LoadInst(bb.get(), load_vreg, code_gen_->fp_reg_, offset_reg);
@@ -535,9 +541,12 @@ void RegsAllocator::rewriteProgram() {
                     // MachineInst::replaceUses(inst, dynamic_cast<VirtualReg *>(spill_node), load_vreg);
                     inst->replaceUses(spill_node, load_vreg);
                     moves_offset_insts.push_back(load_inst);
-                    insert_before.insert({inst, moves_offset_insts});
+                    insert_before[inst].insert(insert_before[inst].end(), moves_offset_insts.begin(), moves_offset_insts.end());
                     insert_it.insert({inst, it});
+                    both_inserted++;
                 }
+
+                // assert(both_inserted < 2);
             }
 
             for (auto [inserted, insts]: insert_before) {
@@ -555,7 +564,6 @@ void RegsAllocator::rewriteProgram() {
                     bb->insertInstruction(find_inserted_it->second, *rit);
                 }
             }
-
         }
     }
 }
@@ -675,6 +683,10 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
     if (!spilled_nodes_.empty()) {
         rewriteProgram();
         runOnMachineFunction(function);
+
+        /*if (curr_function_->getFunctionName() == "main") {
+            dumper_->dump(curr_function_);
+        }*/
     } else {
         /*printf("-------------the colors is here-------------\n");
         for (auto &[reg, color]: color_) {
@@ -698,7 +710,9 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
         // 对于出现过spilled的情况，需要额外地再分配出栈空间
 
         // printf("the stack size is %d brefore and the spilled stack size is %d\n", curr_function_->getStackSize(), spilled_stack_size_);
-        // dumper_->dump(curr_function_);
+        /*if (curr_function_->getFunctionName() == "main") {
+            dumper_->dump(curr_function_);
+        }*/
         if ((allocate_float_ && !needAllocateForFloat()) || !allocate_float_) {
             code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_);
         }
