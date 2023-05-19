@@ -543,16 +543,16 @@ void RegsAllocator::rewriteProgram() {
             for (auto [inserted, insts]: insert_before) {
                 auto find_inserted_it = insert_it.find(inserted);
                 assert(find_inserted_it != insert_it.end());
-                for (auto rit = insts.rbegin(); rit != insts.rend(); ++rit) {
-                    bb->insertInstructionBefore(find_inserted_it->second, *rit);
+                for (auto inst: insts) {
+                    bb->insertInstructionBefore(find_inserted_it->second, inst);
                 }
             }
 
             for (auto [inserted, insts]: insert_after) {
                 auto find_inserted_it = insert_it.find(inserted);
                 assert(find_inserted_it != insert_it.end());
-                for (auto inst: insts) {
-                    bb->insertInstruction(find_inserted_it->second, inst);
+                for (auto rit = insts.rbegin(); rit != insts.rend(); ++rit) {
+                    bb->insertInstruction(find_inserted_it->second, *rit);
                 }
             }
 

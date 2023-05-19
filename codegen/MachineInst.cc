@@ -128,6 +128,7 @@ std::unordered_set<MachineOperand *> MachineInst::getDefs(MachineInst *inst, boo
                     operands.insert(mc_reg);
                 }
                 operands.insert(mc_module->getMachineReg(MachineReg::r12));
+                operands.insert(mc_module->getMachineReg(MachineReg::r14));
             }
             break;
         }
