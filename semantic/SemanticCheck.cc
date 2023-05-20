@@ -36,7 +36,7 @@ void SemanticCheck::addLibFunc() {
             {"getfloat", BasicType::FLOAT_BTYPE},
             {"getch", BasicType::INT_BTYPE},
             {"getarray", BasicType::INT_BTYPE},
-            {"getfarray", BasicType::FLOAT_BTYPE},
+            {"getfarray", BasicType::INT_BTYPE},
             {"putint", BasicType::VOID_BTYPE},
             {"putfloat", BasicType::VOID_BTYPE},
             {"putch", BasicType::VOID_BTYPE},
@@ -371,12 +371,14 @@ void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicT
                                     std::make_shared<Number>(static_cast<int32_t>(init_value))
                                             :std::make_shared<Number>(static_cast<float>(init_value));
                 def->init_expr_ = new_initexpr;
+                def->init_expr_->expr_type_ = basic_type;
             }
         } else if (ident_systable_.isInGlobalScope()) {     // 如果是没有init表达式的全局变量,就将其初始化为0
             cancal = true;
             auto new_initexpr = (basic_type == BasicType::INT_BTYPE) ?
                     std::make_shared<Number>(static_cast<int32_t>(init_value)) : std::make_shared<Number>(static_cast<float>(init_value));
             def->init_expr_ = new_initexpr;
+            def->init_expr_->expr_type_ = basic_type;
         }
         ident_systable_.addIdent(SymbolEntry(basic_type, cancal, init_value, def_id.get(), false));
     } else {        // 对于数组类型的判断

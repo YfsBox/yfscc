@@ -418,6 +418,9 @@ void RegsAllocator::freeze() {
 
 void RegsAllocator::finishAllocate() {
     if ((allocate_float_ && !needAllocateForFloat()) || !allocate_float_) {
+        if ((curr_function_->getStackSize() + spilled_stack_size_) % 8 == 0) {
+            spilled_stack_size_ += 4;
+        }
         code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_);
     }
 

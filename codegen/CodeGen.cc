@@ -651,7 +651,7 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, boo
     }
     if (ret_operand == nullptr) {
         auto inst = dynamic_cast<Instruction *>(value);
-        printf("the value type is %d, the inst type is %d\n", value_type, inst->getInstType());
+        // printf("the value type is %d, the inst type is %d\n", value_type, inst->getInstType());
     }
     return ret_operand;
 }
@@ -902,7 +902,7 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
 
     MachineOperand *lhs = value2MachineOperand(left_value, false);
     assert(lhs);
-    MachineOperand *rhs = value2MachineOperand(right_value, rhs_can_be_imm);
+    MachineOperand *rhs = value2MachineOperand(right_value, false);
     assert(rhs);
 
     auto binary_dst = createVirtualReg(value_type, binst);

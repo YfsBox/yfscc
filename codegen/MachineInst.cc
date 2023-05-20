@@ -70,6 +70,11 @@ std::unordered_set<MachineOperand *> MachineInst::getUses(MachineInst *inst, boo
                     auto mc_reg = mc_module->getMachineReg(mreg);
                     operands.insert(mc_reg);
                 }
+                for (auto i = 0; i < 16; ++i) {
+                    MachineReg::Reg mreg = static_cast<MachineReg::Reg>(MachineReg::s0 + i);
+                    auto mc_reg = mc_module->getMachineReg(mreg);
+                    operands.insert(mc_reg);
+                }
             }
             break;
         }
@@ -124,6 +129,11 @@ std::unordered_set<MachineOperand *> MachineInst::getDefs(MachineInst *inst, boo
                 assert(mc_module);
                 for (auto i = 0; i < 4; ++i) {
                     MachineReg::Reg mreg = static_cast<MachineReg::Reg>(MachineReg::r0 + i);
+                    auto mc_reg = mc_module->getMachineReg(mreg);
+                    operands.insert(mc_reg);
+                }
+                for (auto i = 0; i < 16; ++i) {
+                    MachineReg::Reg mreg = static_cast<MachineReg::Reg>(MachineReg::s0 + i);
                     auto mc_reg = mc_module->getMachineReg(mreg);
                     operands.insert(mc_reg);
                 }

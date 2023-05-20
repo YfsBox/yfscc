@@ -444,6 +444,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
                 visit(def->init_expr_);
 
                 BasicType init_expr_type = def->init_expr_->expr_type_;
+                // printf("the expr type of init_expr %d is %d\n", def->init_expr_.get(), init_expr_type);
                 Value *cast_inst_value = nullptr;
                 Value *init_value = curr_value_;
                 if (init_value->isPtr()) {
@@ -453,6 +454,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
                     init_value = load_inst_value;
                 }
                 if (init_expr_type == BasicType::INT_BTYPE && def_basic_type == BasicType::FLOAT_BTYPE) {
+                    // printf("create a I2F inst\n");
                     cast_inst_value = IrFactory::createI2FCastInstruction(init_value);
                 } else if (init_expr_type == BasicType::FLOAT_BTYPE && def_basic_type == BasicType::INT_BTYPE) {
                     cast_inst_value = IrFactory::createF2ICastInstruction(init_value);
