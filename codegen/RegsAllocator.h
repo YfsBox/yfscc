@@ -84,6 +84,8 @@ private:
 
     void freeze();
 
+    void finishAllocate();
+
     void runOnMachineFunction(MachineFunction *function);
 
     MachineOperand *getAlias(MachineOperand *operand);

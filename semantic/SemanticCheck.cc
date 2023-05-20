@@ -152,6 +152,13 @@ bool SemanticCheck::canCalculated(const std::shared_ptr<Expression> &init, doubl
             double value_1, value_2;
             if (canCalculated(binary_expr->getLeftExpr(), &value_1)
                 && canCalculated(binary_expr->getRightExpr(), &value_2)) {
+                if (binary_expr->getLeftExpr()->expr_type_ == BasicType::INT_BTYPE) {
+                    value_1 = static_cast<int32_t>(value_1);
+                }
+                if (binary_expr->getRightExpr()->expr_type_ == BasicType::INT_BTYPE) {
+                    value_2 = static_cast<int32_t>(value_2);
+                }
+
                 switch (binary_expr->getOpType()) {
                     case BinaryOpType::GT_OPTYPE:
                         *value = (value_1 > value_2);

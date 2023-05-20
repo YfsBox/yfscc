@@ -453,9 +453,9 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
                     init_value = load_inst_value;
                 }
                 if (init_expr_type == BasicType::INT_BTYPE && def_basic_type == BasicType::FLOAT_BTYPE) {
-                    cast_inst_value = IrFactory::createI2FCastInstruction(curr_value_);
+                    cast_inst_value = IrFactory::createI2FCastInstruction(init_value);
                 } else if (init_expr_type == BasicType::FLOAT_BTYPE && def_basic_type == BasicType::INT_BTYPE) {
-                    cast_inst_value = IrFactory::createF2ICastInstruction(curr_value_);
+                    cast_inst_value = IrFactory::createF2ICastInstruction(init_value);
                 }
                 if (cast_inst_value) {
                     addInstruction(cast_inst_value);

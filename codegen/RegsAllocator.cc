@@ -416,6 +416,19 @@ void RegsAllocator::freeze() {
     freezeMoves(u);
 }
 
+void RegsAllocator::finishAllocate() {
+    if ((allocate_float_ && !needAllocateForFloat()) || !allocate_float_) {
+        code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_);
+    }
+
+    for (auto &[reg, color]: color_) {
+        if (auto vreg = dynamic_cast<VirtualReg *>(reg); vreg) {
+            vreg->color(color);
+        }
+    }
+
+}
+
 void RegsAllocator::freezeMoves(MachineOperand *operand) {
     for (auto m: nodeMoves(operand)) {
         auto move_inst = dynamic_cast<MoveInst *>(m);
@@ -635,11 +648,15 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
         }
     }
 
+    curr_function_ = function;
+
     if (initial_.empty()) {
+        if (allocate_float_) {
+            finishAllocate();
+        }
         return;
     }
 
-    curr_function_ = function;
     build();
     /*printf("-----------------the interface graph-------------------\n");
     for (auto node_list: adj_set_) {
@@ -684,9 +701,6 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
         rewriteProgram();
         runOnMachineFunction(function);
 
-        /*if (curr_function_->getFunctionName() == "main") {
-            dumper_->dump(curr_function_);
-        }*/
     } else {
         /*printf("-------------the colors is here-------------\n");
         for (auto &[reg, color]: color_) {
@@ -713,15 +727,7 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
         /*if (curr_function_->getFunctionName() == "main") {
             dumper_->dump(curr_function_);
         }*/
-        if ((allocate_float_ && !needAllocateForFloat()) || !allocate_float_) {
-            code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_);
-        }
-
-        for (auto &[reg, color]: color_) {
-            if (auto vreg = dynamic_cast<VirtualReg *>(reg); vreg) {
-                vreg->color(color);
-            }
-        }
+        finishAllocate();
     }
 }
 

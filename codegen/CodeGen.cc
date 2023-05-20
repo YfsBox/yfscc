@@ -660,7 +660,7 @@ MachineOperand *CodeGen::getCmpReusltInOperand(SetCondInstruction *set_cond_inst
     MachineOperand *value;
     auto find_setcond_it = set_cond_it_map_.find(set_cond_inst);
     assert(find_setcond_it != set_cond_it_map_.end());
-    value = createVirtualReg(set_cond_inst->isFloatCmp() ? MachineOperand::ValueType::Float : MachineOperand::ValueType::Int);
+    value = createVirtualReg(MachineOperand::ValueType::Int);
     auto cmp_type = set_cond_inst->getCmpType();
     auto mov0_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, new ImmNumber(0), value);
     auto mov1_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, new ImmNumber(1), value);
@@ -820,7 +820,7 @@ void CodeGen::visit(UnaryOpInstruction *uinst) {        // 一元操作
                 value = value2MachineOperand(uinst->getValue(), true,&is_float);
         }
 
-        auto dst_reg = createVirtualReg(basicType2ValueType(uinst->getBasicType()));
+        auto dst_reg = createVirtualReg(MachineOperand::Int);
         auto clz_inst = new ClzInst(curr_machine_basic_block_, dst_reg, value);
         auto lsr_dst_reg = createVirtualReg(MachineOperand::Int, uinst);
         auto lsr_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ILsr, lsr_dst_reg, dst_reg,
