@@ -300,7 +300,7 @@ StoreInst::StoreInst(MemIndexType index_type, MachineBasicBlock *parent, Machine
     value_(value),
     base_(base),
     offset_(offset){
-
+    setValueType(getValueType(value));
 }
 
 StoreInst::StoreInst(MachineBasicBlock *parent, MachineOperand *value, MachineOperand *base):
@@ -308,7 +308,7 @@ StoreInst::StoreInst(MachineBasicBlock *parent, MachineOperand *value, MachineOp
     value_(value),
     base_(base),
     offset_(nullptr){
-
+    setValueType(getValueType(value));
 }
 
 StoreInst::~StoreInst() = default;

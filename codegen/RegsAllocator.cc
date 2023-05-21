@@ -341,7 +341,7 @@ void RegsAllocator::combine(MachineOperand *u, MachineOperand *v) {
     for (auto node: move_list_[v]) {
         move_list_[u].insert(node);
     }
-    enableMoves({v});
+    // enableMoves({v});
 
     auto adj = adjacent(v);
     for (auto t: adj) {
@@ -457,8 +457,11 @@ void RegsAllocator::selectSpill() {
     MachineOperand *m = nullptr;          // 采用某种策略选出一个spill的节点
     int32_t min_cost = INT32_MAX;
 
+    std::vector<MachineOperand *> spilled_nodes;
+
     for (auto spill: spill_work_list_) {            // 从中选出一个spill代价最小的
         if (already_spilled_.count(spill)) {
+            spilled_nodes.push_back(spill);
             continue;
         }
         int32_t cost =
@@ -469,9 +472,15 @@ void RegsAllocator::selectSpill() {
         }
     }
 
-    spill_work_list_.erase(m);
-    simplify_work_list_.insert(m);
-    freezeMoves(m);
+    for (auto spilled: spilled_nodes) {
+        spill_work_list_.erase(spilled);
+    }
+
+    if (m) {
+        spill_work_list_.erase(m);
+        simplify_work_list_.insert(m);
+        freezeMoves(m);
+    }
 }
 
 void RegsAllocator::assignColors() {
@@ -511,6 +520,7 @@ void RegsAllocator::rewriteProgram() {
 
     for (auto spill_node: spilled_nodes_) {         // 确定为需要溢出的节点
         already_spilled_.insert(spill_node);            // 插入到已经溢出的队列
+        spill_work_list_.erase(spill_node);
         spilled_stack_size_ += 4;           // spill维护的stack偏移量
 
         // printf("insert load or store inst......\n");
@@ -528,8 +538,6 @@ void RegsAllocator::rewriteProgram() {
 
                 MachineOperand::ValueType value_type = allocate_float_ ? MachineOperand::Float : MachineOperand::Int;
 
-                int32_t both_inserted = 0;
-
                 if (defs.count(spill_node)) {
                     std::vector<MachineInst *> moves_offset_insts;
                     auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts);
@@ -537,6 +545,7 @@ void RegsAllocator::rewriteProgram() {
                     // printf("the new vreg is %d, insert before vreg%d inst\n", store_vreg->getRegId(), dynamic_cast<VirtualReg *>(spill_node)->getRegId());
 
                     auto store_inst = new StoreInst(MemIndexType::PostiveIndex, bb.get(), store_vreg, code_gen_->fp_reg_, offset_reg);
+                    // store_inst->setValueType(allocate_float_ ? MachineInst::Float: MachineInst::Int);
                     already_spilled_.insert(store_vreg);
                     // MachineInst::replaceDefs(inst, dynamic_cast<VirtualReg *>(spill_node), store_vreg);
                     inst->replaceDefs(spill_node, store_vreg);
@@ -544,7 +553,6 @@ void RegsAllocator::rewriteProgram() {
                     moves_offset_insts.push_back(store_inst);
                     insert_after.insert({inst, moves_offset_insts});
                     insert_it.insert({inst, it});
-                    both_inserted++;
                 }
 
                 if (uses.count(spill_node)) {
@@ -553,13 +561,13 @@ void RegsAllocator::rewriteProgram() {
                     auto load_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
                     // printf("the new vreg is %d, insert before vreg%d inst\n", load_vreg->getRegId(),  dynamic_cast<VirtualReg *>(spill_node)->getRegId());
                     auto load_inst = new LoadInst(bb.get(), load_vreg, code_gen_->fp_reg_, offset_reg);
+                    // load_inst->setValueType(allocate_float_ ? MachineInst::Float: MachineInst::Int);
                     already_spilled_.insert(load_vreg);
                     // MachineInst::replaceUses(inst, dynamic_cast<VirtualReg *>(spill_node), load_vreg);
                     inst->replaceUses(spill_node, load_vreg);
                     moves_offset_insts.push_back(load_inst);
                     insert_before[inst].insert(insert_before[inst].end(), moves_offset_insts.begin(), moves_offset_insts.end());
                     insert_it.insert({inst, it});
-                    both_inserted++;
                 }
 
                 // assert(both_inserted < 2);
@@ -693,7 +701,7 @@ void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
             // printf("freeze\n");
             freeze();
         } else if (!spill_work_list_.empty()) {
-            // printf("selectSpill\n");
+            // printf("selectSpill, the spill size is %d\n", spill_work_list_.size());
             selectSpill();
         }
     } while (!simplify_work_list_.empty() || !worklist_moves_.empty() || !freeze_work_list_.empty() || !spill_work_list_.empty());
