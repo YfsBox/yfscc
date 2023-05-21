@@ -4,6 +4,7 @@
 #ifndef YFSCC_AST_H
 #define YFSCC_AST_H
 
+#include <cassert>
 #include <vector>
 #include <memory>
 #include <algorithm>
@@ -247,6 +248,10 @@ public:
 
     void setDimensionExpr(size_t idx, const ExpressionPtr &expr) {
         array_dimension_[idx] = expr;
+    }
+
+    void resetId(const std::string &name) {
+        id_ = name;
     }
 
     std::vector<int32_t> getFormalDimensionNumbers() const;   // 只用于函数formal的纬度确定
@@ -523,6 +528,13 @@ public:
 
     ExpressionPtr getActual(size_t idx) const {
         return actuals_->getExprByIdx(idx);
+    }
+
+    void addActual(const ExpressionPtr &actual) {
+        if (!actuals_) {
+            actuals_ = std::make_shared<FuncRParams>();
+        }
+        actuals_->addExpr(actual);
     }
 
     void dump(std::ostream &out, size_t n) override;
