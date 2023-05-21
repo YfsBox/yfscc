@@ -116,6 +116,12 @@ void CodeGen::addPushInst(MachineBasicBlock *basicblock) {
         push_regs_inst->addReg(machine_reg);
         push_sreg_inst->addReg(machine_sreg);
     }
+
+    for (int i = 0; i < 8; ++i) {
+        auto machine_sreg = getMachineReg(true, 24 + i);
+        push_sreg_inst->addReg(machine_sreg);
+    }
+
     push_regs_inst->addReg(module_->getMachineReg(MachineReg::lr));
     push_sreg_inst->setValueType(MachineInst::Float);
 
@@ -134,6 +140,12 @@ void CodeGen::addPopInst(MachineBasicBlock *basicblock) {
         pop_regs_inst->addReg(machine_reg);
         pop_sreg_inst->addReg(machine_sreg);
     }
+
+    for (int i = 0; i < 8; ++i) {
+        auto machine_sreg = getMachineReg(true, 24 + i);
+        pop_sreg_inst->addReg(machine_sreg);
+    }
+
     pop_regs_inst->addReg(module_->getMachineReg(MachineReg::lr));
     pop_sreg_inst->setValueType(MachineInst::Float);
 
