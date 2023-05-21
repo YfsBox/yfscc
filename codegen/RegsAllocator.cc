@@ -417,10 +417,15 @@ void RegsAllocator::freeze() {
 }
 
 void RegsAllocator::finishAllocate() {
-    if ((allocate_float_ && !needAllocateForFloat()) || !allocate_float_) {
+    printf("finish allocate %d\n", allocate_float_);
+    if (allocate_float_ || (!allocate_float_ && !needAllocateForFloat())) {
         if ((curr_function_->getStackSize() + spilled_stack_size_) % 8 == 0) {
             spilled_stack_size_ += 4;
         }
+        if (curr_function_->getFunctionName() == "main") {
+            printf("the main function stack sub is %d\n", curr_function_->getStackSize() + spilled_stack_size_);
+        }
+
         code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_);
     }
 
@@ -523,6 +528,10 @@ void RegsAllocator::rewriteProgram() {
         spill_work_list_.erase(spill_node);
         spilled_stack_size_ += 4;           // spill维护的stack偏移量
 
+        if (curr_function_->getFunctionName() == "main") {
+            printf("the vreg is %d, and offset on stack is %d\n", dynamic_cast<VirtualReg *>(spill_node)->getRegId(), - curr_function_->getStackSize() - spilled_stack_size_);
+        }
+
         // printf("insert load or store inst......\n");
         for (auto &bb: curr_function_->getMachineBasicBlock()) {
             auto &inst_list = bb->getInstructionListNonConst();
@@ -539,12 +548,19 @@ void RegsAllocator::rewriteProgram() {
                 MachineOperand::ValueType value_type = allocate_float_ ? MachineOperand::Float : MachineOperand::Int;
 
                 if (defs.count(spill_node)) {
+                    bool use_ip_base = false;
                     std::vector<MachineInst *> moves_offset_insts;
-                    auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts);
+                    auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base);
                     auto store_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
                     // printf("the new vreg is %d, insert before vreg%d inst\n", store_vreg->getRegId(), dynamic_cast<VirtualReg *>(spill_node)->getRegId());
-
-                    auto store_inst = new StoreInst(MemIndexType::PostiveIndex, bb.get(), store_vreg, code_gen_->fp_reg_, offset_reg);
+                    assert(offset_reg);
+                    MachineInst *store_inst;
+                    if (!use_ip_base) {
+                        store_inst = new StoreInst(MemIndexType::PostiveIndex, bb.get(), store_vreg, code_gen_->fp_reg_,
+                                                   offset_reg);
+                    } else {
+                        store_inst = new StoreInst(bb.get(), store_vreg, offset_reg);
+                    }
                     // store_inst->setValueType(allocate_float_ ? MachineInst::Float: MachineInst::Int);
                     already_spilled_.insert(store_vreg);
                     // MachineInst::replaceDefs(inst, dynamic_cast<VirtualReg *>(spill_node), store_vreg);
@@ -556,11 +572,18 @@ void RegsAllocator::rewriteProgram() {
                 }
 
                 if (uses.count(spill_node)) {
+                    bool use_ip_base = false;
                     std::vector<MachineInst *> moves_offset_insts;
-                    auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts);
+                    auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base);
                     auto load_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
                     // printf("the new vreg is %d, insert before vreg%d inst\n", load_vreg->getRegId(),  dynamic_cast<VirtualReg *>(spill_node)->getRegId());
-                    auto load_inst = new LoadInst(bb.get(), load_vreg, code_gen_->fp_reg_, offset_reg);
+
+                    MachineInst *load_inst;
+                    if (!use_ip_base) {
+                        load_inst = new LoadInst(bb.get(), load_vreg, code_gen_->fp_reg_, offset_reg);
+                    } else {
+                        load_inst = new LoadInst(bb.get(), load_vreg, offset_reg);
+                    }
                     // load_inst->setValueType(allocate_float_ ? MachineInst::Float: MachineInst::Int);
                     already_spilled_.insert(load_vreg);
                     // MachineInst::replaceUses(inst, dynamic_cast<VirtualReg *>(spill_node), load_vreg);
@@ -594,6 +617,7 @@ void RegsAllocator::rewriteProgram() {
 
 
 void RegsAllocator::allocate() {
+    allocate_float_ = false;
     k_ = int_regs_set_.size();
     for (auto &func: machine_module_->getMachineFunctions()) {
         runOnMachineFunction(func.get());
