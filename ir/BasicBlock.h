@@ -116,6 +116,10 @@ public:
         return loop_depth_;
     }
 
+    void addFrontInstruction(Value *instruction) {
+        instructions_.push_front(std::unique_ptr<Instruction>(dynamic_cast<Instruction *>(instruction)));
+    }
+
 private:
     bool has_jump_;
 

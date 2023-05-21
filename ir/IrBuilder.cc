@@ -44,9 +44,13 @@ bool IrBuilder::isSecondaryPtr(Value *ptr) const {
     return alloca_inst && alloca_inst->isPtrPtr();
 }
 
-void IrBuilder::addInstruction(Value *inst) {
+void IrBuilder::addInstruction(Value *inst, bool is_alloc_inst) {
     if (!context_->curr_bb_has_branch_) {
-        context_->curr_bb_->addInstruction(inst);
+        if (!is_alloc_inst) {
+            context_->curr_bb_->addInstruction(inst);
+        } else {
+            alloca_insts_set_.push_back(inst);
+        }
     }
 }
 
@@ -287,7 +291,8 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             auto array_len = getArrayLen(dimension_number);
             Value *allac_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
                     IrFactory::createIArrayAllocaInstruction(dimension_number, var_name) : IrFactory::createFArrayAllocaInstruction(dimension_number, var_name);
-            context_->curr_bb_->addInstruction(allac_inst_value);
+            addInstruction(allac_inst_value, true);
+            // context_->curr_bb_->addInstruction(allac_inst_value);
             curr_local_array_ = allac_inst_value;
             // 处理初始化赋值的情况,递归地初始化列表进行处理,
             if (def->getInitExpr()) {
@@ -324,7 +329,7 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             } else {
                 alloca_inst_value = IrFactory::createFAllocaInstruction(var_name);
             }
-            addInstruction(alloca_inst_value);
+            addInstruction(alloca_inst_value, true);
             // visit求出初始值,const的局部变量一定存在不可能为null
             visit(def->init_expr_);
             // 如果类型不一样,就需要进行转化
@@ -404,7 +409,8 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             auto array_len = getArrayLen(dimension_number);
             Value *allac_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
                                       IrFactory::createIArrayAllocaInstruction(dimension_number, var_name) : IrFactory::createFArrayAllocaInstruction(dimension_number, var_name);
-            context_->curr_bb_->addInstruction(allac_inst_value);
+            // context_->curr_bb_->addInstruction(allac_inst_value);
+            addInstruction(allac_inst_value, true);
             curr_local_array_ = allac_inst_value;
             // 处理初始化赋值的情况,递归地初始化列表进行处理,
             if (def->getInitExpr()) {
@@ -439,7 +445,7 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             } else {
                 alloca_inst_value = IrFactory::createFAllocaInstruction(var_name);
             }       // 所返回的东西视为一个地址
-            addInstruction(alloca_inst_value);
+            addInstruction(alloca_inst_value, true);
             if (def->hasInitExpr()) {
                 visit(def->init_expr_);
 
@@ -506,6 +512,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
 
     context_->ResetSSA();
     context_->ResetBlockNo();
+    alloca_insts_set_.clear();
 
     for (size_t i = 0; i < formal_size; ++i) {          // 根据Ast中的Formal解析出Argument
         auto formal = formals->getFuncFormal(i);
@@ -557,9 +564,9 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     module_->addFunction(std::unique_ptr<Function>(function));
     context_->ResetBlockNo();
     auto new_bb_value = IrFactory::createBasicBlock(function_name);       // 暂时lebal作为函数名
-    auto new_bb = dynamic_cast<BasicBlock *>(new_bb_value);
-    setCurrBasicBlock(new_bb);
-    function->addBasicBlock(new_bb);
+    auto enter_bb = dynamic_cast<BasicBlock *>(new_bb_value);
+    setCurrBasicBlock(enter_bb);
+    function->addBasicBlock(enter_bb);
     // 还需要给参数中对应的变量分配空间????
     for (int i = 0; i < formal_size; ++i) {
         auto argument = dynamic_cast<Argument *>(arguments[i]);
@@ -589,7 +596,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
             new_entry = IrSymbolEntry(false, param_types[i], param_dimensions[i], alloca_ptr, param_names[i]);
         }
         var_symbol_table_.addIdent(new_entry);
-        addInstruction(alloca_ptr);
+        addInstruction(alloca_ptr, true);
         addInstruction(store_inst_value);
     }
     // 处理函数体
@@ -598,6 +605,13 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     var_symbol_table_.exitScope();
     context_->curr_function_->removeEmptyBasicBlock();
     context_->curr_function_->bindBasicBlocks();
+
+    for (auto rit = alloca_insts_set_.rbegin(); rit != alloca_insts_set_.rend(); ++rit) {
+        auto alloca_inst = dynamic_cast<Instruction *>(*rit);
+        assert(alloca_inst);
+        enter_bb->addFrontInstruction(alloca_inst);
+    }
+
 }
 
 void IrBuilder::visit(const std::shared_ptr<Statement> &stmt) {
@@ -704,8 +718,12 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
         left = curr_value_;
         left_type = expr->getLeftExpr()->expr_type_;
 
+        int32_t is_all_zext = 0;
+
         if (left->isBool()) {
             left = IrFactory::createIZextInstruction(left);
+            left_type = BasicType::INT_BTYPE;
+            is_all_zext++;
             addInstruction(left);
         }
         if (left->isPtr()) {
@@ -727,8 +745,11 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
         right = curr_value_;
         right_type = expr->getRightExpr()->expr_type_;
 
+
         if (right->isBool()) {
             right = IrFactory::createIZextInstruction(right);
+            right_type = BasicType::INT_BTYPE;
+            is_all_zext++;
             addInstruction(right);
         }
 
@@ -748,6 +769,8 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             }
         }
         // 类型转换
+        assert(is_all_zext < 2);
+
         if (left_type != right_type) {
             if (left_type == BasicType::INT_BTYPE) {
                 left = IrFactory::createI2FCastInstruction(left);

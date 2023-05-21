@@ -191,7 +191,7 @@ private:
 
     void setCurrBasicBlock(Value *bb);
 
-    void addInstruction(Value *inst);
+    void addInstruction(Value *inst, bool is_alloc_inst = false);
 
     void addBasicBlock(Value *bb);
 
@@ -248,6 +248,8 @@ private:
     LibFunctionMap libfunction_map_;
 
     std::vector<Value *> array_lval_index_vec_;
+
+    std::vector<Value *> alloca_insts_set_;
 
 };
 
