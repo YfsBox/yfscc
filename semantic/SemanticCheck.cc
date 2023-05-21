@@ -45,6 +45,8 @@ void SemanticCheck::addLibFunc() {
             {"starttime", BasicType::VOID_BTYPE},
             {"stoptime", BasicType::VOID_BTYPE},
             {"memset", BasicType::VOIDPTR_BTYPE},
+            {"_sysy_starttime", BasicType::VOID_BTYPE},
+            {"_sysy_stoptime", BasicType::VOID_BTYPE},
     };
 
     for (auto &[func_name, func_btype]: libmap) {
@@ -87,6 +89,8 @@ void SemanticCheck::addLibFunc() {
     lib_func_map_["memset"]->getFormals()->addFuncFormal(int_formal);
     lib_func_map_["memset"]->getFormals()->addFuncFormal(int_formal);
     // 这里的formal只是起到一个形式上的作用，所以直接用shared_ptr也可以
+    lib_func_map_["_sysy_starttime"]->getFormals()->addFuncFormal(int_formal);
+    lib_func_map_["_sysy_stoptime"]->getFormals()->addFuncFormal(int_formal);
 }
 
 bool SemanticCheck::isRedefinedCurrScope(const std::string &id) {
@@ -670,6 +674,16 @@ void SemanticCheck::visit(const std::shared_ptr<ContinueStatement> &stmt) {
 void SemanticCheck::visit(const std::shared_ptr<CallFuncExpr> &expr) {
     // 首先查找该函数的identifier是否存在
     std::string func_name = expr->getFuncId()->getId();
+
+    if (func_name == "stoptime") {
+        expr->getFuncId()->resetId("_sysy_stoptime");
+        expr->addActual(std::make_shared<Number>(0));
+    }
+    if (func_name == "starttime") {
+        expr->getFuncId()->resetId("_sysy_starttime");
+        expr->addActual(std::make_shared<Number>(0));
+    }
+
     auto find_func = func_map_.find(func_name);
     if (find_func == func_map_.end()) {     // 如果该函数不存在
         // 如果从定义的函数中，找不到，就找一找库函数中有没有
