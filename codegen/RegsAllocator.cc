@@ -19,7 +19,7 @@ RegsAllocator::RegsAllocator(MachineModule *module, CodeGen *codegen):
     int_regs_set_ = {
             MachineReg::r0, MachineReg::r1, MachineReg::r2, MachineReg::r3, MachineReg::r4,
             MachineReg::r5, MachineReg::r6, MachineReg::r7, MachineReg::r8, MachineReg::r9,
-            MachineReg::r10, MachineReg::r12, MachineReg::r14,
+            MachineReg::r10, /*MachineReg::r12,*/ MachineReg::r14,
     };      // 没有r11, r13、r15，也就是没有fp、sp、pc
     float_regs_set_ = {
             MachineReg::s0, MachineReg::s1, MachineReg::s2, MachineReg::s3, MachineReg::s4,
@@ -527,10 +527,6 @@ void RegsAllocator::rewriteProgram() {
         already_spilled_.insert(spill_node);            // 插入到已经溢出的队列
         spill_work_list_.erase(spill_node);
         spilled_stack_size_ += 4;           // spill维护的stack偏移量
-
-        if (curr_function_->getFunctionName() == "main") {
-            printf("the vreg is %d, and offset on stack is %d\n", dynamic_cast<VirtualReg *>(spill_node)->getRegId(), - curr_function_->getStackSize() - spilled_stack_size_);
-        }
 
         // printf("insert load or store inst......\n");
         for (auto &bb: curr_function_->getMachineBasicBlock()) {

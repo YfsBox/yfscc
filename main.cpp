@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
     codegen.codeGenerate();
 
     MachineDumper vmcdumper(codegen.getMCModule(), "yfscc.v.s");
-    // vmcdumper.dump();
+    vmcdumper.dump();
 
     RegsAllocator reg_alloc(codegen.getMCModule(), &codegen);
     reg_alloc.dumper_ = &vmcdumper;
