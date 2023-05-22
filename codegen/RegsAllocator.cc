@@ -16,7 +16,8 @@
 void RegsAllocator::regsAllocate(MachineModule *mc_module, CodeGen *codegen) {
 
     for (auto &func: mc_module->getMachineFunctions()) {
-        if (func->getVirtualRegs().size() <= VREGS_THRSHOLD_VALUE) {
+        // printf("the vrge count is %d, and inst number is %d\n", func->getVirtualRegs().size(), func->getInstSize());
+        if (func->getVirtualRegs().size() * func->getInstSize() <= VREGS_THRSHOLD_VALUE * INST_THRSHOLD_VALUE) {
             ColoringRegsAllocator coloring(mc_module, codegen);
             coloring.allocate(func.get());
         } else {
@@ -206,6 +207,7 @@ void ColoringRegsAllocator::analyseLiveness(MachineFunction *function) {        
 
     auto &basic_blocks = function->getMachineBasicBlock();
     size_t basic_blocks_size = basic_blocks.size();
+    printf("begin analyse liveness the vregs num is %d, and basicblock number is %d\n", curr_function_->getVirtualRegs().size(), basic_blocks_size);
 
     for (int i = 0; i < basic_blocks_size; ++i) {
         auto &bb = basic_blocks[i];
@@ -809,6 +811,7 @@ void ColoringRegsAllocator::init() {
 }
 
 void ColoringRegsAllocator::runOnMachineFunction(MachineFunction *function) {
+    curr_function_ = function;
     // printf("begin a allcate on a function %d\n", allocate_float_);
     init();
     // printf("analyseLiveness......\n");

@@ -154,6 +154,14 @@ public:
         return basic_blocks_.size();
     }
 
+    int getInstSize() const {
+        int count = 0;
+        for (auto &bb: basic_blocks_) {
+            count += bb->getInstructionList().size();
+        }
+        return count;
+    }
+
     const std::vector<MachineBasicBlockPtr> &getMachineBasicBlock() const {
         return basic_blocks_;
     }

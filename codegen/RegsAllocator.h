@@ -27,7 +27,9 @@ public:
 
     static void regsAllocate(MachineModule *mc_module, CodeGen *codegen);
 
-    static constexpr const int32_t VREGS_THRSHOLD_VALUE = 7000;
+    static constexpr const int32_t VREGS_THRSHOLD_VALUE = 6000;
+
+    static constexpr const int32_t INST_THRSHOLD_VALUE = 6000;
 
     virtual void allocate(MachineFunction *func) = 0;
 
