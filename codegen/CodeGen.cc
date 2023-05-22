@@ -229,12 +229,17 @@ void CodeGen::visit(Constant *constant) {
     setCurrMachineOperand(const_reg);
 }
 
-MachineOperand *CodeGen::getImmOperandInBinary(int32_t value, MachineBasicBlock *bb, std::vector<MachineInst *> *moves, bool is_float, bool *use_ip_base) {
+MachineOperand *CodeGen::getImmOperandInBinary(int32_t value, MachineBasicBlock *bb, std::vector<MachineInst *> *moves, bool is_float, bool *use_ip_base, bool is_simple_ralloc) {
     MachineOperand *result = nullptr;
     if (canImmInBinary(value)) {
         result = new ImmNumber(value);
     } else {
-        result= module_->getMachineReg(MachineReg::ip);
+        if (is_simple_ralloc) {
+            result= module_->getMachineReg(MachineReg::lr);
+        } else {
+            result= module_->getMachineReg(MachineReg::ip);
+        }
+
         auto mov1_inst = new MoveInst(bb, MoveInst::L2I, new ImmNumber(getLow(value)), result);
         auto mov2_inst = new MoveInst(bb, MoveInst::H2I, new ImmNumber(getHigh(value)), result);
         if (moves) {

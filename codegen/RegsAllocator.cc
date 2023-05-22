@@ -16,7 +16,7 @@
 void RegsAllocator::regsAllocate(MachineModule *mc_module, CodeGen *codegen) {
 
     for (auto &func: mc_module->getMachineFunctions()) {
-        if (false) {
+        if (func->getVirtualRegs().size() <= VREGS_THRSHOLD_VALUE) {
             ColoringRegsAllocator coloring(mc_module, codegen);
             coloring.allocate(func.get());
         } else {
@@ -37,9 +37,6 @@ void SimpleRegsAllocator::allocate(MachineFunction *func) {
     runOnMachineFunction(func);
     if ((curr_function_->getStackSize() + spilled_stack_offset_) % 8 == 0) {
         spilled_stack_offset_ += 4;
-    }
-    if (curr_function_->getFunctionName() == "main") {
-        printf("the main function stack sub is %d, the spilled stack size is %d\n", curr_function_->getStackSize() + spilled_stack_offset_, spilled_stack_offset_);
     }
     code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_offset_);
 }
@@ -80,8 +77,8 @@ void SimpleRegsAllocator::runOnMachineFunction(MachineFunction *function) {
                 auto spilled_offset = spilled_vregs_offset_[def_vreg];
                 bool use_ip_base = false;
                 std::vector<MachineInst *> moves_offset_insts;
-                auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_offset, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base);
-                auto store_vreg = allocate_float_ ? code_gen_->getMachineReg(true, 17) : code_gen_->getMachineReg(false, 5);
+                auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_offset, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base,true);
+                auto store_vreg = allocate_float_ ? code_gen_->getMachineReg(true, 16) : code_gen_->getMachineReg(false, 4);
                 // printf("the new vreg is %d, insert before vreg%d inst\n", store_vreg->getRegId(), dynamic_cast<VirtualReg *>(spill_node)->getRegId());
                 assert(offset_reg);
                 MachineInst *store_inst;
@@ -114,8 +111,8 @@ void SimpleRegsAllocator::runOnMachineFunction(MachineFunction *function) {
                 auto spilled_offset = spilled_vregs_offset_[use_vreg];
                 bool use_ip_base = false;
                 std::vector<MachineInst *> moves_offset_insts;
-                auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_offset, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base);
-                auto load_vreg = allocate_float_ ? code_gen_->getMachineReg(true, 18 + use_freg_offset_no) : code_gen_->getMachineReg(false, 6 + use_ireg_offset_no);
+                auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_offset, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base,true);
+                auto load_vreg = allocate_float_ ? code_gen_->getMachineReg(true, 17 + use_freg_offset_no) : code_gen_->getMachineReg(false, 5 + use_ireg_offset_no);
 
                 if (allocate_float_) {
                     use_freg_offset_no++;
@@ -136,6 +133,9 @@ void SimpleRegsAllocator::runOnMachineFunction(MachineFunction *function) {
             }
                 // assert(both_inserted < 2);
         }
+
+
+        // printf("the insert before size is %d, and the after inserted size is %d\n", insert_before.size(), insert_after.size());
 
         for (auto [inserted, insts]: insert_before) {
             auto find_inserted_it = insert_it.find(inserted);
@@ -561,15 +561,10 @@ void ColoringRegsAllocator::freeze() {
 }
 
 void ColoringRegsAllocator::finishAllocate() {
-    printf("finish allocate %d\n", allocate_float_);
     if (allocate_float_ || (!allocate_float_ && !needAllocateForFloat())) {
         if ((curr_function_->getStackSize() + spilled_stack_size_) % 8 == 0) {
             spilled_stack_size_ += 4;
         }
-        if (curr_function_->getFunctionName() == "main") {
-            printf("the main function stack sub is %d, the spilled stack size is %d\n", curr_function_->getStackSize() + spilled_stack_size_, spilled_stack_size_);
-        }
-
         code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_);
     }
 
