@@ -27,6 +27,8 @@ public:
 
     static void regsAllocate(MachineModule *mc_module, CodeGen *codegen);
 
+    static constexpr const int32_t VREGS_THRSHOLD_VALUE = 7000;
+
     virtual void allocate(MachineFunction *func) = 0;
 
     virtual void allocate() = 0;
@@ -34,6 +36,8 @@ public:
 protected:
 
     virtual void runOnMachineFunction(MachineFunction *function) = 0;
+
+    bool allocate_float_;
 
     MachineModule *machine_module_;
 
@@ -56,8 +60,12 @@ public:
 
 protected:
 
-private:
+    void runOnMachineFunction(MachineFunction *function) override;
 
+private:
+    int32_t spilled_stack_offset_;
+
+    std::unordered_map<MachineOperand *, int32_t> spilled_vregs_offset_;
 };
 
 class ColoringRegsAllocator: public RegsAllocator {
@@ -224,8 +232,6 @@ private:
     int32_t k_;             // 可以分配的寄存器数量
 
     int32_t spilled_stack_size_;
-
-    bool allocate_float_;
 
     // moves set
     InstSet active_moves_;

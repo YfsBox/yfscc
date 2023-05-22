@@ -16,14 +16,146 @@
 void RegsAllocator::regsAllocate(MachineModule *mc_module, CodeGen *codegen) {
 
     for (auto &func: mc_module->getMachineFunctions()) {
-        if (true) {
+        if (false) {
             ColoringRegsAllocator coloring(mc_module, codegen);
             coloring.allocate(func.get());
         } else {
-
+            SimpleRegsAllocator simple(mc_module, codegen);
+            simple.allocate(func.get());
         }
     }
 }
+
+SimpleRegsAllocator::SimpleRegsAllocator(MachineModule *module, CodeGen *codegen):
+    RegsAllocator(module, codegen),
+    spilled_stack_offset_(0){
+
+}
+
+void SimpleRegsAllocator::allocate(MachineFunction *func) {
+    curr_function_ = func;
+    runOnMachineFunction(func);
+    if ((curr_function_->getStackSize() + spilled_stack_offset_) % 8 == 0) {
+        spilled_stack_offset_ += 4;
+    }
+    if (curr_function_->getFunctionName() == "main") {
+        printf("the main function stack sub is %d, the spilled stack size is %d\n", curr_function_->getStackSize() + spilled_stack_offset_, spilled_stack_offset_);
+    }
+    code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_offset_);
+}
+
+void SimpleRegsAllocator::allocate() {
+
+}
+
+void SimpleRegsAllocator::runOnMachineFunction(MachineFunction *function) {
+
+    for (auto vir_reg: function->getVirtualRegs()) {            // 需要根据当前是否处理float来分开处理
+        spilled_stack_offset_ += 4;
+        spilled_vregs_offset_[vir_reg] = spilled_stack_offset_;
+    }
+
+    for (auto &bb: curr_function_->getMachineBasicBlock()) {
+        auto &inst_list = bb->getInstructionListNonConst();
+
+        std::unordered_map<MachineInst *, std::vector<MachineInst *>> insert_before;
+        std::unordered_map<MachineInst *, std::vector<MachineInst *>> insert_after;
+        std::unordered_map<MachineInst *, MachineBasicBlock::MachineInstListIt> insert_it;
+
+        for (auto it = inst_list.begin(); it != inst_list.end(); ++it) {
+            auto inst = it->get();
+            auto defs = MachineInst::getDefs(inst);
+            auto uses = MachineInst::getUses(inst);
+
+            for (auto def: defs) {
+                if (def->getOperandType() != MachineOperand::VirtualReg) {
+                    continue;
+                }
+                auto def_vreg = dynamic_cast<VirtualReg *>(def);
+                MachineOperand::ValueType value_type = def_vreg->getValueType();
+                allocate_float_ = value_type == MachineOperand::Float;
+                assert(value_type == MachineOperand::Int || value_type == MachineOperand::Float);
+                assert(spilled_vregs_offset_.count(def_vreg));
+
+                auto spilled_offset = spilled_vregs_offset_[def_vreg];
+                bool use_ip_base = false;
+                std::vector<MachineInst *> moves_offset_insts;
+                auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_offset, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base);
+                auto store_vreg = allocate_float_ ? code_gen_->getMachineReg(true, 17) : code_gen_->getMachineReg(false, 5);
+                // printf("the new vreg is %d, insert before vreg%d inst\n", store_vreg->getRegId(), dynamic_cast<VirtualReg *>(spill_node)->getRegId());
+                assert(offset_reg);
+                MachineInst *store_inst;
+                if (!use_ip_base) {
+                    store_inst = new StoreInst(MemIndexType::PostiveIndex, bb.get(), store_vreg, code_gen_->fp_reg_,
+                                               offset_reg);
+                } else {
+                    store_inst = new StoreInst(bb.get(), store_vreg, offset_reg);
+                }
+
+                inst->replaceDefs(def, store_vreg);
+                moves_offset_insts.push_back(store_inst);
+                insert_after.insert({inst, moves_offset_insts});
+                insert_it.insert({inst, it});
+            }
+
+            int32_t use_ireg_offset_no = 0;
+            int32_t use_freg_offset_no = 0;
+            for (auto use: uses) {
+                if (use->getOperandType() != MachineOperand::VirtualReg) {
+                    continue;
+                }
+
+                auto use_vreg = dynamic_cast<VirtualReg *>(use);
+                MachineOperand::ValueType value_type = use_vreg->getValueType();
+                allocate_float_ = value_type == MachineOperand::Float;
+                assert(value_type == MachineOperand::Int || value_type == MachineOperand::Float);
+                assert(spilled_vregs_offset_.count(use_vreg));
+
+                auto spilled_offset = spilled_vregs_offset_[use_vreg];
+                bool use_ip_base = false;
+                std::vector<MachineInst *> moves_offset_insts;
+                auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_offset, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base);
+                auto load_vreg = allocate_float_ ? code_gen_->getMachineReg(true, 18 + use_freg_offset_no) : code_gen_->getMachineReg(false, 6 + use_ireg_offset_no);
+
+                if (allocate_float_) {
+                    use_freg_offset_no++;
+                } else {
+                    use_ireg_offset_no++;
+                }
+
+                MachineInst *load_inst;
+                if (!use_ip_base) {
+                    load_inst = new LoadInst(bb.get(), load_vreg, code_gen_->fp_reg_, offset_reg);
+                } else {
+                    load_inst = new LoadInst(bb.get(), load_vreg, offset_reg);
+                }
+                inst->replaceUses(use, load_vreg);
+                moves_offset_insts.push_back(load_inst);
+                insert_before[inst].insert(insert_before[inst].end(), moves_offset_insts.begin(), moves_offset_insts.end());
+                insert_it.insert({inst, it});
+            }
+                // assert(both_inserted < 2);
+        }
+
+        for (auto [inserted, insts]: insert_before) {
+            auto find_inserted_it = insert_it.find(inserted);
+            assert(find_inserted_it != insert_it.end());
+            for (auto inst: insts) {
+                bb->insertInstructionBefore(find_inserted_it->second, inst);
+            }
+        }
+
+        for (auto [inserted, insts]: insert_after) {
+            auto find_inserted_it = insert_it.find(inserted);
+            assert(find_inserted_it != insert_it.end());
+            for (auto rit = insts.rbegin(); rit != insts.rend(); ++rit) {
+                bb->insertInstruction(find_inserted_it->second, *rit);
+            }
+        }
+    }
+
+}
+
 
 ColoringRegsAllocator::ColoringRegsAllocator(MachineModule *module, CodeGen *codegen):
     RegsAllocator(module, codegen){
@@ -220,8 +352,7 @@ void ColoringRegsAllocator::build() {
                     addEdge(l, def);
                 }
             }
-            // live := use(I) U (live \ def(I))
-            // std::set_difference(live.begin(), live.end(), defs.begin(), defs.end(), tmp_set.end());
+
             for (auto def: defs) {
                 live.erase(def);
             }
@@ -601,7 +732,6 @@ void ColoringRegsAllocator::rewriteProgram() {
                     insert_before[inst].insert(insert_before[inst].end(), moves_offset_insts.begin(), moves_offset_insts.end());
                     insert_it.insert({inst, it});
                 }
-
                 // assert(both_inserted < 2);
             }
 
@@ -717,25 +847,6 @@ void ColoringRegsAllocator::runOnMachineFunction(MachineFunction *function) {
     }
 
     build();
-    /*printf("-----------------the interface graph-------------------\n");
-    for (auto node_list: adj_set_) {
-        if (node_list.first->getOperandType() == MachineOperand::MachineReg) {
-            printf("%s", dynamic_cast<MachineReg*>(node_list.first)->machieReg2RegName().c_str());
-        } else {
-            printf("vreg%d", dynamic_cast<VirtualReg *>(node_list.first)->getRegId());
-        }
-        printf(":\t");
-        for (auto node: node_list.second) {
-            if (node->getOperandType() == MachineOperand::MachineReg) {
-                printf("%s", dynamic_cast<MachineReg*>(node)->machieReg2RegName().c_str());
-            } else {
-                printf("vreg%d", dynamic_cast<VirtualReg *>(node)->getRegId());
-            }
-            printf("\t");
-        }
-        printf("\n");
-    }*/
-
     mkWorkList();
 
     do {
@@ -761,31 +872,6 @@ void ColoringRegsAllocator::runOnMachineFunction(MachineFunction *function) {
         runOnMachineFunction(function);
 
     } else {
-        /*printf("-------------the colors is here-------------\n");
-        for (auto &[reg, color]: color_) {
-            if (reg->getOperandType() == MachineOperand::MachineReg) {
-                auto mc_reg = dynamic_cast<MachineReg *>(reg);
-                printf("%s: colored %d\n", mc_reg->machieReg2RegName().c_str(), color);
-            } else if (reg->getOperandType() == MachineOperand::VirtualReg){
-                auto vreg = dynamic_cast<VirtualReg *>(reg);
-                printf("vreg%d: colored %d\n", vreg->getRegId(), color);
-            }
-        }
-        printf("-------------the moves is here-------------\n");
-        for (auto &mov: coalesced_moves_) {
-            auto mov_inst = dynamic_cast<MoveInst *>(mov);
-            printf("mov inst:\t");
-            printRegStr(mov_inst->getDst());
-            printf(",\t");
-            printRegStr(mov_inst->getSrc());
-            printf("\n");
-        }*/
-        // 对于出现过spilled的情况，需要额外地再分配出栈空间
-
-        // printf("the stack size is %d brefore and the spilled stack size is %d\n", curr_function_->getStackSize(), spilled_stack_size_);
-        /*if (curr_function_->getFunctionName() == "main") {
-            dumper_->dump(curr_function_);
-        }*/
         finishAllocate();
     }
 }
