@@ -13,9 +13,20 @@
 #include "MachineDumper.h"
 #include "../ir/BasicBlock.h"
 
-RegsAllocator::RegsAllocator(MachineModule *module, CodeGen *codegen):
-    machine_module_(module),
-    code_gen_(codegen){
+void RegsAllocator::regsAllocate(MachineModule *mc_module, CodeGen *codegen) {
+
+    for (auto &func: mc_module->getMachineFunctions()) {
+        if (true) {
+            ColoringRegsAllocator coloring(mc_module, codegen);
+            coloring.allocate(func.get());
+        } else {
+
+        }
+    }
+}
+
+ColoringRegsAllocator::ColoringRegsAllocator(MachineModule *module, CodeGen *codegen):
+    RegsAllocator(module, codegen){
     int_regs_set_ = {
             MachineReg::r0, MachineReg::r1, MachineReg::r2, MachineReg::r3, MachineReg::r4,
             MachineReg::r5, MachineReg::r6, MachineReg::r7, MachineReg::r8, MachineReg::r9,
@@ -30,9 +41,10 @@ RegsAllocator::RegsAllocator(MachineModule *module, CodeGen *codegen):
             MachineReg::s25, MachineReg::s26, MachineReg::s27, MachineReg::s28, MachineReg::s29,
             MachineReg::s30, MachineReg::s31,
     };  // 没有特殊用途的寄存器，所以全部用上
+    spilled_stack_size_ = 0;
 }
 
-bool RegsAllocator::isEqual(const BitSet &lhs, const BitSet &rhs) {
+bool ColoringRegsAllocator::isEqual(const BitSet &lhs, const BitSet &rhs) {
     if (lhs.size() != rhs.size()) {
         return false;
     }
@@ -45,7 +57,7 @@ bool RegsAllocator::isEqual(const BitSet &lhs, const BitSet &rhs) {
     return true;
 }
 
-bool RegsAllocator::needAllocateForFloat() {
+bool ColoringRegsAllocator::needAllocateForFloat() {
     for (auto vir_reg: curr_function_->getVirtualRegs()) {            // 需要根据当前是否处理float来分开处理
         if (vir_reg->getValueType() == MachineOperand::Int) {
             return true;
@@ -54,7 +66,7 @@ bool RegsAllocator::needAllocateForFloat() {
     return false;
 }
 
-void RegsAllocator::analyseLiveness(MachineFunction *function) {            // 数据流分析中，会对float和int类型的变量进行区分
+void ColoringRegsAllocator::analyseLiveness(MachineFunction *function) {            // 数据流分析中，会对float和int类型的变量进行区分
     live_in_.clear();           // 其中在获取def、use时，也就需要区分不同的类型
     live_out_.clear();
     use_sets_.clear();
@@ -93,6 +105,7 @@ void RegsAllocator::analyseLiveness(MachineFunction *function) {            // �
         has_changed = false;
         for (int i = 0; i < basic_blocks_size; ++i) {
             auto bb = basic_blocks[i].get();
+            // printf("the old in size is %d, and the old out size is %d\n", live_in_[bb].size(), live_out_[bb].size());
             auto old_in = live_in_[bb];
             auto old_out = live_out_[bb];
 
@@ -123,7 +136,7 @@ void RegsAllocator::analyseLiveness(MachineFunction *function) {            // �
     }
 }
 
-bool RegsAllocator::isInAdjSet(MachineOperand *a, MachineOperand *b) {
+bool ColoringRegsAllocator::isInAdjSet(MachineOperand *a, MachineOperand *b) {
     auto finda_it = adj_set_.find(a);
     auto findb_it = adj_set_.find(b);
     if (finda_it != adj_set_.end() && findb_it != adj_set_.end()) {
@@ -132,11 +145,11 @@ bool RegsAllocator::isInAdjSet(MachineOperand *a, MachineOperand *b) {
     return false;
 }
 
-bool RegsAllocator::isPrecolored(MachineOperand *operand) {
+bool ColoringRegsAllocator::isPrecolored(MachineOperand *operand) {
     return operand->getOperandType() == MachineOperand::MachineReg;
 }
 
-void RegsAllocator::addEdge(MachineOperand *a, MachineOperand *b) {
+void ColoringRegsAllocator::addEdge(MachineOperand *a, MachineOperand *b) {
     if (!isInAdjSet(a, b) && a != b) {
         adj_set_[a].insert(b);
         adj_set_[b].insert(a);
@@ -161,7 +174,7 @@ static void printRegStr(MachineOperand *operand) {
     }
 }
 
-void RegsAllocator::build() {
+void ColoringRegsAllocator::build() {
     for (auto &mc_basicblock: curr_function_->getMachineBasicBlock()) {
         auto live = live_out_[mc_basicblock.get()];
         auto &mc_inst_list = mc_basicblock->getInstructionList();
@@ -218,12 +231,12 @@ void RegsAllocator::build() {
     }
 }
 
-bool RegsAllocator::moveRelated(MachineOperand *operand) {
+bool ColoringRegsAllocator::moveRelated(MachineOperand *operand) {
     auto result = nodeMoves(operand);
     return !result.empty();
 }
 
-void RegsAllocator::mkWorkList() {      // 将不同类型的变量进行分类到不同的集合中
+void ColoringRegsAllocator::mkWorkList() {      // 将不同类型的变量进行分类到不同的集合中
     for (auto init: initial_) {
         if (degree_[init] >= k_) {
             spill_work_list_.insert(init);
@@ -235,7 +248,7 @@ void RegsAllocator::mkWorkList() {      // 将不同类型的变量进行分类�
     }
 }
 // 获取一个节点的邻居的集合，具体算法是通过将原冲突图，去掉移除到栈上以及已经合并的部分
-RegsAllocator::OperandSet RegsAllocator::adjacent(MachineOperand *operand) {
+ColoringRegsAllocator::OperandSet ColoringRegsAllocator::adjacent(MachineOperand *operand) {
     OperandSet result = adj_list_[operand];
     for (auto node: select_stack_.set_) {
         result.erase(node);
@@ -247,7 +260,7 @@ RegsAllocator::OperandSet RegsAllocator::adjacent(MachineOperand *operand) {
     return result;
 }
 
-RegsAllocator::InstSet RegsAllocator::nodeMoves(MachineOperand *operand) {
+ColoringRegsAllocator::InstSet ColoringRegsAllocator::nodeMoves(MachineOperand *operand) {
     InstSet tmp_union_set;
     // std::set_union(active_moves_.begin(), active_moves_.end(), worklist_moves_.begin(), worklist_moves_.end(), tmp_union_set.begin());
     for (auto move: active_moves_) {
@@ -266,7 +279,7 @@ RegsAllocator::InstSet RegsAllocator::nodeMoves(MachineOperand *operand) {
     return result;
 }
 
-void RegsAllocator::decrementDegree(MachineOperand *operand) {
+void ColoringRegsAllocator::decrementDegree(MachineOperand *operand) {
     auto degree = degree_[operand];     // let d = degree[m]
     degree_[operand] = degree - 1;      // degree[m] := d - 1
 
@@ -285,7 +298,7 @@ void RegsAllocator::decrementDegree(MachineOperand *operand) {
     }
 }
 
-void RegsAllocator::enableMoves(const OperandSet &operand_set) {
+void ColoringRegsAllocator::enableMoves(const OperandSet &operand_set) {
     for (auto operand: operand_set) {
         auto node_moves = nodeMoves(operand);
         for (auto m: node_moves) {
@@ -297,7 +310,7 @@ void RegsAllocator::enableMoves(const OperandSet &operand_set) {
     }
 }
 
-void RegsAllocator::simplify() {
+void ColoringRegsAllocator::simplify() {
     auto operand = *simplify_work_list_.begin();
     simplify_work_list_.erase(operand);
 
@@ -310,7 +323,7 @@ void RegsAllocator::simplify() {
     }
 }
 
-MachineOperand *RegsAllocator::getAlias(MachineOperand *operand) {
+MachineOperand *ColoringRegsAllocator::getAlias(MachineOperand *operand) {
     if (coalesced_nodes_.count(operand)) {
         assert(alias_.find(operand) != alias_.end());
         return getAlias(alias_[operand]);
@@ -318,18 +331,18 @@ MachineOperand *RegsAllocator::getAlias(MachineOperand *operand) {
     return operand;
 }
 
-void RegsAllocator::addWorkList(MachineOperand *operand) {
+void ColoringRegsAllocator::addWorkList(MachineOperand *operand) {
     if (!isPrecolored(operand) && !moveRelated(operand) && degree_[operand] < k_) {
         freeze_work_list_.erase(operand);
         simplify_work_list_.insert(operand);
     }
 }
 
-bool RegsAllocator::ok(MachineOperand *t, MachineOperand *r) {
+bool ColoringRegsAllocator::ok(MachineOperand *t, MachineOperand *r) {
     return degree_[t] < k_ || isPrecolored(t) || isInAdjSet(t, r);
 }
 
-void RegsAllocator::combine(MachineOperand *u, MachineOperand *v) {
+void ColoringRegsAllocator::combine(MachineOperand *u, MachineOperand *v) {
     if (freeze_work_list_.count(u)) {
         freeze_work_list_.erase(v);
     } else {
@@ -355,7 +368,7 @@ void RegsAllocator::combine(MachineOperand *u, MachineOperand *v) {
     }
 }
 
-bool RegsAllocator::conservative(const OperandSet &nodes) {
+bool ColoringRegsAllocator::conservative(const OperandSet &nodes) {
     int k = 0;
     for (auto node: nodes) {
         if (degree_[node] >= k_) {
@@ -365,7 +378,7 @@ bool RegsAllocator::conservative(const OperandSet &nodes) {
     return k < k_;
 }
 
-void RegsAllocator::coalesce() {
+void ColoringRegsAllocator::coalesce() {
     auto m = *worklist_moves_.begin();
     worklist_moves_.erase(m);
 
@@ -409,21 +422,21 @@ void RegsAllocator::coalesce() {
 
 }
 
-void RegsAllocator::freeze() {
+void ColoringRegsAllocator::freeze() {
     auto u = *freeze_work_list_.begin();
     freeze_work_list_.erase(u);
     simplify_work_list_.insert(u);
     freezeMoves(u);
 }
 
-void RegsAllocator::finishAllocate() {
+void ColoringRegsAllocator::finishAllocate() {
     printf("finish allocate %d\n", allocate_float_);
     if (allocate_float_ || (!allocate_float_ && !needAllocateForFloat())) {
         if ((curr_function_->getStackSize() + spilled_stack_size_) % 8 == 0) {
             spilled_stack_size_ += 4;
         }
         if (curr_function_->getFunctionName() == "main") {
-            printf("the main function stack sub is %d\n", curr_function_->getStackSize() + spilled_stack_size_);
+            printf("the main function stack sub is %d, the spilled stack size is %d\n", curr_function_->getStackSize() + spilled_stack_size_, spilled_stack_size_);
         }
 
         code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_);
@@ -437,7 +450,7 @@ void RegsAllocator::finishAllocate() {
 
 }
 
-void RegsAllocator::freezeMoves(MachineOperand *operand) {
+void ColoringRegsAllocator::freezeMoves(MachineOperand *operand) {
     for (auto m: nodeMoves(operand)) {
         auto move_inst = dynamic_cast<MoveInst *>(m);
         assert(move_inst);
@@ -458,7 +471,7 @@ void RegsAllocator::freezeMoves(MachineOperand *operand) {
     }
 }
 
-void RegsAllocator::selectSpill() {
+void ColoringRegsAllocator::selectSpill() {
     MachineOperand *m = nullptr;          // 采用某种策略选出一个spill的节点
     int32_t min_cost = INT32_MAX;
 
@@ -488,7 +501,7 @@ void RegsAllocator::selectSpill() {
     }
 }
 
-void RegsAllocator::assignColors() {
+void ColoringRegsAllocator::assignColors() {
     while (!select_stack_.empty()) {
         auto node = select_stack_.pop();
 
@@ -521,7 +534,7 @@ void RegsAllocator::assignColors() {
 
 }
 
-void RegsAllocator::rewriteProgram() {
+void ColoringRegsAllocator::rewriteProgram() {
 
     for (auto spill_node: spilled_nodes_) {         // 确定为需要溢出的节点
         already_spilled_.insert(spill_node);            // 插入到已经溢出的队列
@@ -612,7 +625,23 @@ void RegsAllocator::rewriteProgram() {
 }
 
 
-void RegsAllocator::allocate() {
+void ColoringRegsAllocator::allocate(MachineFunction *func) {
+    allocate_float_ = false;
+    k_ = int_regs_set_.size();
+    /*for (auto &func: machine_module_->getMachineFunctions()) {
+        runOnMachineFunction(func.get());
+    }*/
+    runOnMachineFunction(func);
+    k_ = float_regs_set_.size();
+    allocate_float_ = true;
+    /*for (auto &func: machine_module_->getMachineFunctions()) {
+        runOnMachineFunction(func.get());
+    }*/
+    runOnMachineFunction(func);
+
+}
+
+void ColoringRegsAllocator::allocate() {
     allocate_float_ = false;
     k_ = int_regs_set_.size();
     for (auto &func: machine_module_->getMachineFunctions()) {
@@ -623,10 +652,9 @@ void RegsAllocator::allocate() {
     for (auto &func: machine_module_->getMachineFunctions()) {
         runOnMachineFunction(func.get());
     }
-
 }
 
-void RegsAllocator::init() {
+void ColoringRegsAllocator::init() {
     // init the set of regs allocator
     pre_colored_.clear();
     initial_.clear();
@@ -655,7 +683,7 @@ void RegsAllocator::init() {
 
 }
 
-void RegsAllocator::runOnMachineFunction(MachineFunction *function) {
+void ColoringRegsAllocator::runOnMachineFunction(MachineFunction *function) {
     // printf("begin a allcate on a function %d\n", allocate_float_);
     init();
     // printf("analyseLiveness......\n");

@@ -35,10 +35,14 @@ class CastInstruction;
 class VirtualReg;
 
 class RegsAllocator;
+class ColoringRegsAllocator;
+class SimpleRegsAllocator;
 
 class CodeGen {
 public:
-    friend class RegsAllocator;
+    friend class ColoringRegsAllocator;
+
+    friend class SimpleRegsAllocator;
 
     using MachineModulePtr = std::unique_ptr<MachineModule>;
 

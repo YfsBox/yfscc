@@ -101,7 +101,7 @@ std::unordered_set<MachineOperand *> MachineInst::getUses(MachineInst *inst) {
     return uses1;
 }
 
-// 不考虑非Virtual寄存器的话
+
 std::unordered_set<MachineOperand *> MachineInst::getDefs(MachineInst *inst, bool is_float) {
     std::unordered_set<MachineOperand *> operands;
     switch (inst->machine_inst_type_) {

@@ -17,24 +17,71 @@ class MachineDumper;
 
 class RegsAllocator {
 public:
+    using OperandSet = std::unordered_set<MachineOperand *>;
+
+    using InstSet = std::unordered_set<MachineInst *>;
+
+    RegsAllocator(MachineModule *mc_module, CodeGen *codegen): machine_module_(mc_module), code_gen_(codegen) {}
+
+    ~RegsAllocator() = default;
+
+    static void regsAllocate(MachineModule *mc_module, CodeGen *codegen);
+
+    virtual void allocate(MachineFunction *func) = 0;
+
+    virtual void allocate() = 0;
+
+protected:
+
+    virtual void runOnMachineFunction(MachineFunction *function) = 0;
+
+    MachineModule *machine_module_;
+
+    CodeGen *code_gen_;
+
+    MachineFunction *curr_function_;
+
+};
+
+class SimpleRegsAllocator: public RegsAllocator {
+public:
+
+    SimpleRegsAllocator(MachineModule *module, CodeGen *codegen);
+
+    ~SimpleRegsAllocator() = default;
+
+    void allocate(MachineFunction *func) override;
+
+    void allocate() override;
+
+protected:
+
+private:
+
+};
+
+class ColoringRegsAllocator: public RegsAllocator {
+public:
     using BitSet = std::unordered_set<MachineOperand *>;
 
     using BitSetVec = std::unordered_map<MachineBasicBlock *, BitSet>;
 
     using AdjEdge = std::pair<MachineOperand *, MachineOperand *>;
 
-    using OperandSet = std::unordered_set<MachineOperand *>;
+    ColoringRegsAllocator(MachineModule *module, CodeGen *codegen);
 
-    using InstSet = std::unordered_set<MachineInst *>;
+    ~ColoringRegsAllocator() = default;
 
-    RegsAllocator(MachineModule *module, CodeGen *codegen);
+    void allocate(MachineFunction *func) override;
 
-    ~RegsAllocator() = default;
-
-    void allocate();
+    void allocate() override;
 
     // for test
     MachineDumper *dumper_;
+
+protected:
+
+    void runOnMachineFunction(MachineFunction *function) override;
 
 private:
 
@@ -86,8 +133,6 @@ private:
 
     void finishAllocate();
 
-    void runOnMachineFunction(MachineFunction *function);
-
     MachineOperand *getAlias(MachineOperand *operand);
 
     bool isNeedAlloca(MachineOperand *operand) {
@@ -131,12 +176,6 @@ private:
     std::set<MachineReg::Reg> float_regs_set_;
 
     std::set<MachineReg::Reg> int_regs_set_;
-
-    MachineModule *machine_module_;
-
-    CodeGen *code_gen_;
-
-    MachineFunction *curr_function_;
 
     // liveness analysis result
 
