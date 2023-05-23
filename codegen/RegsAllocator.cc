@@ -207,7 +207,7 @@ void ColoringRegsAllocator::analyseLiveness(MachineFunction *function) {        
 
     auto &basic_blocks = function->getMachineBasicBlock();
     size_t basic_blocks_size = basic_blocks.size();
-    printf("begin analyse liveness the vregs num is %d, and basicblock number is %d\n", curr_function_->getVirtualRegs().size(), basic_blocks_size);
+    // printf("begin analyse liveness the vregs num is %d, and basicblock number is %d\n", curr_function_->getVirtualRegs().size(), basic_blocks_size);
 
     for (int i = 0; i < basic_blocks_size; ++i) {
         auto &bb = basic_blocks[i];

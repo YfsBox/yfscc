@@ -94,8 +94,9 @@ void SemanticCheck::addLibFunc() {
 }
 
 bool SemanticCheck::isRedefinedCurrScope(const std::string &id) {
-    auto find_entry = ident_systable_.lookupFromCurrScope(id);
-    return find_entry != nullptr;
+    /*auto find_entry = ident_systable_.lookupFromCurrScope(id);
+    return find_entry != nullptr;*/
+    return false;
 }
 
 inline void SemanticCheck::dumpSymbolTable() const {
@@ -280,6 +281,7 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
         name_set.insert(lib_func.first);
     }
     // 检查该文件中定义过的函数是否有重名的
+    std::shared_ptr<FuncDefine> main_function;
     for (size_t i = 0; i < func_number; ++i) {
         auto func_def = compunit->getFuncDef(i);
         std::string func_name = func_def->id_->getId();
@@ -289,6 +291,7 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
         name_set.insert(func_name);
         func_map_.insert({func_name, func_def});
         if (checkIsValidMain(func_def.get())) {
+            main_function = func_def;
             have_main = true;
         }
     }
@@ -361,7 +364,6 @@ void SemanticCheck::checkVarDefine(const std::shared_ptr<VarDefine> &def, BasicT
     // 首先需要检查的是，在当前作用域之下，有没有重复定义的问题
     bool cancal = false;
     double init_value = 0;
-
     if (!def_id->getDimensionSize()) {      // 非数组
         auto init_expr = def->getInitExpr();
         if (init_expr) {
@@ -606,6 +608,7 @@ void SemanticCheck::visit(const std::shared_ptr<BlockItem> &stmt) {
 
 void SemanticCheck::visit(const std::shared_ptr<AssignStatement> &stmt) {
     // 首先求出左半部分
+    // printf("visit assign epxr, curr function is %s\n", curr_func_scope_->getId()->getId().c_str());
     auto left = stmt->getLeftExpr();
     visit(left);
     auto lval = std::dynamic_pointer_cast<LvalExpr>(left);

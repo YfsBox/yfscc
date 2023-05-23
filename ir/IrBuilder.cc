@@ -944,6 +944,8 @@ void IrBuilder::visit(const std::shared_ptr<VarDeclare> &decl) {
 void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
     Function *function = nullptr;
     std::string call_func_name = expr->getFuncId()->getId();
+    // printf("the function size %d is in module\n", context_->curr_module_->getFuncSize());
+
     for (int i = 0; i < context_->curr_module_->getFuncSize(); ++i) {
         auto func = context_->curr_module_->getFunction(i);
         if (func->getName() == call_func_name) {
@@ -962,9 +964,11 @@ void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
         }
     }
     // 处理参数
-    auto actual_size = expr->getActualSize();
+    int32_t actual_size = expr->getActualSize();
     std::vector<Value *> actuals;
     actuals.reserve(actual_size);
+    assert(function->getArgumentSize() == expr->getActualSize());
+    // printf("the function arg size is %d, the actual size is %d, the function is %s\n", function->getArgumentSize(), expr->getActualSize(), call_func_name.c_str());
     for (int i = 0; i < actual_size; ++i) {
         auto actual = expr->getActual(i);
         auto formal = function->getArgument(i);
@@ -1029,11 +1033,17 @@ void IrBuilder::visit(const std::shared_ptr<CompUnit> &compunit) {
     }
 
     size_t func_size = compunit->getFuncDefNumber();
+    std::shared_ptr<FuncDefine> main_func_def;
     for (int i = 0; i < func_size; ++i) {
         auto func_def = compunit->getFuncDef(i);
+        if (func_def->getId()->getId() == "main") {
+            main_func_def = func_def;
+            continue;
+        }
         visit(std::dynamic_pointer_cast<FuncDefine>(func_def));
     }
 
+    visit(std::dynamic_pointer_cast<FuncDefine>(main_func_def));
     var_symbol_table_.exitScope();
 }
 

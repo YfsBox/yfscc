@@ -38,7 +38,6 @@ int main(int argc, char **argv) {
     // root->dump(std::cout, 0);
     checker->dumpErrorMsg();
 
-
     IrBuilder irbuilder(std::cout, checker->getLibFunctionsMap());
     irbuilder.visit(root);
     irbuilder.dump();
@@ -49,9 +48,6 @@ int main(int argc, char **argv) {
     MachineDumper vmcdumper(codegen.getMCModule(), "yfscc.v.s");
     vmcdumper.dump();
 
-    /*ColoringRegsAllocator reg_alloc(codegen.getMCModule(), &codegen);
-    reg_alloc.dumper_ = &vmcdumper;
-    reg_alloc.allocate();*/
     RegsAllocator::regsAllocate(codegen.getMCModule(), &codegen);
 
     MachineDumper mcdumper(codegen.getMCModule(), "yfscc.s");

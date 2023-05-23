@@ -578,6 +578,12 @@ void CodeGen::visit(CastInstruction *inst) {
 
         addMachineInst(cvt_inst);
     } else {
+        if (src_vreg->getValueType() == MachineOperand::Int) {
+            auto vmov_src_vreg = createVirtualReg(MachineOperand::Float);
+            auto src_vmov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F_I, src_vreg, vmov_src_vreg);
+            addMachineInst(src_vmov_inst);
+            src_vreg = vmov_src_vreg;
+        }
         cvt_dst_vreg = createVirtualReg(MachineOperand::Float);
         cvt_inst = new CvtInst(curr_machine_basic_block_, CvtInst::F2I, cvt_dst_vreg, src_vreg);
         addMachineInst(cvt_inst);
