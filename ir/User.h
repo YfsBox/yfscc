@@ -29,13 +29,17 @@ public:
     void setOperand(Value *value, int idx) {
         if (idx < operand_num_) {
             operands_[idx] = value;
-            value->addUse(this, idx);
+            if (value) {
+                value->addUse(this, idx);
+            }
         }
     }
 
     void addOperand(Value *value) {
         operands_.emplace_back(value);
-        // value->addUse(this, operand_num_);
+        if (value) {
+            value->addUse(this, operand_num_);
+        }
         operand_num_++;
     }
 

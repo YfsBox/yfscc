@@ -6,8 +6,10 @@
 #define YFSCC_VALUE_H
 
 #include <iostream>
+#include <cassert>
 #include <list>
 #include <unordered_map>
+#include <set>
 #include "Use.h"
 
 enum ValueType {
@@ -21,7 +23,7 @@ enum ValueType {
 
 class Value {
 public:
-    using UserMap = std::unordered_map<User *, Use>;
+    using UserMap = std::set<User *>;
 
     Value(ValueType vtype, bool isptr, bool isbool, const std::string &name = ""): name_(name), type_(vtype), is_bool_type_(isbool), is_ptr_(isptr) {}
 
@@ -32,7 +34,8 @@ public:
     Value &operator = (const Value& value) = delete;
 
     void addUse(User *user, int idx) {
-        user_map_[user] = Use(user, idx);
+        assert(user);
+        user_map_.insert(user);
     }
 
     void delUse(User *user) {
