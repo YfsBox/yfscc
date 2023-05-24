@@ -567,7 +567,7 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     auto enter_bb = dynamic_cast<BasicBlock *>(new_bb_value);
     setCurrBasicBlock(enter_bb);
     function->addBasicBlock(enter_bb);
-    // 还需要给参数中对应的变量分配空间????
+
     for (int i = 0; i < formal_size; ++i) {
         auto argument = dynamic_cast<Argument *>(arguments[i]);
         Value *alloca_ptr = nullptr;

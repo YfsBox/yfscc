@@ -59,6 +59,14 @@ public:
         return fvalue_;
     }
 
+    void resetValue(int32_t value) {
+        ivalue_ = value;
+    }
+
+    void resetValue(float value) {
+        fvalue_ = value;
+    }
+
 private:
     bool is_float_;
     union {

@@ -105,7 +105,7 @@ bool CodeGen::isImmNeedSplitMove(int imm_value) {
     return false;
 }
 
-void CodeGen::addPushInst(MachineBasicBlock *basicblock) {
+void CodeGen::addPushInst(MachineBasicBlock *basicblock, std::unordered_set<MachineReg::Reg> *regs) {
     auto push_regs_inst = new PushInst(curr_machine_basic_block_, MachineInst::Int);
     auto push_sreg_inst = new PushInst(curr_machine_basic_block_, MachineInst::Float);
 
@@ -113,23 +113,33 @@ void CodeGen::addPushInst(MachineBasicBlock *basicblock) {
         auto machine_reg = getMachineReg(false, 4 + i);
         auto machine_sreg = getMachineReg(true, 16 + i);
 
-        push_regs_inst->addReg(machine_reg);
-        push_sreg_inst->addReg(machine_sreg);
+        if ((regs && regs->count(machine_reg->getReg())) || !regs) {
+            push_regs_inst->addReg(machine_reg);
+        }
+        if ((regs && regs->count(machine_sreg->getReg())) || !regs) {
+            push_sreg_inst->addReg(machine_sreg);
+        }
     }
 
     for (int i = 0; i < 8; ++i) {
         auto machine_sreg = getMachineReg(true, 24 + i);
-        push_sreg_inst->addReg(machine_sreg);
+        if ((regs && regs->count(machine_sreg->getReg())) || !regs) {
+            push_sreg_inst->addReg(machine_sreg);
+        }
     }
 
     push_regs_inst->addReg(module_->getMachineReg(MachineReg::lr));
     push_sreg_inst->setValueType(MachineInst::Float);
 
-    basicblock->addFrontInstruction(push_regs_inst);
-    basicblock->addFrontInstruction(push_sreg_inst);
+    if (push_regs_inst->getRegsSize()) {
+        basicblock->addFrontInstruction(push_regs_inst);
+    }
+    if (push_sreg_inst->getRegsSize()) {
+        basicblock->addFrontInstruction(push_sreg_inst);
+    }
 }
 
-void CodeGen::addPopInst(MachineBasicBlock *basicblock) {
+void CodeGen::addPopInst(MachineBasicBlock *basicblock, std::unordered_set<MachineReg::Reg> *regs) {
     auto pop_regs_inst = new PopInst(curr_machine_basic_block_, MachineInst::Int);
     auto pop_sreg_inst = new PopInst(curr_machine_basic_block_, MachineInst::Float);
 
@@ -137,20 +147,30 @@ void CodeGen::addPopInst(MachineBasicBlock *basicblock) {
         auto machine_reg = getMachineReg(false, 4 + i);
         auto machine_sreg = getMachineReg(true, 16 + i);
 
-        pop_regs_inst->addReg(machine_reg);
-        pop_sreg_inst->addReg(machine_sreg);
+        if ((regs && regs->count(machine_reg->getReg())) || !regs) {
+            pop_regs_inst->addReg(machine_reg);
+        }
+        if ((regs && regs->count(machine_sreg->getReg())) || !regs) {
+            pop_sreg_inst->addReg(machine_sreg);
+        }
     }
 
     for (int i = 0; i < 8; ++i) {
         auto machine_sreg = getMachineReg(true, 24 + i);
-        pop_sreg_inst->addReg(machine_sreg);
+        if ((regs && regs->count(machine_sreg->getReg())) || !regs) {
+            pop_sreg_inst->addReg(machine_sreg);
+        }
     }
 
     pop_regs_inst->addReg(module_->getMachineReg(MachineReg::lr));
     pop_sreg_inst->setValueType(MachineInst::Float);
 
-    basicblock->addInstruction(pop_regs_inst);
-    basicblock->addInstruction(pop_sreg_inst);
+    if (pop_regs_inst->getRegsSize()) {
+        basicblock->addInstruction(pop_regs_inst);
+    }
+    if (pop_sreg_inst->getRegsSize()) {
+        basicblock->addInstruction(pop_sreg_inst);
+    }
 }
 
 void CodeGen::visit(Module *module) {
@@ -309,6 +329,7 @@ void CodeGen::visit(Function *function) {
         LoadInst *load_inst;
         int32_t offset_cnt = args_onstack_cnt - i - 1;
         load_inst = new LoadInst(nullptr, vreg, fp_reg_, new ImmNumber(push_regs_offset_ + 4 * offset_cnt));
+        curr_machine_function_->addLoadArgsInst(load_inst);
         args_load_insts.push_back(load_inst);
     }
 
@@ -339,35 +360,10 @@ void CodeGen::visit(Function *function) {
         enter_basicblock->addFrontInstruction(mov_inst);
     }
 
-    /*std::vector<MachineInst *> moves;
-    enter_basicblock->addFrontInstruction(new BinaryInst(enter_basicblock, BinaryInst::ISub, sp_reg_, sp_reg_, getImmOperandInBinary(mov_stack_offset, enter_basicblock, &moves)));
-    assert(moves.size() == 2 || moves.empty());
-    if (!moves.empty()) {
-        enter_basicblock->addFrontInstruction(moves[1]);
-        enter_basicblock->addFrontInstruction(moves[0]);        // 低
-    }
-
-    enter_basicblock->addFrontInstruction(new MoveInst(enter_basicblock, sp_reg_, fp_reg_));
-
-    addPushInst(enter_basicblock);
-
-    for (int i = 0; i < curr_machine_function_->getExitBasicBlockSize(); ++i) {
-        auto exit_basicblock = curr_machine_function_->getExitBasicBlock(i);
-        exit_basicblock->addInstruction(new BinaryInst(exit_basicblock, BinaryInst::IAdd, sp_reg_, sp_reg_, getImmOperandInBinary(mov_stack_offset, exit_basicblock)));
-        exit_basicblock->addInstruction(new MoveInst(exit_basicblock, fp_reg_, sp_reg_));
-
-        addPopInst(exit_basicblock);
-
-        auto bx_inst = new BranchInst(exit_basicblock, lr_reg_, BranchInst::BrNoCond, BranchInst::Bx);
-        exit_basicblock->addInstruction(bx_inst);
-    }
-
-    curr_machine_function_->setStackSize(stack_offset_);*/
-    // addInstAboutStack(curr_machine_function_, stack_offset_);
     curr_machine_function_->setStackSize(stack_offset_);
 }
 
-void CodeGen::addInstAboutStack(MachineFunction *function, int32_t offset) {
+void CodeGen::addInstAboutStack(MachineFunction *function, int32_t offset, std::unordered_set<MachineReg::Reg> *regs) {
     std::vector<MachineInst *> moves;
     auto enter_block = function->getEnterBasicBlock();
     enter_block->addFrontInstruction(new BinaryInst(enter_block, BinaryInst::ISub, sp_reg_, sp_reg_, getImmOperandInBinary(offset, enter_block, &moves)));
@@ -377,12 +373,12 @@ void CodeGen::addInstAboutStack(MachineFunction *function, int32_t offset) {
         enter_block->addFrontInstruction(moves[0]);        // 低
     }
     enter_block->addFrontInstruction(new MoveInst(enter_block, sp_reg_, fp_reg_));
-    addPushInst(enter_block);
+    addPushInst(enter_block, regs);
     for (int i = 0; i < function->getExitBasicBlockSize(); ++i) {
         auto exit_basicblock = function->getExitBasicBlock(i);
         exit_basicblock->addInstruction(new BinaryInst(exit_basicblock, BinaryInst::IAdd, sp_reg_, sp_reg_, getImmOperandInBinary(offset, exit_basicblock)));
         exit_basicblock->addInstruction(new MoveInst(exit_basicblock, fp_reg_, sp_reg_));
-        addPopInst(exit_basicblock);
+        addPopInst(exit_basicblock, regs);
         auto bx_inst = new BranchInst(exit_basicblock, lr_reg_, BranchInst::BrNoCond, BranchInst::Bx);
         exit_basicblock->addInstruction(bx_inst);
     }

@@ -563,12 +563,6 @@ void ColoringRegsAllocator::freeze() {
 }
 
 void ColoringRegsAllocator::finishAllocate() {
-    if (allocate_float_ || (!allocate_float_ && !needAllocateForFloat())) {
-        if ((curr_function_->getStackSize() + spilled_stack_size_) % 8 == 0) {
-            spilled_stack_size_ += 4;
-        }
-        code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_);
-    }
 
     for (auto &[reg, color]: color_) {
         if (auto vreg = dynamic_cast<VirtualReg *>(reg); vreg) {
@@ -611,6 +605,46 @@ void ColoringRegsAllocator::finishAllocate() {
         }
     }
 
+    if (allocate_float_ || (!allocate_float_ && !needAllocateForFloat())) {
+        if ((curr_function_->getStackSize() + spilled_stack_size_) % 8 == 0) {
+            spilled_stack_size_ += 4;
+        }
+
+        std::unordered_set<MachineReg::Reg> pushed_regs_set;
+        for (auto &bb : curr_function_->getMachineBasicBlock()) {
+            for (auto &inst: bb->getInstructionList()) {
+                if (inst->getMachineInstType() == MachineInst::Branch) {
+                    continue;
+                }
+                auto defs = MachineInst::getDefs(inst.get());
+                for (auto def: defs) {
+                    MachineReg::Reg reg = MachineReg::Reg::undef;
+                    if (auto vreg = dynamic_cast<VirtualReg *>(def); vreg) {
+                        reg = vreg->getColoredReg();
+                    } else if (auto mreg = dynamic_cast<MachineReg *>(def); mreg) {
+                        reg = mreg->getReg();
+                    }
+                    // 4,5,6,7  8,9,10,11
+                    if (reg != MachineReg::Reg::undef && ((reg >= MachineReg::s16 && reg <= MachineReg::s31)|| (reg >= MachineReg::r4 && reg <= MachineReg::r11))) {
+                        pushed_regs_set.insert(reg);
+                    }
+                }
+            }
+        }
+        pushed_regs_set.insert(MachineReg::fp);
+        int32_t pushed_regs_offset = (pushed_regs_set.size() + 1) * 4;      // 算上lr寄存器(+1)
+
+        for (auto inst : curr_function_->getLoadArgsInsts()) {
+            auto load_inst = dynamic_cast<LoadInst *>(inst);
+            assert(load_inst);
+            auto imm_offset = dynamic_cast<ImmNumber*>(load_inst->getOffset());
+            assert(imm_offset);
+            auto gap = CodeGen::push_regs_offset_ - pushed_regs_offset;
+            imm_offset->resetValue(imm_offset->getIValue() - gap);
+        }
+
+        code_gen_->addInstAboutStack(curr_function_, curr_function_->getStackSize() + spilled_stack_size_, &pushed_regs_set);
+    }
 }
 
 void ColoringRegsAllocator::freezeMoves(MachineOperand *operand) {

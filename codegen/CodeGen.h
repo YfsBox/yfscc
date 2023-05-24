@@ -106,17 +106,17 @@ public:
 
     MachineOperand *getImmOperandInBinary(int32_t value, MachineBasicBlock *bb, std::vector<MachineInst *> *moves = nullptr, bool is_float = false, bool *use_ip_base = nullptr, bool is_simple_ralloc = false);
 
-    void addInstAboutStack(MachineFunction *function, int32_t offset);
+    void addInstAboutStack(MachineFunction *function, int32_t offset, std::unordered_set<MachineReg::Reg> *regs = nullptr);
 
     void addRetBranchInExitBlocks(MachineFunction *function);
 
-    void addPushInst(MachineBasicBlock *basicblock);
+    void addPushInst(MachineBasicBlock *basicblock, std::unordered_set<MachineReg::Reg> *regs = nullptr);
 
-    void addPopInst(MachineBasicBlock *basicblock);
-
-private:
+    void addPopInst(MachineBasicBlock *basicblock, std::unordered_set<MachineReg::Reg> *regs = nullptr);
 
     static constexpr const int push_regs_offset_ = 100;
+
+private:
 
     int moveStackOffset(int offset) {
         stack_offset_ += offset;

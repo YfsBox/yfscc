@@ -209,6 +209,14 @@ public:
         return stack_size_;
     }
 
+    void addLoadArgsInst(MachineInst *inst) {
+        load_args_insts_.push_back(inst);
+    }
+
+    std::vector<MachineInst *> &getLoadArgsInsts() {
+        return load_args_insts_;
+    }
+
 private:
     int32_t stack_size_;
 
@@ -223,6 +231,8 @@ private:
     std::vector<MachineBasicBlockPtr> basic_blocks_;
 
     std::unordered_set<MachineOperand *> virtual_regs_;
+
+    std::vector<MachineInst *> load_args_insts_;
 
 };
 
