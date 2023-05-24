@@ -576,6 +576,41 @@ void ColoringRegsAllocator::finishAllocate() {
         }
     }
 
+    for (auto &bb: curr_function_->getMachineBasicBlock()) {
+        auto &inst_list = bb->getInstructionListNonConst();
+        for (auto inst_it = inst_list.begin(); inst_it != inst_list.end();) {
+            auto inst = inst_it->get();
+            auto mov_inst = dynamic_cast<MoveInst *>(inst);
+            if (mov_inst && (mov_inst->getMoveType() == MoveInst::F2F || mov_inst->getMoveType() == MoveInst::I2I)) {
+                assert(mov_inst);
+                MachineReg::Reg src_mreg, dst_mreg;
+                auto src_reg = mov_inst->getSrc();
+                auto dst_reg = mov_inst->getDst();
+                if (!isNeedAlloca(src_reg) || !isNeedAlloca(dst_reg)) {
+                    ++inst_it;
+                    continue;
+                }
+                if (src_reg->getOperandType() == MachineOperand::MachineReg) {
+                    src_mreg = dynamic_cast<MachineReg *>(src_reg)->getReg();
+                } else if (src_reg->getOperandType() == MachineOperand::VirtualReg) {
+                    src_mreg = dynamic_cast<VirtualReg *>(src_reg)->getColoredReg();
+                }
+
+                if (dst_reg->getOperandType() == MachineOperand::MachineReg) {
+                    dst_mreg = dynamic_cast<MachineReg *>(dst_reg)->getReg();
+                } else if (dst_reg->getOperandType() == MachineOperand::VirtualReg) {
+                    dst_mreg = dynamic_cast<VirtualReg *>(dst_reg)->getColoredReg();
+                }
+
+                if (dst_mreg == src_mreg) {
+                    inst_list.erase(inst_it++);
+                    continue;
+                }
+            }
+            ++inst_it;
+        }
+    }
+
 }
 
 void ColoringRegsAllocator::freezeMoves(MachineOperand *operand) {
