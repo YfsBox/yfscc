@@ -4,6 +4,7 @@
 #include "common/Utils.h"
 #include "ir/IrBuilder.h"
 #include "ir/Module.h"
+#include "opt/CollectUsedGlobals.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -41,6 +42,13 @@ int main(int argc, char **argv) {
     IrBuilder irbuilder(std::cout, checker->getLibFunctionsMap());
     irbuilder.visit(root);
     irbuilder.dump();
+
+    PassManager pass_manager(irbuilder.getIrModule());
+    CollectUsedGlobals globals_collector(irbuilder.getIrModule());
+    pass_manager.addPass(&globals_collector);
+
+
+    pass_manager.run();
 
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();

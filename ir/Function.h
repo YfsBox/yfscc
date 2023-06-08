@@ -10,12 +10,14 @@
 #include <cassert>
 #include <vector>
 #include <list>
+#include <unordered_set>
 #include "Value.h"
 #include "Argument.h"
 #include "../common/Types.h"
 
 class Module;
 class BasicBlock;
+class GlobalVariable;
 
 class Function: public Value {
 public:
@@ -56,12 +58,21 @@ public:
         return blocks_;
     }
 
+    void addUsedGlobal(GlobalVariable *global) {
+        used_globals_.insert(global);
+    }
+
+    std::unordered_set<GlobalVariable *> getUsedGlobals() {
+        return used_globals_;
+    }
+
     void bindBasicBlocks();
 
 private:
     Module *parent_;
     BasicType ret_type_;
     std::vector<ArgumentPtr> arguments_;
+    std::unordered_set<GlobalVariable *> used_globals_;
     std::list<BasicBlockPtr> blocks_;
 };
 

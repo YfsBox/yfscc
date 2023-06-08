@@ -1,2 +1,2 @@
-add_executable(dumpast_test dumpast_test.cc ../common/Utils.cc)
+add_executable(dumpast_test ../common/Utils.cc)
 target_link_libraries(dumpast_test gtest pthread)

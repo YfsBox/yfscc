@@ -12,7 +12,7 @@ set(CXX_FLAGS
         -D_PTHREADS
         -Wno-unused-parameter
         -Wno-unreachable
-        -O3
+        -O2
         )
 
 set(FRONTEND_SRC
@@ -34,6 +34,10 @@ set(FRONTEND_SRC
         ir/IrDumper.cc
 )
 
+set(IROPT_SRC
+        opt/CollectUsedGlobals.cc
+)
+
 set(BACKEND_SRC
         codegen/CodeGen.cc
         codegen/Machine.cc
@@ -44,10 +48,12 @@ set(BACKEND_SRC
 )
 
 add_library(frontend ${FRONTEND_SRC})
+add_library(iropt ${IROPT_SRC})
+target_link_libraries(iropt frontend)
 add_library(backend ${BACKEND_SRC})
 target_link_libraries(backend frontend)
 
 
 
 add_executable(yfscc main.cpp)
-target_link_libraries(yfscc backend)
+target_link_libraries(yfscc iropt backend)

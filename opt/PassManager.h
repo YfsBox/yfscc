@@ -15,7 +15,7 @@ public:
 
     friend class PassManager;
 
-    Pass(Module *module);
+    Pass(Module *module): module_(module) {}
 
     virtual ~Pass() = default;
 

@@ -137,6 +137,8 @@ private:
         curr_machine_basic_block_->addInstruction(inst);
     }
 
+    void initForGlobals(Function *func, std::vector<MachineInst *> &move_insts);
+
     MachineOperand *getCmpReusltInOperand(SetCondInstruction *set_cond_inst);
 
     MachineReg *getMachineReg(bool isfloat, int reg_no);
@@ -147,13 +149,15 @@ private:
 
     MachineOperand *constant2VirtualReg(int32_t const_value, bool can_be_imm);
 
-    MachineOperand *loadGlobalVarAddr(GlobalVariable *global);
+    MachineOperand *loadGlobalVarAddr(GlobalVariable *global, std::vector<MachineInst *> &move_insts);
 
     MachineOperand *value2MachineOperand(Value *value, bool can_be_imm, bool *is_float = nullptr);
 
     int virtual_reg_id_;
 
     int stack_offset_;
+
+    std::unordered_map<GlobalVariable*, MachineOperand *> curr_used_globals_;
 
     MachineOperand *sp_reg_;
 
