@@ -22,6 +22,17 @@ BinaryOpInstruction::BinaryOpInstruction(InstructionType type, BasicType basic_t
     addOperand(right);
 }
 
+std::vector<Value *> BinaryOpInstruction::getUses() {
+    std::vector<Value *> results;
+    if (getLeft()->getValueType() != ConstantValue) {
+        results.push_back(getLeft());
+    }
+    if (getRight()->getValueType() != ConstantValue) {
+        results.push_back(getRight());
+    }
+    return results;
+}
+
 Value *BinaryOpInstruction::getLeft() const {
     return getOperand(0);
 }
@@ -41,6 +52,14 @@ Value *UnaryOpInstruction::getValue() const {
     return getOperand(0);
 }
 
+std::vector<Value *> UnaryOpInstruction::getUses() {
+    std::vector<Value *> results;
+    if (getValue()->getValueType() != ConstantValue) {
+        results.push_back(getValue());
+    }
+    return results;
+}
+
 UnaryOpInstruction::~UnaryOpInstruction() = default;
 
 StoreInstruction::StoreInstruction(BasicBlock *block, BasicType basic_type, Value *value, Value *ptr, const std::string &name):
@@ -50,6 +69,17 @@ StoreInstruction::StoreInstruction(BasicBlock *block, BasicType basic_type, Valu
 }
 
 StoreInstruction::~StoreInstruction() = default;
+
+std::vector<Value *> StoreInstruction::getUses() {
+    std::vector<Value *> results;
+    if (getValue()->getValueType() == ConstantValue) {
+        results.push_back(getValue());
+    }
+    if (getPtr()->getValueType() == ConstantValue) {
+        results.push_back(getPtr());
+    }
+    return results;
+}
 
 LoadInstruction::LoadInstruction(BasicBlock *block, BasicType basic_type, Value *ptr, BasicType type, const std::string &name):
         Instruction(InstructionType::LoadType, basic_type, false, false, block, name){
@@ -61,6 +91,13 @@ LoadInstruction::~LoadInstruction() = default;
 
 Value *LoadInstruction::getPtr() const {
     return getOperand(0);
+}
+
+std::vector<Value *> LoadInstruction::getUses() {
+    if (getPtr()->getValueType() != ConstantValue) {
+        return {getPtr()};
+    }
+    return {};
 }
 
 bool LoadInstruction::isFromSecondaryPtr() const {
@@ -100,6 +137,10 @@ AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, bool isp
 
 }
 
+std::vector<Value *> AllocaInstruction::getUses() {
+    return {};
+}
+
 AllocaInstruction::~AllocaInstruction() = default;
 
 
@@ -110,6 +151,17 @@ CallInstruction::CallInstruction(BasicBlock *block, Function *function, std::vec
     for (auto value : actuals) {
         addOperand(value);
     }
+}
+
+std::vector<Value *> CallInstruction::getUses() {
+    std::vector<Value *> results;
+    for (int i = 0; i < getOperandNum(); ++i) {
+        auto operand = getOperand(i);
+        if (operand->getValueType() != ConstantValue) {
+            results.push_back(operand);
+        }
+    }
+    return results;
 }
 
 CallInstruction::~CallInstruction() = default;
@@ -123,6 +175,14 @@ RetInstruction::RetInstruction(BasicBlock *block, const std::string &name):
 RetInstruction::RetInstruction(BasicBlock *block, BasicType basic_type, Value *value, const std::string &name):
         Instruction(InstructionType::RetType, basic_type, false, false, block, name){
     addOperand(value);
+}
+
+std::vector<Value *> RetInstruction::getUses() {
+    std::vector<Value *> results;
+    if (getRetValue() != nullptr && getRetValue()->getValueType() != ConstantValue) {
+        results.push_back(getRetValue());
+    }
+    return results;
 }
 
 RetInstruction::~RetInstruction() = default;
@@ -142,6 +202,13 @@ BranchInstruction::BranchInstruction(BasicBlock *block, Value *cond, Value *true
     addOperand(false_label);
 }
 
+std::vector<Value *> BranchInstruction::getUses() {
+    if (is_cond_) {
+        return {getCond()};
+    }
+    return {};
+}
+
 BranchInstruction::~BranchInstruction() = default;
 
 SetCondInstruction::SetCondInstruction(BasicBlock *block, CmpCondType cmptype, bool is_float, Value *left, Value *right,
@@ -153,6 +220,14 @@ SetCondInstruction::SetCondInstruction(BasicBlock *block, CmpCondType cmptype, b
     addOperand(right);
 }
 
+std::vector<Value *> SetCondInstruction::getUses() {
+    std::vector<Value *> results;
+    results.reserve(2);
+    results.push_back(getLeft());
+    results.push_back(getRight());
+    return results;
+}
+
 SetCondInstruction::~SetCondInstruction() = default;
 
 CastInstruction::CastInstruction(BasicBlock *block, bool is_i2f, Value *value, const std::string &name):
@@ -162,6 +237,11 @@ CastInstruction::CastInstruction(BasicBlock *block, bool is_i2f, Value *value, c
         is_i2f_(is_i2f) {
     addOperand(value);
 }
+
+std::vector<Value *> CastInstruction::getUses() {
+    return {getValue()};
+}
+
 
 CastInstruction::~CastInstruction() = default;
 
@@ -175,6 +255,10 @@ PhiInstruction::PhiInstruction(BasicBlock *block, BasicType basic_type, const st
     for (auto bb : bbs) {
         addOperand(bb);
     }
+}
+
+std::vector<Value *> PhiInstruction::getUses() {
+    return {};
 }
 
 PhiInstruction::~PhiInstruction() = default;
@@ -202,6 +286,17 @@ GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *base, 
     for (auto value : indexes) {
         addOperand(value);
     }
+}
+
+std::vector<Value *> GEPInstruction::getUses() {
+    std::vector<Value *> results;
+    for (int i = 0; i < getOperandNum(); ++i) {
+        auto operand = getOperand(i);
+        if (operand->getValueType() != ConstantValue) {
+            results.push_back(operand);
+        }
+    }
+    return results;
 }
 
 GEPInstruction::~GEPInstruction() = default;
@@ -234,11 +329,33 @@ MemSetInstruction::MemSetInstruction(BasicBlock *block, BasicType btype, Value *
     addOperand(value);
 }
 
+std::vector<Value *> MemSetInstruction::getUses() {
+    std::vector<Value *> results;
+    if (getBase()->getValueType() != ConstantValue) {
+        results.push_back(getBase());
+    }
+    if (getSize()->getValueType() != ConstantValue) {
+        results.push_back(getSize());
+    }
+    if (getValue()->getValueType() != ConstantValue) {
+        results.push_back(getValue());
+    }
+    return results;
+}
+
 MemSetInstruction::~MemSetInstruction() = default;
 
 ZextInstruction::ZextInstruction(BasicBlock *block, Value *left, const std::string &name):
         Instruction(InstructionType::ZextType, BasicType::INT_BTYPE, false, false, block, name){
     addOperand(left);
+}
+
+std::vector<Value *> ZextInstruction::getUses() {
+    std::vector<Value *> results;
+    if (getValue()->getValueType() != ConstantValue) {
+        results.push_back(getValue());
+    }
+    return results;
 }
 
 ZextInstruction::~ZextInstruction() = default;

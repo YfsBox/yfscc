@@ -1,0 +1,2 @@
+/usr/bin/ar qc libiropt.a  CMakeFiles/iropt.dir/opt/CollectUsedGlobals.cc.o CMakeFiles/iropt.dir/opt/DataflowAnalysis.cc.o
+/usr/bin/ranlib libiropt.a

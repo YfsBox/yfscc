@@ -6,9 +6,9 @@
 #define YFSCC_INSTRUCTION_H
 
 #include "User.h"
+#include "Function.h"
 #include "../common/Types.h"
 
-class Function;
 
 enum InstructionType {
     RetType,
@@ -55,6 +55,12 @@ public:
         return basic_type_;
     }
 
+    virtual std::vector<Value *> getUses() = 0;
+
+    virtual std::vector<Value *> getDefs() {
+        return {this};
+    }
+
 protected:
     BasicType basic_type_;
     InstructionType inst_type_;
@@ -71,6 +77,8 @@ public:
 
     Value *getRight() const;
 
+    std::vector<Value *> getUses() override;
+
 private:
 };
 
@@ -81,6 +89,8 @@ public:
     ~UnaryOpInstruction();
 
     Value *getValue() const;
+
+    std::vector<Value *> getUses() override;
 
 private:
 };
@@ -98,6 +108,13 @@ public:
     Value *getPtr() const {
         return getOperand(1);
     }
+
+    std::vector<Value *> getUses() override;
+
+    std::vector<Value *> getDefs() override {
+        return {};
+    }
+
 private:
 };
 
@@ -114,6 +131,8 @@ public:
     const std::vector<int32_t> &getArrayDimensionSize() const;
 
     void setArrayDimension();
+
+    std::vector<Value *> getUses() override;
 
 private:
     std::vector<int32_t> array_dimension_number_;
@@ -155,6 +174,8 @@ public:
         return array_dimension_size_;
     }
 
+    std::vector<Value *> getUses() override;
+
 private:
     bool is_ptr_ptr_;
     std::vector<int32_t> array_dimension_size_;
@@ -179,6 +200,13 @@ public:
     bool isRetVoid() const {
         return getOperandNum() == 0;
     }
+
+    std::vector<Value *> getUses() override;
+
+    std::vector<Value *> getDefs() override {
+        return {};
+    }
+
 private:
 
 };
@@ -235,6 +263,12 @@ public:
         }
     }
 
+    std::vector<Value *> getUses() override;
+
+    std::vector<Value *> getDefs() override {
+        return {};
+    }
+
 private:
     bool is_cond_;
 };
@@ -256,6 +290,16 @@ public:
     Value *getActual(int idx) const {
         return getOperand(idx);
     }
+
+    std::vector<Value *> getUses() override;
+
+    std::vector<Value *> getDefs() override {
+        if (function_->getRetType() == FLOAT_BTYPE || function_->getRetType() == INT_BTYPE) {
+            return {this};
+        }
+        return {};
+    }
+
 private:
     Function *function_;
 };
@@ -291,8 +335,11 @@ public:
         return getOperand(1);
     }
 
+    std::vector<Value *> getUses() override;
+
 private:
     bool is_float_;
+
     CmpCondType cmp_cond_type_;
 };
 
@@ -316,6 +363,8 @@ public:
         return getOperandNum() / 2;
     }
 
+    std::vector<Value *> getUses() override;
+
 private:
 };
 
@@ -338,6 +387,8 @@ public:
         return getOperand(0);
     }
 
+    std::vector<Value *> getUses() override;
+
 private:
     bool is_i2f_;
 };
@@ -356,10 +407,7 @@ public:
     }
 
     Value *getOffset() const {
-        // if (is_ptr_offset_) {
-            return getOperand(1);
-        //}
-        //return nullptr;
+        return getOperand(1);
     }
 
     bool isPtrOffset() const {
@@ -367,17 +415,11 @@ public:
     }
 
     size_t getIndexSize() const {
-        // if (!is_ptr_offset_) {
-           return getOperandNum() - 1;
-        //}
-        // return 0;
+        return getOperandNum() - 1;
     }
 
     Value *getIndexValue(int idx) const {
-        // if (!is_ptr_offset_) {
-            return getOperand(idx + 1);
-        //}
-        // return nullptr;
+        return getOperand(idx + 1);
     }
 
     void setArrayDimension();
@@ -386,8 +428,11 @@ public:
         return array_dimension_numbers_;
     }
 
+    std::vector<Value *> getUses() override;
+
 private:
     bool is_ptr_offset_;       // 如果是指向数组的指针或者普通指针
+
     std::vector<int32_t> array_dimension_numbers_;
 };
 
@@ -409,6 +454,12 @@ public:
         return getOperand(2);
     }
 
+    std::vector<Value *> getUses() override;
+
+    std::vector<Value *> getDefs() {
+        return {};
+    }
+
 private:
 };
 
@@ -421,6 +472,9 @@ public:
     Value *getValue() const {
         return getOperand(0);
     }
+
+    std::vector<Value *> getUses() override;
+
 private:
 };
 

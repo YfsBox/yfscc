@@ -1,0 +1,16 @@
+problem:
+
+# hidden: 29, 30, 39 死循环
+
+arm-linux-gnueabihf-gcc -march=armv7-a yfscc.s ../libsysy_armv7l.a -static -o test_o
+qemu-arm-static test_o < ../test/test_files/performance/01_mm3.in   ; echo $?
+
+00:10.28s           H: 9.51s
+01:8.75s            H: 5.6s
+02:5.83s            H: 4.99s
+sort3:12.86s        H: 11.81s
+sort2:63.64s        H: 59.67s
+sort1:4.40s         H: 4.95s
+spmv3:4.36s         H: 3.13s
+conv2:29.98s        H: 28.95s
+ff2:40.74347s       H: 40.93s

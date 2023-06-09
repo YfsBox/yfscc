@@ -36,6 +36,7 @@ set(FRONTEND_SRC
 
 set(IROPT_SRC
         opt/CollectUsedGlobals.cc
+        opt/DataflowAnalysis.cc
 )
 
 set(BACKEND_SRC
