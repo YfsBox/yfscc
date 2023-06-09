@@ -35,6 +35,7 @@ set(FRONTEND_SRC
 )
 
 set(IROPT_SRC
+        opt/PassManager.cc
         opt/CollectUsedGlobals.cc
         opt/DataflowAnalysis.cc
 )

@@ -13,7 +13,10 @@ public:
 
     ~CollectUsedGlobals() = default;
 
-    void run() override;
+protected:
+
+    void runOnFunction() override;
+
 private:
 };
 

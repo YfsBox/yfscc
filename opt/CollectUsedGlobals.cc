@@ -6,19 +6,16 @@
 #include "../ir/BasicBlock.h"
 #include "CollectUsedGlobals.h"
 
-void CollectUsedGlobals::run() {
-    for (int i = 0; i < module_->getFuncSize(); ++i) {
-        auto curr_func = module_->getFunction(i);
-        for (auto &curr_bb: curr_func->getBlocks()) {
-            for (auto &curr_inst : curr_bb->getInstructionList()) {
-                for (int k = 0; k < curr_inst->getOperandNum(); ++k) {
-                    auto operand = curr_inst->getOperand(k);
-                    if (auto global = dynamic_cast<GlobalVariable *>(operand); global) {
-                        curr_func->addUsedGlobal(global);
-                    }
+void CollectUsedGlobals::runOnFunction() {
+    auto curr_func = curr_func_;
+    for (auto &curr_bb: curr_func->getBlocks()) {
+        for (auto &curr_inst : curr_bb->getInstructionList()) {
+            for (int k = 0; k < curr_inst->getOperandNum(); ++k) {
+                auto operand = curr_inst->getOperand(k);
+                if (auto global = dynamic_cast<GlobalVariable *>(operand); global) {
+                    curr_func->addUsedGlobal(global);
                 }
             }
         }
     }
-    // for test
 }

@@ -15,14 +15,19 @@ public:
 
     friend class PassManager;
 
-    Pass(Module *module): module_(module) {}
+    explicit Pass(Module *module): module_(module), curr_func_(nullptr) {}
 
     virtual ~Pass() = default;
 
-    virtual void run() = 0;
+    void run();
 
 protected:
+
+    virtual void runOnFunction() = 0;
+
     Module *module_;
+
+    Function *curr_func_;
 };
 
 class PassManager {
