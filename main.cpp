@@ -3,8 +3,10 @@
 #include "common/Ast.h"
 #include "common/Utils.h"
 #include "ir/IrBuilder.h"
+#include "ir/IrDumper.h"
 #include "ir/Module.h"
 #include "opt/CollectUsedGlobals.h"
+#include "opt/DeadCodeElim.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -41,14 +43,21 @@ int main(int argc, char **argv) {
 
     IrBuilder irbuilder(std::cout, checker->getLibFunctionsMap());
     irbuilder.visit(root);
-    irbuilder.dump();
+    // irbuilder.dump();
 
-    PassManager pass_manager(irbuilder.getIrModule());
-    CollectUsedGlobals globals_collector(irbuilder.getIrModule());
+    auto ir_module = irbuilder.getIrModule();
+
+    PassManager pass_manager(ir_module);
+
+    CollectUsedGlobals globals_collector(ir_module);
     pass_manager.addPass(&globals_collector);
 
+    DeadCodeElim dead_code_elim(ir_module);
+    dead_code_elim.irdumper_ = new IrDumper(std::cout);
+    pass_manager.addPass(&dead_code_elim);
 
     pass_manager.run();
+    irbuilder.dump();
 
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();

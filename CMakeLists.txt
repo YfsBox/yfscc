@@ -38,6 +38,7 @@ set(IROPT_SRC
         opt/PassManager.cc
         opt/CollectUsedGlobals.cc
         opt/DataflowAnalysis.cc
+        opt/DeadCodeElim.cc
 )
 
 set(BACKEND_SRC

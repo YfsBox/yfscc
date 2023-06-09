@@ -27,6 +27,8 @@ class CallInstruction;
 class ZextInstruction;
 class Argument;
 class CastInstruction;
+class Constant;
+class ConstantArray;
 
 class IrDumper {
 public:

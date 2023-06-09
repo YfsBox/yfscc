@@ -12,6 +12,7 @@
 class Value;
 class Function;
 class BasicBlock;
+class IrDumper;
 
 class LivenessAnalysis {
 public:
@@ -25,13 +26,15 @@ public:
 
     void analysis();
 
-    BitSetMap getLiveInSet() const {
+    BitSetMap &getLiveInSet() {
         return live_in_;
     }
 
-    BitSetMap getLiveOutSet() const {
+    BitSetMap &getLiveOutSet() {
         return live_out_;
     }
+
+    IrDumper *irdumper_;
 
 private:
     static bool isEqual(const BitSet& left, const BitSet &right);

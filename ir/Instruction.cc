@@ -72,10 +72,10 @@ StoreInstruction::~StoreInstruction() = default;
 
 std::vector<Value *> StoreInstruction::getUses() {
     std::vector<Value *> results;
-    if (getValue()->getValueType() == ConstantValue) {
+    if (getValue()->getValueType() != ConstantValue) {
         results.push_back(getValue());
     }
-    if (getPtr()->getValueType() == ConstantValue) {
+    if (getPtr()->getValueType() != ConstantValue) {
         results.push_back(getPtr());
     }
     return results;
@@ -223,8 +223,12 @@ SetCondInstruction::SetCondInstruction(BasicBlock *block, CmpCondType cmptype, b
 std::vector<Value *> SetCondInstruction::getUses() {
     std::vector<Value *> results;
     results.reserve(2);
-    results.push_back(getLeft());
-    results.push_back(getRight());
+    if (getLeft()->getValueType() != ConstantValue) {
+        results.push_back(getLeft());
+    }
+    if (getRight()->getValueType() != ConstantValue) {
+        results.push_back(getRight());
+    }
     return results;
 }
 
@@ -239,9 +243,11 @@ CastInstruction::CastInstruction(BasicBlock *block, bool is_i2f, Value *value, c
 }
 
 std::vector<Value *> CastInstruction::getUses() {
-    return {getValue()};
+    if (getValue()->getValueType() != ConstantValue) {
+        return {getValue()};
+    }
+    return {};
 }
-
 
 CastInstruction::~CastInstruction() = default;
 
