@@ -70,7 +70,7 @@ void DeadCodeElim::runOnFunction() {
 
             if (!hasSideEffect(inst)) {
                 assert(defs.size() == 1);
-                if (!live.count(defs[0])) {
+                if (!live.count(*defs.begin())) {
                     dead_insts_.insert(inst);
                 }
             } else if (inst->getInstType() == StoreType) {

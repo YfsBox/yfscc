@@ -22,13 +22,13 @@ BinaryOpInstruction::BinaryOpInstruction(InstructionType type, BasicType basic_t
     addOperand(right);
 }
 
-std::vector<Value *> BinaryOpInstruction::getUses() {
-    std::vector<Value *> results;
+Instruction::OperandSet BinaryOpInstruction::getUses() {
+    OperandSet results;
     if (getLeft()->getValueType() != ConstantValue) {
-        results.push_back(getLeft());
+        results.insert(getLeft());
     }
     if (getRight()->getValueType() != ConstantValue) {
-        results.push_back(getRight());
+        results.insert(getRight());
     }
     return results;
 }
@@ -52,10 +52,10 @@ Value *UnaryOpInstruction::getValue() const {
     return getOperand(0);
 }
 
-std::vector<Value *> UnaryOpInstruction::getUses() {
-    std::vector<Value *> results;
+Instruction::OperandSet UnaryOpInstruction::getUses() {
+    OperandSet results;
     if (getValue()->getValueType() != ConstantValue) {
-        results.push_back(getValue());
+        results.insert(getValue());
     }
     return results;
 }
@@ -70,13 +70,13 @@ StoreInstruction::StoreInstruction(BasicBlock *block, BasicType basic_type, Valu
 
 StoreInstruction::~StoreInstruction() = default;
 
-std::vector<Value *> StoreInstruction::getUses() {
-    std::vector<Value *> results;
+Instruction::OperandSet StoreInstruction::getUses() {
+    OperandSet results;
     if (getValue()->getValueType() != ConstantValue) {
-        results.push_back(getValue());
+        results.insert(getValue());
     }
     if (getPtr()->getValueType() != ConstantValue) {
-        results.push_back(getPtr());
+        results.insert(getPtr());
     }
     return results;
 }
@@ -93,7 +93,7 @@ Value *LoadInstruction::getPtr() const {
     return getOperand(0);
 }
 
-std::vector<Value *> LoadInstruction::getUses() {
+Instruction::OperandSet LoadInstruction::getUses() {
     if (getPtr()->getValueType() != ConstantValue) {
         return {getPtr()};
     }
@@ -137,7 +137,7 @@ AllocaInstruction::AllocaInstruction(BasicBlock *block, BasicType type, bool isp
 
 }
 
-std::vector<Value *> AllocaInstruction::getUses() {
+Instruction::OperandSet AllocaInstruction::getUses() {
     return {};
 }
 
@@ -153,12 +153,12 @@ CallInstruction::CallInstruction(BasicBlock *block, Function *function, std::vec
     }
 }
 
-std::vector<Value *> CallInstruction::getUses() {
-    std::vector<Value *> results;
+Instruction::OperandSet CallInstruction::getUses() {
+    OperandSet results;
     for (int i = 0; i < getOperandNum(); ++i) {
         auto operand = getOperand(i);
         if (operand->getValueType() != ConstantValue) {
-            results.push_back(operand);
+            results.insert(operand);
         }
     }
     return results;
@@ -177,10 +177,10 @@ RetInstruction::RetInstruction(BasicBlock *block, BasicType basic_type, Value *v
     addOperand(value);
 }
 
-std::vector<Value *> RetInstruction::getUses() {
-    std::vector<Value *> results;
+Instruction::OperandSet RetInstruction::getUses() {
+    OperandSet results;
     if (getRetValue() != nullptr && getRetValue()->getValueType() != ConstantValue) {
-        results.push_back(getRetValue());
+        results.insert(getRetValue());
     }
     return results;
 }
@@ -202,7 +202,7 @@ BranchInstruction::BranchInstruction(BasicBlock *block, Value *cond, Value *true
     addOperand(false_label);
 }
 
-std::vector<Value *> BranchInstruction::getUses() {
+Instruction::OperandSet BranchInstruction::getUses() {
     if (is_cond_) {
         return {getCond()};
     }
@@ -220,14 +220,13 @@ SetCondInstruction::SetCondInstruction(BasicBlock *block, CmpCondType cmptype, b
     addOperand(right);
 }
 
-std::vector<Value *> SetCondInstruction::getUses() {
-    std::vector<Value *> results;
-    results.reserve(2);
+Instruction::OperandSet SetCondInstruction::getUses() {
+    OperandSet results;
     if (getLeft()->getValueType() != ConstantValue) {
-        results.push_back(getLeft());
+        results.insert(getLeft());
     }
     if (getRight()->getValueType() != ConstantValue) {
-        results.push_back(getRight());
+        results.insert(getRight());
     }
     return results;
 }
@@ -242,7 +241,7 @@ CastInstruction::CastInstruction(BasicBlock *block, bool is_i2f, Value *value, c
     addOperand(value);
 }
 
-std::vector<Value *> CastInstruction::getUses() {
+Instruction::OperandSet CastInstruction::getUses() {
     if (getValue()->getValueType() != ConstantValue) {
         return {getValue()};
     }
@@ -263,7 +262,7 @@ PhiInstruction::PhiInstruction(BasicBlock *block, BasicType basic_type, const st
     }
 }
 
-std::vector<Value *> PhiInstruction::getUses() {
+Instruction::OperandSet PhiInstruction::getUses() {
     return {};
 }
 
@@ -294,12 +293,12 @@ GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *base, 
     }
 }
 
-std::vector<Value *> GEPInstruction::getUses() {
-    std::vector<Value *> results;
+Instruction::OperandSet GEPInstruction::getUses() {
+    OperandSet results;
     for (int i = 0; i < getOperandNum(); ++i) {
         auto operand = getOperand(i);
         if (operand->getValueType() != ConstantValue) {
-            results.push_back(operand);
+            results.insert(operand);
         }
     }
     return results;
@@ -335,16 +334,16 @@ MemSetInstruction::MemSetInstruction(BasicBlock *block, BasicType btype, Value *
     addOperand(value);
 }
 
-std::vector<Value *> MemSetInstruction::getUses() {
-    std::vector<Value *> results;
+Instruction::OperandSet MemSetInstruction::getUses() {
+    Instruction::OperandSet results;
     if (getBase()->getValueType() != ConstantValue) {
-        results.push_back(getBase());
+        results.insert(getBase());
     }
     if (getSize()->getValueType() != ConstantValue) {
-        results.push_back(getSize());
+        results.insert(getSize());
     }
     if (getValue()->getValueType() != ConstantValue) {
-        results.push_back(getValue());
+        results.insert(getValue());
     }
     return results;
 }
@@ -356,10 +355,10 @@ ZextInstruction::ZextInstruction(BasicBlock *block, Value *left, const std::stri
     addOperand(left);
 }
 
-std::vector<Value *> ZextInstruction::getUses() {
-    std::vector<Value *> results;
+Instruction::OperandSet ZextInstruction::getUses() {
+    Instruction::OperandSet results;
     if (getValue()->getValueType() != ConstantValue) {
-        results.push_back(getValue());
+        results.insert(getValue());
     }
     return results;
 }

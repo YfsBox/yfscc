@@ -7,6 +7,7 @@
 #include "ir/Module.h"
 #include "opt/CollectUsedGlobals.h"
 #include "opt/DeadCodeElim.h"
+#include "opt/ConstantPropagation.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -51,6 +52,9 @@ int main(int argc, char **argv) {
 
     CollectUsedGlobals globals_collector(ir_module);
     pass_manager.addPass(&globals_collector);
+
+    ConstantPropagation const_propagation(ir_module);
+    pass_manager.addPass(&const_propagation);
 
     DeadCodeElim dead_code_elim(ir_module);
     dead_code_elim.irdumper_ = new IrDumper(std::cout);

@@ -39,6 +39,8 @@ class BasicBlock;
 
 class Instruction: public User {
 public:
+    using OperandSet = std::unordered_set<Value *>;
+
     Instruction(InstructionType type, BasicType basic_type, bool isptr, bool isbool, BasicBlock *block, const std::string &name = "");
 
     virtual ~Instruction();
@@ -55,9 +57,9 @@ public:
         return basic_type_;
     }
 
-    virtual std::vector<Value *> getUses() = 0;
+    virtual OperandSet getUses() = 0;
 
-    virtual std::vector<Value *> getDefs() {
+    virtual OperandSet getDefs() {
         return {this};
     }
 
@@ -77,7 +79,7 @@ public:
 
     Value *getRight() const;
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
 private:
 };
@@ -90,7 +92,7 @@ public:
 
     Value *getValue() const;
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
 private:
 };
@@ -109,9 +111,9 @@ public:
         return getOperand(1);
     }
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
-    std::vector<Value *> getDefs() override {
+    OperandSet getDefs() override {
         return {};
     }
 
@@ -132,7 +134,7 @@ public:
 
     void setArrayDimension();
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
 private:
     std::vector<int32_t> array_dimension_number_;
@@ -174,7 +176,7 @@ public:
         return array_dimension_size_;
     }
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
 private:
     bool is_ptr_ptr_;
@@ -201,9 +203,9 @@ public:
         return getOperandNum() == 0;
     }
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
-    std::vector<Value *> getDefs() override {
+    OperandSet getDefs() override {
         return {};
     }
 
@@ -263,9 +265,9 @@ public:
         }
     }
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
-    std::vector<Value *> getDefs() override {
+    OperandSet getDefs() override {
         return {};
     }
 
@@ -291,9 +293,9 @@ public:
         return getOperand(idx);
     }
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
-    std::vector<Value *> getDefs() override {
+    OperandSet getDefs() override {
         if (function_->getRetType() == FLOAT_BTYPE || function_->getRetType() == INT_BTYPE) {
             return {this};
         }
@@ -335,7 +337,7 @@ public:
         return getOperand(1);
     }
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
 private:
     bool is_float_;
@@ -363,7 +365,7 @@ public:
         return getOperandNum() / 2;
     }
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
 private:
 };
@@ -387,7 +389,7 @@ public:
         return getOperand(0);
     }
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
 private:
     bool is_i2f_;
@@ -428,7 +430,7 @@ public:
         return array_dimension_numbers_;
     }
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
 private:
     bool is_ptr_offset_;       // 如果是指向数组的指针或者普通指针
@@ -454,9 +456,9 @@ public:
         return getOperand(2);
     }
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
-    std::vector<Value *> getDefs() {
+    OperandSet getDefs() {
         return {};
     }
 
@@ -473,7 +475,7 @@ public:
         return getOperand(0);
     }
 
-    std::vector<Value *> getUses() override;
+    OperandSet getUses() override;
 
 private:
 };

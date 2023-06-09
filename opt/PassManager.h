@@ -9,6 +9,7 @@
 
 class Module;
 class PassManager;
+class Function;
 
 class Pass {
 public:

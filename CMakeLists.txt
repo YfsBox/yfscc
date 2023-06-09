@@ -39,6 +39,7 @@ set(IROPT_SRC
         opt/CollectUsedGlobals.cc
         opt/DataflowAnalysis.cc
         opt/DeadCodeElim.cc
+        opt/ConstantPropagation.cc
 )
 
 set(BACKEND_SRC

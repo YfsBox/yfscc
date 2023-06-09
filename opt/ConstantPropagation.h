@@ -5,7 +5,10 @@
 #ifndef YFSCC_CONSTANTPROPAGATION_H
 #define YFSCC_CONSTANTPROPAGATION_H
 
+#include <queue>
 #include "PassManager.h"
+
+class Instruction;
 
 class ConstantPropagation: public Pass {
 public:
@@ -19,6 +22,12 @@ protected:
     void runOnFunction() override;
 
 private:
+
+    void initForWorkList();
+
+    bool checkCanFold(Instruction *inst);
+
+    std::queue<Instruction *> work_inst_list_;
 
 };
 
