@@ -43,6 +43,16 @@ public:
         operand_num_++;
     }
 
+    void replaceWithValue(Value *oldv, Value *newv) {
+        Value *curr_value = nullptr;
+        for (int i = 0; i < operands_.size(); ++i) {
+            curr_value = operands_[i];
+            if (curr_value == oldv) {
+                operands_[i] = newv;
+            }
+        }
+    }
+
 protected:
     size_t operand_num_;
     std::vector<Value *> operands_;

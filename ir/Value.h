@@ -62,6 +62,10 @@ public:
         return is_bool_type_;
     }
 
+    UserMap &getUserMap() {
+        return user_map_;
+    }
+
 protected:
     bool is_bool_type_;
     bool is_ptr_;
