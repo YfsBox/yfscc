@@ -5,7 +5,7 @@
 #include "../ir/Function.h"
 #include "DataflowAnalysis.h"
 
-bool LivenessAnalysis::isEqual(const BitSet &left, const BitSet &right) {
+bool DataflowAnalysis::isEqual(const BitSet &left, const BitSet &right) {
     if (left.size() != right.size()) {
         return false;
     }
@@ -69,4 +69,12 @@ void LivenessAnalysis::analysis() {
             }
         }
     }
+}
+
+void AvailExprsAnalysis::analysis() {
+
+}
+
+void ReachingDefsAnalysis::analysis() {
+
 }
