@@ -14,29 +14,29 @@ class Function;
 class BasicBlock;
 class IrDumper;
 
-class LivenessAnalysis {
+class DataflowAnalysis {
 public:
     using BitSet = std::unordered_set<Value *>;
 
     using BitSetMap = std::unordered_map<BasicBlock *, BitSet>;
 
-    LivenessAnalysis(Function *function): function_(function) {};
+    explicit DataflowAnalysis(Function *function): function_(function) {}
 
-    ~LivenessAnalysis() = default;
+    virtual ~DataflowAnalysis() = default;
 
-    void analysis();
+    virtual void analysis() = 0;
 
-    BitSetMap &getLiveInSet() {
+    BitSetMap &getInSet() {
         return live_in_;
     }
 
-    BitSetMap &getLiveOutSet() {
+    BitSetMap &getOutSet() {
         return live_out_;
     }
 
     IrDumper *irdumper_;
 
-private:
+protected:
     static bool isEqual(const BitSet& left, const BitSet &right);
 
     Function *function_;
@@ -45,9 +45,58 @@ private:
 
     BitSetMap live_out_;
 
+};
+
+class LivenessAnalysis: public DataflowAnalysis {
+public:
+
+    explicit LivenessAnalysis(Function *function): DataflowAnalysis(function) {};
+
+    ~LivenessAnalysis() = default;
+
+    void analysis() override;
+
+private:
+
     BitSetMap use_sets_;
 
     BitSetMap def_sets_;
+
 };
+
+class AvailExprsAnalysis: public DataflowAnalysis {
+public:
+
+    explicit AvailExprsAnalysis(Function *function): DataflowAnalysis(function) {}
+
+    ~AvailExprsAnalysis() = default;
+
+    void analysis() override;
+
+private:
+
+    BitSet egen_sets_;
+
+    BitSet ekill_sets_;
+};
+
+class ReachingDefsAnalysis: public DataflowAnalysis {
+public:
+
+    explicit ReachingDefsAnalysis(Function *function): DataflowAnalysis(function) {}
+
+    ~ReachingDefsAnalysis() = default;
+
+    void analysis() override;
+
+private:
+
+    BitSet gen_sets_;
+
+    BitSet kill_sets_;
+
+};
+
+
 
 #endif //YFSCC_LIVENESSANALYSIS_H

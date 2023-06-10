@@ -79,6 +79,8 @@ public:
 
     Value *getRight() const;
 
+    void swapLeftAndRight();
+
     OperandSet getUses() override;
 
 private:
