@@ -29,6 +29,7 @@ class Argument;
 class CastInstruction;
 class Constant;
 class ConstantArray;
+class PhiInstruction;
 
 class IrDumper {
 public:
@@ -73,6 +74,8 @@ public:
     void dump(ZextInstruction *inst);
 
     void dump(CastInstruction *inst);
+
+    void dump(PhiInstruction *inst);
 
 private:
 

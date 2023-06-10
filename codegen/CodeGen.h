@@ -31,6 +31,7 @@ class CallInstruction;
 class ZextInstruction;
 class Argument;
 class CastInstruction;
+class PhiInstruction;
 
 class VirtualReg;
 
@@ -96,6 +97,8 @@ public:
 
     void visit(CastInstruction *inst);
 
+    void visit(PhiInstruction *inst);
+
     void codeGenerate() {
         visit(const_cast<Module *>(module_->getIRModule()));
     }
@@ -137,6 +140,8 @@ private:
         curr_machine_basic_block_->addInstruction(inst);
     }
 
+    void addMoveForPhiInst();
+
     void initForGlobals(Function *func, std::vector<MachineInst *> &move_insts);
 
     MachineOperand *getCmpReusltInOperand(SetCondInstruction *set_cond_inst);
@@ -176,6 +181,8 @@ private:
     std::unordered_map<std::string, GlobalVarLabelPtr> global_var_map_;
 
     std::unordered_map<SetCondInstruction *, MachineBasicBlock::MachineInstListIt> set_cond_it_map_;
+
+    std::unordered_map<PhiInstruction *, VirtualReg *> phi2vreg_map_;
 
     Value2MachineRegMap value_machinereg_map_;
 };

@@ -258,31 +258,35 @@ PhiInstruction::PhiInstruction(BasicBlock *block, BasicType basic_type, const st
                                const std::string &name):
         Instruction(InstructionType::PhiType, basic_type, false, false, block, name){
     assert(values.size() == bbs.size());
-    for (auto value : values) {
-        addOperand(value);
-    }
-    for (auto bb : bbs) {
-        addOperand(bb);
+    for (int i = 0; i < bbs.size(); ++i) {
+        addOperand(values[i]);
+        addOperand(bbs[i]);
     }
 }
 
 Instruction::OperandSet PhiInstruction::getUses() {
-    return {};
+    OperandSet use_set;
+    for (int i = 0; i < operands_.size(); ++i) {
+        if (i % 2 == 0) {
+            use_set.insert(operands_[i]);
+        }
+    }
+    return use_set;
 }
 
 PhiInstruction::~PhiInstruction() = default;
 
 PhiInstruction::ValueBlockPair PhiInstruction::getValueBlock(int idx) const {
-    auto phi_size = getSize();
     ValueBlockPair pair;
-    pair.first = getOperand(idx);
-    auto bb = getOperand(idx + phi_size);
+    pair.first = getOperand(idx * 2);
+    auto bb = getOperand(idx * 2 + 1);
     pair.second = dynamic_cast<BasicBlock*>(bb);
+    assert(pair.second);
     return pair;
 }
 
 BasicBlock *PhiInstruction::getBasicBlock(int idx) const {
-    auto value = getOperand(idx + getSize());
+    auto value = getOperand(idx * 2 + 1);
     return dynamic_cast<BasicBlock*> (value);
 }
 
