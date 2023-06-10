@@ -8,6 +8,7 @@
 #include "opt/CollectUsedGlobals.h"
 #include "opt/DeadCodeElim.h"
 #include "opt/ConstantPropagation.h"
+#include "opt/InstCombine.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -59,6 +60,10 @@ int main(int argc, char **argv) {
     DeadCodeElim dead_code_elim(ir_module);
     dead_code_elim.irdumper_ = new IrDumper(std::cout);
     pass_manager.addPass(&dead_code_elim);
+
+    InstCombine inst_combine(ir_module);
+    inst_combine.irdumper_ = new IrDumper(std::cout);
+    pass_manager.addPass(&inst_combine);
 
     pass_manager.run();
     irbuilder.dump();

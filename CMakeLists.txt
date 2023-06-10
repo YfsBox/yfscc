@@ -40,6 +40,7 @@ set(IROPT_SRC
         opt/DataflowAnalysis.cc
         opt/DeadCodeElim.cc
         opt/ConstantPropagation.cc
+        opt/InstCombine.cc
 )
 
 set(BACKEND_SRC

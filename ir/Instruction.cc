@@ -41,6 +41,10 @@ Value *BinaryOpInstruction::getRight() const {
     return getOperand(1);
 }
 
+void BinaryOpInstruction::swapLeftAndRight() {
+    std::swap(operands_[0], operands_[1]);
+}
+
 BinaryOpInstruction::~BinaryOpInstruction() = default;
 
 UnaryOpInstruction::UnaryOpInstruction(InstructionType type, BasicType basic_type, BasicBlock *block, Value *value, const std::string &name):
