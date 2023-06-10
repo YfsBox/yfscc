@@ -1,7 +1,0 @@
-/home/comtest/Desktop/compile/Compiler2023-yfscc/build/CMakeFiles/edit_cache.dir
-/home/comtest/Desktop/compile/Compiler2023-yfscc/build/CMakeFiles/test.dir
-/home/comtest/Desktop/compile/Compiler2023-yfscc/build/CMakeFiles/backend.dir
-/home/comtest/Desktop/compile/Compiler2023-yfscc/build/CMakeFiles/yfscc.dir
-/home/comtest/Desktop/compile/Compiler2023-yfscc/build/CMakeFiles/iropt.dir
-/home/comtest/Desktop/compile/Compiler2023-yfscc/build/CMakeFiles/rebuild_cache.dir
-/home/comtest/Desktop/compile/Compiler2023-yfscc/build/CMakeFiles/frontend.dir
