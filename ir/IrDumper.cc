@@ -558,3 +558,19 @@ void IrDumper::dump(CastInstruction *inst) {
     out_ << '\n';
 }
 
+void IrDumper::dump(PhiInstruction *inst) {
+    out_ << dumpValue(inst) << " = ";
+    out_ << getBasicType(inst->getBasicType()) << " ";
+    auto phi_size = inst->getSize();
+
+    for (int i = 0; i < phi_size; ++i) {
+        auto vb_pair = inst->getValueBlock(i);
+        out_ << "[ ";
+        dumpValue(vb_pair.first);
+        out_ << ", %" << vb_pair.second->getName() << " ]";
+        if (i != phi_size - 1) {
+            out_ << ",";
+        }
+    }
+}
+

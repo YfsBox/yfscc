@@ -23,7 +23,7 @@ class MachineModule {
 public:
     using MachineFunctionPtr = std::unique_ptr<MachineFunction>;
 
-    MachineModule(Module *irmodule);
+    explicit MachineModule(Module *irmodule);
 
     ~MachineModule() = default;
 

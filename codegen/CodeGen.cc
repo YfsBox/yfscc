@@ -289,6 +289,7 @@ void CodeGen::visit(Function *function) {
     virtual_reg_id_ = -1;
     stack_offset_ = 0;
     curr_used_globals_.clear();
+    phi2vreg_map_.clear();
 
     int32_t old_stack_offset = stack_offset_;
 
@@ -369,8 +370,8 @@ void CodeGen::visit(Function *function) {
         enter_basicblock->addFrontInstruction(inst);
     }
 
-
     curr_machine_function_->setStackSize(stack_offset_);
+    addMoveForPhiInst();
 }
 
 void CodeGen::addInstAboutStack(MachineFunction *function, int32_t offset, std::unordered_set<MachineReg::Reg> *regs) {
@@ -699,6 +700,51 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, boo
     return ret_operand;
 }
 
+void CodeGen::addMoveForPhiInst() {
+    for (auto &[phi_inst, vreg]: phi2vreg_map_) {
+        int phi_size = phi_inst->getSize();
+        for (int i = 0; i < phi_size; ++i) {
+            auto value = phi_inst->getValue(i);
+            auto bb = phi_inst->getBasicBlock(i);
+            auto mc_bb = module_->getMachineBasicBlock(bb);
+
+            std::unordered_map<MachineInst *, std::vector<MachineInst *>> insert_before;
+            std::unordered_map<MachineInst *, MachineBasicBlock::MachineInstListIt> insert_it;
+
+            auto &inst_list = mc_bb->getInstructionListNonConst();
+            for (auto it = inst_list.begin(); it != inst_list.end(); ++it) {
+                auto mc_inst = it->get();
+                if (mc_inst->getMachineInstType() == MachineInst::Branch) {
+                    VirtualReg *dst;
+                    MoveInst *mov1, *mov2;
+                    std::vector<MachineInst *> insert_insts;
+                    if (phi_inst->getBasicType() == INT_BTYPE) {
+                        dst = createVirtualReg(VirtualReg::Int);
+                        mov1 = new MoveInst(mc_bb, MoveInst::I2I, value2MachineOperand(value, false), dst);
+                        mov2 = new MoveInst(mc_bb, MoveInst::I2I, dst, vreg);
+                    } else {
+                        dst = createVirtualReg(VirtualReg::Float);
+                        mov1 = new MoveInst(mc_bb, MoveInst::F2F, value2MachineOperand(value, false), dst);
+                        mov2 = new MoveInst(mc_bb, MoveInst::F2F, dst, vreg);
+                    }
+                    insert_insts.push_back(mov1);
+                    insert_insts.push_back(mov2);
+                    insert_before[mc_inst] = insert_insts;
+                    insert_it.insert({mc_inst, it});
+                }
+            }
+
+            for (auto [inserted, insts]: insert_before) {
+                auto find_inserted_it = insert_it.find(inserted);
+                assert(find_inserted_it != insert_it.end());
+                for (auto inst: insts) {
+                    mc_bb->insertInstructionBefore(find_inserted_it->second, inst);
+                }
+            }
+        }
+    }
+}
+
 void CodeGen::initForGlobals(Function *func, std::vector<MachineInst *> &move_insts) {
     auto curr_func_used_globals = func->getUsedGlobals();
     for (auto global: curr_func_used_globals) {
@@ -960,5 +1006,21 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
     auto binary_inst = new BinaryInst(curr_machine_basic_block_, binary_inst_op, binary_dst, lhs, rhs);
 
     addMachineInst(binary_inst);
+}
+
+void CodeGen::visit(PhiInstruction *inst) {
+    VirtualReg *phi_vreg, *dst_vreg;
+    MoveInst *mov_inst;
+    if (inst->getBasicType() == INT_BTYPE) {
+        phi_vreg = createVirtualReg(VirtualReg::Int);
+        dst_vreg = createVirtualReg(VirtualReg::Int, inst);
+        mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, phi_vreg, dst_vreg);
+    } else {
+        phi_vreg = createVirtualReg(VirtualReg::Float);
+        dst_vreg = createVirtualReg(VirtualReg::Float, inst);
+        mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, phi_vreg, dst_vreg);
+    }
+    phi2vreg_map_[inst] = phi_vreg;
+    addMachineInst(mov_inst);
 }
 
