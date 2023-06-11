@@ -152,11 +152,13 @@ private:
 
     VirtualReg *createVirtualReg(MachineFunction *function, MachineOperand::ValueType value_type);
 
-    MachineOperand *constant2VirtualReg(int32_t const_value, bool can_be_imm);
+    MachineOperand *constant2VirtualReg(int32_t const_value, bool can_be_imm, MachineBasicBlock *basicblock, std::vector<MachineInst *> *move_insts = nullptr);
 
     MachineOperand *loadGlobalVarAddr(GlobalVariable *global, std::vector<MachineInst *> &move_insts);
 
     MachineOperand *value2MachineOperand(Value *value, bool can_be_imm, bool *is_float = nullptr);
+
+    MachineOperand *value2MachineOperandForPhi(Value *value, MachineBasicBlock *basic_block, std::vector<MachineInst *> *move_insts);
 
     int virtual_reg_id_;
 
