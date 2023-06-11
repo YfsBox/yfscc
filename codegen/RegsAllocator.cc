@@ -606,10 +606,9 @@ void ColoringRegsAllocator::finishAllocate() {
     }
 
     if (allocate_float_ || (!allocate_float_ && !needAllocateForFloat())) {
-        if ((curr_function_->getStackSize() + spilled_stack_size_) % 8 == 0) {
+        /*if ((curr_function_->getStackSize() + spilled_stack_size_) % 8 == 0) {
             spilled_stack_size_ += 4;
-        }
-
+        }*/
         std::unordered_set<MachineReg::Reg> pushed_regs_set;
         for (auto &bb : curr_function_->getMachineBasicBlock()) {
             for (auto &inst: bb->getInstructionList()) {
@@ -633,6 +632,10 @@ void ColoringRegsAllocator::finishAllocate() {
         }
         pushed_regs_set.insert(MachineReg::fp);
         int32_t pushed_regs_offset = (pushed_regs_set.size() + 1) * 4;      // 算上lr寄存器(+1)
+
+        if ((curr_function_->getStackSize() + spilled_stack_size_ + pushed_regs_offset) % 8) {
+            spilled_stack_size_ += 4;
+        }
 
         for (auto inst : curr_function_->getLoadArgsInsts()) {
             auto load_inst = dynamic_cast<LoadInst *>(inst);
