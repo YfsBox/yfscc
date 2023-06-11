@@ -17,6 +17,7 @@ class BasicBlock;
 class PhiInstruction;
 class AllocaInstruction;
 class Instruction;
+class IrDumper;
 
 class Mem2Reg: public Pass {
 public:
@@ -28,6 +29,8 @@ public:
     explicit Mem2Reg(Module *module): Pass(module), compute_dominators_(nullptr) {}
 
     ~Mem2Reg() = default;
+
+    IrDumper *ir_dumper_;
 
 protected:
 
@@ -41,7 +44,7 @@ private:
 
     void rename(BasicBlock *basic_block);
 
-    void removeDeadCode();
+    void removeAllocaCode();
 
     void insertPhiInsts();
 
@@ -57,7 +60,7 @@ private:
 
     std::unordered_map<AllocaInstruction *, std::vector<Value *>> phi_var_stack_;
 
-    std::unordered_set<Instruction *> deleted_insts_;
+    // std::unordered_set<Instruction *> deleted_insts_;
 
 };
 

@@ -166,8 +166,9 @@ void ComputeDominators::run() {
         printf("\n");
     }
 
-    printf("------------the dom node is here: ------------\n");
+    /*printf("------------the dom node is here: ------------\n");
     for (auto &bb: curr_func_->getBlocks()) {
+        assert(bb);
         printf("the bb is %s\n", bb->getName().c_str());
         for (auto dom_bb: basicblock_doms_[bb.get()]) {
             printf("%s\t", dom_bb->getName().c_str());
@@ -177,7 +178,7 @@ void ComputeDominators::run() {
     printf("------------the immdom node is here: ------------\n");
     for (auto &bb : curr_func_->getBlocks()) {
         printf("the bb is %s, its imm dom is %s\n", bb->getName().c_str(), imm_doms_map_[bb.get()]->getName().c_str());
-    }
+    }*/
 }
 
 BasicBlock *ComputeDominators::intersect(BasicBlock *bb1, BasicBlock *bb2) {
