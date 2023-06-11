@@ -16,6 +16,14 @@ Instruction::Instruction(InstructionType type, BasicType basic_type, bool isptr,
 
 Instruction::~Instruction() = default;
 
+void Instruction::replaceAllUseWith(Value *value) {
+    for (auto user: user_map_) {
+        auto user_inst = dynamic_cast<Instruction *>(user);
+        assert(user_inst);
+        user_inst->replaceWithValue(this, value);
+    }
+}
+
 BinaryOpInstruction::BinaryOpInstruction(InstructionType type, BasicType basic_type, BasicBlock *block, Value *left, Value *right, const std::string &name):
         Instruction(type, basic_type, false, false, block, name){
     addOperand(left);

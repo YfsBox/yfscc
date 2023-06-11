@@ -4,8 +4,7 @@
 #include <queue>
 #include "ComputeDominators.h"
 #include "../ir/BasicBlock.h"
-
-ComputeDominators::ComputeDominators(Module *module): Pass(module) {}
+#include "../ir/Function.h"
 
 void ComputeDominators::clearSets() {
     dominators_matrix_.clear();
@@ -70,7 +69,7 @@ void ComputeDominators::initForMatrix() {
     }
 }
 
-void ComputeDominators::runOnFunction() {
+void ComputeDominators::run() {
 
     clearSets();
 
@@ -82,9 +81,14 @@ void ComputeDominators::runOnFunction() {
         dominators_matrix_.push_back(line);
     }
 
+    int post_index = 0;
+    for (auto rit = blocks_list.rbegin(); rit != blocks_list.rend(); ++rit) {
+        post_order_index_map_[rit->get()] = post_index++;
+    }
+
     initForBasicBlockIndexMap();
     initForMatrix();
-
+    /*
     for (auto &bb : curr_func_->getBlocks()) {
         auto bb_index = basicblock2index_map_[bb.get()];
         for (int i = 0; i < basicblock_n_; ++i) {
@@ -149,8 +153,108 @@ void ComputeDominators::runOnFunction() {
                 bb_q.push(child_bb);
             }
         }
+    }*/
+    computeImmDoms();
+    computeFrontiers();
+    computeSuccessors();
+
+    printf("------------the metrix is here: ------------\n");
+    for (int i = 0; i < basicblock_n_; ++i) {
+        for (int j = 0; j < basicblock_n_; ++j) {
+            printf("%d ", dominators_matrix_[i][j]);
+        }
+        printf("\n");
     }
 
+    printf("------------the dom node is here: ------------\n");
+    for (auto &bb: curr_func_->getBlocks()) {
+        printf("the bb is %s\n", bb->getName().c_str());
+        for (auto dom_bb: basicblock_doms_[bb.get()]) {
+            printf("%s\t", dom_bb->getName().c_str());
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+BasicBlock *ComputeDominators::intersect(BasicBlock *bb1, BasicBlock *bb2) {
+    auto finger1 = bb1;
+    auto finger2 = bb2;
+    while (finger1 != finger2) {
+        while (post_order_index_map_[finger1] < post_order_index_map_[finger2]) {
+            finger1 = imm_doms_map_[finger1];
+        }
+        while (post_order_index_map_[finger1] > post_order_index_map_[finger2]) {
+            finger2 = imm_doms_map_[finger2];
+        }
+    }
+    return finger1;
+}
+
+void ComputeDominators::computeImmDoms() {
+    for (auto &bb: curr_func_->getBlocks()) {
+        imm_doms_map_[bb.get()] = nullptr;
+    }
+    auto enter_block = curr_func_->getBlocks().front().get();
+    imm_doms_map_[enter_block] = enter_block;
+
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        auto &bb_list = curr_func_->getBlocks();
+        for (auto rit = bb_list.rbegin(); rit != bb_list.rend(); ++rit) {
+            auto curr_bb = rit->get();
+            if (curr_bb == enter_block) {
+                continue;
+            }
+            BasicBlock *pred = nullptr;
+            for (auto pre: curr_bb->getPreDecessorBlocks()) {
+                if (imm_doms_map_[pre]) {
+                    pred = pre;
+                    break;
+                }
+            }
+
+            BasicBlock *new_idom = pred;
+            for (auto p: curr_bb->getPreDecessorBlocks()) {
+                if (p == pred) {
+                    continue;
+                }
+                if (imm_doms_map_[p]) {
+                    new_idom = intersect(p, new_idom);
+                }
+            }
+
+            if (imm_doms_map_[curr_bb] != new_idom) {
+                imm_doms_map_[curr_bb] = new_idom;
+                changed = true;
+            }
+        }
+
+    }
+}
+
+void ComputeDominators::computeFrontiers() {
+    for (auto &bb: curr_func_->getBlocks()) {
+        if (bb->getPreDecessorBlocks().size() >= 2) {
+            for (auto p: bb->getPreDecessorBlocks()) {
+                auto runner = p;
+                while (runner != imm_doms_map_[bb.get()]) {
+                    dom_frontiers_map_[runner].insert(bb.get());
+                    runner = imm_doms_map_[runner];
+                }
+            }
+        }
+    }
+}
+
+void ComputeDominators::computeSuccessors() {
+    for (auto &bb: curr_func_->getBlocks()) {
+        auto i_dom = imm_doms_map_[bb.get()];
+        if (i_dom != bb.get()) {
+            basicblock_succbb_map_[i_dom].insert(bb.get());
+        }
+    }
 }
 
 

@@ -379,6 +379,9 @@ void IrDumper::dump(Instruction *inst) {
         case CastType:
             dump(dynamic_cast<CastInstruction *>(inst));
             return;
+        case PhiType:
+            dump(dynamic_cast<PhiInstruction *>(inst));
+            return;
     }
     if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
         dump(binary_inst);
@@ -565,12 +568,12 @@ void IrDumper::dump(PhiInstruction *inst) {
 
     for (int i = 0; i < phi_size; ++i) {
         auto vb_pair = inst->getValueBlock(i);
-        out_ << "[ ";
-        dumpValue(vb_pair.first);
+        out_ << "[ " << dumpValue(vb_pair.first);
         out_ << ", %" << vb_pair.second->getName() << " ]";
         if (i != phi_size - 1) {
             out_ << ",";
         }
     }
+    out_ << "\n";
 }
 
