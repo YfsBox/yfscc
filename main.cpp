@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <cstring>
 #include "common/Ast.h"
 #include "common/Utils.h"
 #include "ir/IrBuilder.h"
@@ -20,18 +21,23 @@ extern int yyparse();
 extern std::shared_ptr<CompUnit> root;
 extern void scan_string(const char *str);
 
+
 int main(int argc, char **argv) {
     // 第一个参数为file name
+    bool enable_opt = false;
     std::string source_file;
     std::string target_file;
-    if (argc > 1) {
-        source_file = argv[1];
-        // printf("the src file is: %s\n", source_file.c_str());
-    }
-    if (argc > 2) {
-        target_file.assign(argv[2]);
-    } else {
-        target_file = "yfscc.s";
+
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "-O2") == 0) { //判断参数是否为 "-S"
+            enable_opt = true; // 如果是，则将flag设置为true
+        }
+        if (strcmp(argv[i], "-o") == 0) {
+            target_file = argv[i + 1];
+            i++;
+        } else if (strcmp(argv[i], "-S") != 0) {
+            source_file = argv[i];
+        }
     }
 
     auto content = getFileContent(source_file);
@@ -59,15 +65,18 @@ int main(int argc, char **argv) {
     pass_manager.addPass(&const_propagation);
 
     DeadCodeElim dead_code_elim(ir_module);
-    dead_code_elim.irdumper_ = new IrDumper(std::cout);
-    pass_manager.addPass(&dead_code_elim);
-
-    InstCombine inst_combine(ir_module);
-    inst_combine.irdumper_ = new IrDumper(std::cout);
-    pass_manager.addPass(&inst_combine);
-
     Mem2Reg mem2reg(ir_module);
-    pass_manager.addPass(&mem2reg);
+    InstCombine inst_combine(ir_module);
+
+    if (enable_opt) {
+        dead_code_elim.irdumper_ = new IrDumper(std::cout);
+        pass_manager.addPass(&dead_code_elim);
+        mem2reg.ir_dumper_ = new IrDumper(std::cout);
+        pass_manager.addPass(&mem2reg);
+        inst_combine.irdumper_ = new IrDumper(std::cout);
+        pass_manager.addPass(&inst_combine);
+        // pass_manager.addPass(&dead_code_elim);
+    }
 
     pass_manager.run();
     irbuilder.dump();
@@ -80,7 +89,7 @@ int main(int argc, char **argv) {
 
     RegsAllocator::regsAllocate(codegen.getMCModule(), &codegen);
 
-    MachineDumper mcdumper(codegen.getMCModule(), "yfscc.s");
+    MachineDumper mcdumper(codegen.getMCModule(), target_file);
     mcdumper.dump();
     // yylex();
     return 0;
