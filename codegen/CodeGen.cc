@@ -660,6 +660,10 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, boo
         return find_value->second;
     }
 
+    if (auto phi_inst_value = dynamic_cast<PhiInstruction *>(value); phi_inst_value && phi2vreg_map_.count(phi_inst_value)) {
+        return phi2vreg_map_[phi_inst_value];
+    }
+
     MachineOperand *ret_operand = nullptr;
     auto value_type = value->getValueType();
     if (value_type == ValueType::GlobalVariableValue) {
@@ -704,8 +708,9 @@ void CodeGen::addMoveForPhiInst() {
     for (auto &[phi_inst, vreg]: phi2vreg_map_) {
         int phi_size = phi_inst->getSize();
         for (int i = 0; i < phi_size; ++i) {
-            auto value = phi_inst->getValue(i);
-            auto bb = phi_inst->getBasicBlock(i);
+            auto vbb_pair = phi_inst->getValueBlock(i);
+            auto value = vbb_pair.first;
+            auto bb = vbb_pair.second;
             auto mc_bb = module_->getMachineBasicBlock(bb);
 
             std::unordered_map<MachineInst *, std::vector<MachineInst *>> insert_before;
@@ -718,13 +723,15 @@ void CodeGen::addMoveForPhiInst() {
                     VirtualReg *dst;
                     MoveInst *mov1, *mov2;
                     std::vector<MachineInst *> insert_insts;
+                    MachineOperand *value_src = value2MachineOperand(value, false);
+                    // assert(value_src);
                     if (phi_inst->getBasicType() == INT_BTYPE) {
                         dst = createVirtualReg(VirtualReg::Int);
-                        mov1 = new MoveInst(mc_bb, MoveInst::I2I, value2MachineOperand(value, false), dst);
+                        mov1 = new MoveInst(mc_bb, MoveInst::I2I, value_src, dst);
                         mov2 = new MoveInst(mc_bb, MoveInst::I2I, dst, vreg);
                     } else {
                         dst = createVirtualReg(VirtualReg::Float);
-                        mov1 = new MoveInst(mc_bb, MoveInst::F2F, value2MachineOperand(value, false), dst);
+                        mov1 = new MoveInst(mc_bb, MoveInst::F2F, value_src, dst);
                         mov2 = new MoveInst(mc_bb, MoveInst::F2F, dst, vreg);
                     }
                     insert_insts.push_back(mov1);
@@ -1020,6 +1027,7 @@ void CodeGen::visit(PhiInstruction *inst) {
         dst_vreg = createVirtualReg(VirtualReg::Float, inst);
         mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, phi_vreg, dst_vreg);
     }
+    // printf("set phivreg %s\n", inst->getName().c_str());
     phi2vreg_map_[inst] = phi_vreg;
     addMachineInst(mov_inst);
 }
