@@ -174,7 +174,10 @@ void ComputeDominators::run() {
         }
         printf("\n");
     }
-    printf("\n");
+    printf("------------the immdom node is here: ------------\n");
+    for (auto &bb : curr_func_->getBlocks()) {
+        printf("the bb is %s, its imm dom is %s\n", bb->getName().c_str(), imm_doms_map_[bb.get()]->getName().c_str());
+    }
 }
 
 BasicBlock *ComputeDominators::intersect(BasicBlock *bb1, BasicBlock *bb2) {
@@ -230,7 +233,6 @@ void ComputeDominators::computeImmDoms() {
                 changed = true;
             }
         }
-
     }
 }
 

@@ -9,6 +9,7 @@
 #include "opt/DeadCodeElim.h"
 #include "opt/ConstantPropagation.h"
 #include "opt/InstCombine.h"
+#include "opt/Mem2Reg.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -64,6 +65,9 @@ int main(int argc, char **argv) {
     InstCombine inst_combine(ir_module);
     inst_combine.irdumper_ = new IrDumper(std::cout);
     pass_manager.addPass(&inst_combine);
+
+    Mem2Reg mem2reg(ir_module);
+    pass_manager.addPass(&mem2reg);
 
     pass_manager.run();
     irbuilder.dump();

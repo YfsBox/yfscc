@@ -55,8 +55,8 @@ void DeadCodeElim::runOnFunction() {
 
     LivenessAnalysis liveness_analysis(curr_func_);
     liveness_analysis.analysis();
-    auto live_out = liveness_analysis.getLiveOutSet();
-    auto live_in = liveness_analysis.getLiveInSet();
+    auto live_out = liveness_analysis.getOutSet();
+    auto live_in = liveness_analysis.getInSet();
 
     for (auto &bb: curr_func_->getBlocks()) {
         auto live = live_out[bb.get()];
