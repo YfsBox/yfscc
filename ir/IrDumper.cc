@@ -562,7 +562,7 @@ void IrDumper::dump(CastInstruction *inst) {
 }
 
 void IrDumper::dump(PhiInstruction *inst) {
-    out_ << dumpValue(inst) << " = ";
+    out_ << dumpValue(inst) << " = phi ";
     out_ << getBasicType(inst->getBasicType()) << " ";
     auto phi_size = inst->getSize();
 
