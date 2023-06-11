@@ -9,21 +9,23 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
-#include "PassManager.h"
 
 class BasicBlock;
+class Function;
 
-class ComputeDominators: public Pass {
+class ComputeDominators {
 public:
     using Matrix = std::vector<std::vector<int8_t>>;
 
-    using DomsSet = std::unordered_map<BasicBlock *, std::unordered_set<BasicBlock *>>;
+    using BasicBlockSet = std::unordered_set<BasicBlock *>;
+
+    using DomsSet = std::unordered_map<BasicBlock *, BasicBlockSet>;
 
     using BasicblockMap = std::unordered_map<BasicBlock *, BasicBlock *>;
 
     using BasicBlockIntValueMap = std::unordered_map<BasicBlock *, int>;
     
-    explicit ComputeDominators(Module *module);
+    explicit ComputeDominators(Function *function): curr_func_(function), basicblock_n_(0), top_basicblock_(nullptr) {}
 
     ~ComputeDominators() = default;
 
@@ -31,17 +33,23 @@ public:
         return dom_tree_;
     }
 
-    DomsSet getBasicBlockDoms() const {
-        return basicblock_doms_;
+    BasicBlockSet getBasicBlockDoms(BasicBlock *bb) {
+        return basicblock_doms_[bb];
     }
 
-    BasicblockMap getImmDomsMap() const {
-        return imm_doms_map_;
+    BasicBlockSet getDomFrontiers(BasicBlock *bb) {
+        return dom_frontiers_map_[bb];
     }
 
-protected:
+    BasicBlock *getImmDomsMap(BasicBlock *bb) {
+        return imm_doms_map_[bb];
+    }
 
-    void runOnFunction() override;
+    BasicBlockSet getSuccessors(BasicBlock *bb) {
+        return basicblock_succbb_map_[bb];
+    }
+
+    void run();
 
 private:
 
@@ -50,6 +58,14 @@ private:
     void initForBasicBlockIndexMap();
 
     void initForMatrix();
+
+    BasicBlock *intersect(BasicBlock *bb1, BasicBlock *bb2);
+
+    void computeImmDoms();
+
+    void computeFrontiers();
+
+    void computeSuccessors();
 
     int32_t basicblock_n_;
 
@@ -61,9 +77,17 @@ private:
 
     BasicblockMap imm_doms_map_;
 
+    DomsSet dom_frontiers_map_;
+
+    DomsSet basicblock_succbb_map_;
+
     BasicBlock *top_basicblock_;
 
+    Function *curr_func_;
+
     std::unordered_map<int, BasicBlock *> index2basicblock_map_;
+
+    std::unordered_map<BasicBlock *, int> post_order_index_map_;
 
     BasicBlockIntValueMap basicblock2index_map_;
 

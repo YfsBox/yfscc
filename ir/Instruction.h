@@ -63,6 +63,8 @@ public:
         return {this};
     }
 
+    void replaceAllUseWith(Value *value);
+
 protected:
     BasicType basic_type_;
     InstructionType inst_type_;

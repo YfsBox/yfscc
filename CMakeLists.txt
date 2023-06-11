@@ -42,6 +42,7 @@ set(IROPT_SRC
         opt/ConstantPropagation.cc
         opt/InstCombine.cc
         opt/ComputeDominators.cc
+        opt/Mem2Reg.cc
 )
 
 set(BACKEND_SRC
