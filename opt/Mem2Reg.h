@@ -30,8 +30,6 @@ public:
 
     ~Mem2Reg() = default;
 
-    IrDumper *ir_dumper_;
-
 protected:
 
     void runOnFunction() override;
@@ -45,8 +43,6 @@ private:
     void rename(BasicBlock *basic_block);
 
     void removeAllocaCode();
-
-    void insertPhiInsts();
 
     std::unique_ptr<ComputeDominators> compute_dominators_;
 

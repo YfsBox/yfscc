@@ -20,7 +20,6 @@ void Mem2Reg::init() {
             if (alloca_inst->isPtrPtr() || alloca_inst->isArray()) {
                 continue;
             }
-            printf("add the alloca inst is \n");
             ir_dumper_->dump(alloca_inst);
             alloca_insts_.insert(alloca_inst);
         }
@@ -53,9 +52,7 @@ void Mem2Reg::genPhiInsts() {
         while (!bb_q.empty()) {
             auto qfront_bb = bb_q.front();
             bb_q.pop();
-            printf("the df of %s is\n", qfront_bb->getName().c_str());
             for (auto dom_frontier: compute_dominators_->getDomFrontiers(qfront_bb)) {
-                printf("%s\t", dom_frontier->getName().c_str());
                 if (!visited_set.count(dom_frontier)) {
                     visited_set.insert(dom_frontier);
                     std::string phi_var_name = "phi.var." + alloca_inst->getName() + "." + std::to_string(phi_index++);
@@ -80,7 +77,6 @@ void Mem2Reg::rename(BasicBlock *basic_block) {
     for (auto &inst: bb->getInstructionList()) {
         if (auto phi_inst = dynamic_cast<PhiInstruction *>(inst.get()); phi_inst) {
             auto alloca_var = phi2alloca_map_[phi_inst];
-            printf("push %s to stack of %s\n", phi_inst->getName().c_str(), alloca_var->getName().c_str());
             phi_var_stack_[alloca_var].push_back(phi_inst);
         }
     }
@@ -94,8 +90,6 @@ void Mem2Reg::rename(BasicBlock *basic_block) {
                 auto replace_value = phi_var_stack_[alloca_var].back();
                 // printf("load inst %s replace with %s\n", load_inst->getName().c_str(), replace_value->getName().c_str());
                 load_inst->replaceAllUseWith(replace_value);
-                printf("deleted add load inst:\n");
-                ir_dumper_->dump(load_inst);
                 deleted_insts.insert(load_inst);
             }
 
@@ -183,10 +177,6 @@ void Mem2Reg::removeAllocaCode() {
             }
         }
     }
-}
-
-void Mem2Reg::insertPhiInsts() {
-
 }
 
 void Mem2Reg::runOnFunction() {

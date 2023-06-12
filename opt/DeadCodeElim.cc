@@ -90,9 +90,9 @@ void DeadCodeElim::runOnFunction() {
         }
     }
 
-    for (auto dead_inst: dead_insts_) {
-        irdumper_->dump(dead_inst);
-    }
+    /*for (auto dead_inst: dead_insts_) {
+        ir_dumper_->dump(dead_inst);
+    }*/
 
     if (!dead_insts_.empty()) {
         removeDeadInsts();

@@ -10,6 +10,7 @@
 class Module;
 class PassManager;
 class Function;
+class IrDumper;
 
 class Pass {
 public:
@@ -21,6 +22,8 @@ public:
     virtual ~Pass() = default;
 
     void run();
+
+    IrDumper *ir_dumper_;
 
 protected:
 
