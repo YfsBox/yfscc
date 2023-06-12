@@ -21,8 +21,6 @@ public:
 
     ~InstCombine() = default;
 
-    IrDumper *irdumper_;
-
 protected:
 
     void runOnFunction() override;

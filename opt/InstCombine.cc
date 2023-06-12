@@ -28,7 +28,7 @@ void InstCombine::initWorkList() {
                     continue;
                 }
 
-                if (left->getValueType() == ConstantValue && right->getValueType() == InstructionValue) {
+                if (left->getValueType() == ConstantValue && right->getValueType() == InstructionValue && binary_inst->getInstType() != SubType) {
                     binary_inst->swapLeftAndRight();
                 }
 
@@ -103,8 +103,7 @@ void InstCombine::combine(BinaryOpInstruction *inst) {
         }
         inst->replaceWithValue(inst->getLeft(), left_binary_inst->getLeft());
         inst->replaceWithValue(inst->getRight(), constvar);
-        printf("the combined inst is\n");
-        irdumper_->dump(inst);
+        ir_dumper_->dump(inst);
         combined_insts_set_.insert(inst);
     }
 

@@ -274,10 +274,9 @@ PhiInstruction::PhiInstruction(BasicBlock *block, BasicType basic_type, const st
 
 Instruction::OperandSet PhiInstruction::getUses() {
     OperandSet use_set;
-    for (int i = 0; i < operands_.size(); ++i) {
-        if (i % 2 == 0) {
-            use_set.insert(operands_[i]);
-        }
+    for (int i = 0; i < getSize(); ++i) {
+        auto vbb_pair = getValueBlock(i);
+        use_set.insert(vbb_pair.first);
     }
     return use_set;
 }
