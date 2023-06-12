@@ -47,19 +47,14 @@ int main(int argc, char **argv) {
     auto checker = std::make_unique<SemanticCheck>(std::cout);
     checker->visit(root);
 
-    // root->dump(std::cout, 0);
     checker->dumpErrorMsg();
 
     IrBuilder irbuilder(std::cout, checker->getLibFunctionsMap());
     irbuilder.visit(root);
-    // irbuilder.dump();
 
     auto ir_module = irbuilder.getIrModule();
 
     PassManager pass_manager(ir_module);
-
-    CollectUsedGlobals globals_collector(ir_module);
-    pass_manager.addPass(&globals_collector);
 
     ConstantPropagation const_propagation(ir_module);
     pass_manager.addPass(&const_propagation);
@@ -69,13 +64,14 @@ int main(int argc, char **argv) {
     InstCombine inst_combine(ir_module);
 
     if (enable_opt) {
-        dead_code_elim.irdumper_ = new IrDumper(std::cout);
-        pass_manager.addPass(&dead_code_elim);
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
+        inst_combine.ir_dumper_ = new IrDumper(std::cout);
+        dead_code_elim.ir_dumper_ = new IrDumper(std::cout);
+
+        pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&mem2reg);
-        inst_combine.irdumper_ = new IrDumper(std::cout);
         pass_manager.addPass(&inst_combine);
-        // pass_manager.addPass(&dead_code_elim);
+        pass_manager.addPass(&dead_code_elim);
     }
 
     pass_manager.run();

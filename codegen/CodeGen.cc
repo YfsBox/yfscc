@@ -643,18 +643,21 @@ void CodeGen::visit(ZextInstruction *inst) {
     addMachineInst(mov_inst);
 }
 
-MachineOperand *CodeGen::loadGlobalVarAddr(GlobalVariable *global, std::vector<MachineInst *> &move_insts) {
+MachineOperand *CodeGen::loadGlobalVarAddr(GlobalVariable *global, std::vector<MachineInst *> *move_insts) {
     MoveInst *move_inst = nullptr;
     auto addr_reg = createVirtualReg(MachineOperand::Int);
     auto find_label = global_var_map_.find(global->getName());
     if (find_label != global_var_map_.end()) {
         auto label = find_label->second.get();
-        move_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::L2I, label, addr_reg);
-        // addMachineInst(move_inst);
-        move_insts.push_back(move_inst);
-        move_inst = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::H2I, label, addr_reg);
-        // addMachineInst(move_inst);
-        move_insts.push_back(move_inst);
+        auto move_inst1 = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::L2I, label, addr_reg);
+        auto move_inst2 = new MoveInst(curr_machine_basic_block_, MoveInst::MoveType::H2I, label, addr_reg);
+        if (move_inst) {
+            move_insts->push_back(move_inst1);
+            move_insts->push_back(move_inst2);
+        } else {
+            addMachineInst(move_inst1);
+            addMachineInst(move_inst2);
+        }
     }
     return addr_reg;
 }
@@ -714,9 +717,10 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, boo
     MachineOperand *ret_operand = nullptr;
     auto value_type = value->getValueType();
     if (value_type == ValueType::GlobalVariableValue) {
-        // auto load_global_mov = loadGlobalVarAddr(dynamic_cast<GlobalVariable *>(value));
-        auto load_global_vreg = curr_used_globals_[dynamic_cast<GlobalVariable *>(value)];
-        ret_operand = load_global_vreg;
+        auto load_global_mov = loadGlobalVarAddr(dynamic_cast<GlobalVariable *>(value));
+        ret_operand = load_global_mov;
+        // auto load_global_vreg = curr_used_globals_[dynamic_cast<GlobalVariable *>(value)];
+        // ret_operand = load_global_vreg;
     } else if (value_type == ValueType::ConstantValue) {
         auto const_value = dynamic_cast<ConstantVar *>(value);
         assert(const_value);
@@ -803,7 +807,7 @@ void CodeGen::addMoveForPhiInst() {
 void CodeGen::initForGlobals(Function *func, std::vector<MachineInst *> &move_insts) {
     auto curr_func_used_globals = func->getUsedGlobals();
     for (auto global: curr_func_used_globals) {
-        auto vreg = loadGlobalVarAddr(global, move_insts);
+        auto vreg = loadGlobalVarAddr(global, &move_insts);
         curr_used_globals_.insert({global, vreg});
     }
 }

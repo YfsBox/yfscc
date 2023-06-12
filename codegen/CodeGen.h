@@ -154,7 +154,7 @@ private:
 
     MachineOperand *constant2VirtualReg(int32_t const_value, bool can_be_imm, MachineBasicBlock *basicblock, std::vector<MachineInst *> *move_insts = nullptr);
 
-    MachineOperand *loadGlobalVarAddr(GlobalVariable *global, std::vector<MachineInst *> &move_insts);
+    MachineOperand *loadGlobalVarAddr(GlobalVariable *global, std::vector<MachineInst *> *move_insts = nullptr);
 
     MachineOperand *value2MachineOperand(Value *value, bool can_be_imm, bool *is_float = nullptr);
 
