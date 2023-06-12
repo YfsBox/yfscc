@@ -562,13 +562,7 @@ void ColoringRegsAllocator::freeze() {
     freezeMoves(u);
 }
 
-void ColoringRegsAllocator::finishAllocate() {
-
-    for (auto &[reg, color]: color_) {
-        if (auto vreg = dynamic_cast<VirtualReg *>(reg); vreg) {
-            vreg->color(color);
-        }
-    }
+void ColoringRegsAllocator::deleteRedundantMoveInsts() {
 
     for (auto &bb: curr_function_->getMachineBasicBlock()) {
         auto &inst_list = bb->getInstructionListNonConst();
@@ -597,18 +591,27 @@ void ColoringRegsAllocator::finishAllocate() {
                 }
 
                 if (dst_mreg == src_mreg) {
-                    inst_list.erase(inst_it++);
+                    inst_it = inst_list.erase(inst_it);
                     continue;
                 }
             }
             ++inst_it;
         }
     }
+}
+
+void ColoringRegsAllocator::finishAllocate() {
+
+    for (auto &[reg, color]: color_) {
+        if (auto vreg = dynamic_cast<VirtualReg *>(reg); vreg) {
+            vreg->color(color);
+        }
+    }
 
     if (allocate_float_ || (!allocate_float_ && !needAllocateForFloat())) {
-        /*if ((curr_function_->getStackSize() + spilled_stack_size_) % 8 == 0) {
-            spilled_stack_size_ += 4;
-        }*/
+
+        deleteRedundantMoveInsts();
+
         std::unordered_set<MachineReg::Reg> pushed_regs_set;
         for (auto &bb : curr_function_->getMachineBasicBlock()) {
             for (auto &inst: bb->getInstructionList()) {

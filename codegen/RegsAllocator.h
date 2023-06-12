@@ -175,6 +175,8 @@ private:
 
     void freezeMoves(MachineOperand *operand);
 
+    void deleteRedundantMoveInsts();
+
     void selectSpill();
 
     void assignColors();
