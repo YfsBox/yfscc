@@ -87,7 +87,8 @@ void ComputeDominators::run() {
     }
 
     initForBasicBlockIndexMap();
-    initForMatrix();
+    // printf("init for matrix, the block number is %d\n", basicblock_n_);
+    // initForMatrix();
     /*
     for (auto &bb : curr_func_->getBlocks()) {
         auto bb_index = basicblock2index_map_[bb.get()];
