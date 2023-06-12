@@ -4,9 +4,9 @@
 #include <cassert>
 #include "ConstantPropagation.h"
 #include "../ir/Module.h"
-#include "../ir/Function.h"
 #include "../ir/BasicBlock.h"
 #include "../ir/Constant.h"
+#include "../ir/IrDumper.h"
 
 bool ConstantPropagation::checkCanFold(Instruction *inst) {
     if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
@@ -82,12 +82,11 @@ void ConstantPropagation::runOnFunction() {
                 default:
                     break;
             }
+
             if (binary_inst->getBasicType() == INT_BTYPE) {
                 const_var = new ConstantVar(static_cast<int32_t>(cal_value));
-                printf("the const var is %d\n", const_var->getIValue());
             } else {
                 const_var = new ConstantVar(static_cast<float>(cal_value));
-                printf("the const var is %lf\n", const_var->getFValue());
             }
         } else {
             auto unary_inst = dynamic_cast<UnaryOpInstruction *>(inst);
@@ -95,16 +94,20 @@ void ConstantPropagation::runOnFunction() {
             auto unary_operand = dynamic_cast<ConstantVar *>(unary_inst->getValue());
             double unary_value = unary_inst->getBasicType() == INT_BTYPE ? unary_operand->getIValue() : unary_operand->getFValue();
             if (unary_inst->getInstType() == NegType) {
-                unary_value = -unary_value;
+                if (unary_inst->getBasicType() == INT_BTYPE) {
+                    int64_t neg_value = -unary_operand->getIValue();
+                    unary_value = static_cast<double>(neg_value);
+                } else {
+                    unary_value = -1 * unary_value;
+                }
             } else if (unary_inst->getInstType() == NotType) {
                 unary_value = !unary_value;
             }
+
             if (unary_inst->getBasicType() == INT_BTYPE) {
                 const_var = new ConstantVar(static_cast<int32_t>(unary_value));
-                printf("the const var is %d\n", const_var->getIValue());
             } else {
                 const_var = new ConstantVar(static_cast<float>(unary_value));
-                printf("the const var is %lf\n", const_var->getFValue());
             }
         }
         // 将引用了该指令的指令进行替换
