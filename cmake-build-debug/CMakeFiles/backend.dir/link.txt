@@ -1,2 +1,0 @@
-/usr/bin/ar qc libbackend.a  CMakeFiles/backend.dir/codegen/CodeGen.cc.o CMakeFiles/backend.dir/codegen/Machine.cc.o CMakeFiles/backend.dir/codegen/MachineOperand.cc.o CMakeFiles/backend.dir/codegen/RegsAllocator.cc.o CMakeFiles/backend.dir/codegen/MachineDumper.cc.o CMakeFiles/backend.dir/codegen/MachineInst.cc.o
-/usr/bin/ranlib libbackend.a

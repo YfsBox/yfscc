@@ -1,1 +1,0 @@
-/usr/bin/clang++  -g   CMakeFiles/dumpast_test.dir/__/common/Utils.cc.o  -o dumpast_test  -lgtest -lpthread 

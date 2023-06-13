@@ -1,1 +1,0 @@
-/usr/bin/clang++  -g   CMakeFiles/yfscc.dir/main.cpp.o  -o yfscc  libiropt.a libbackend.a libfrontend.a 
