@@ -41,6 +41,8 @@ class Instruction: public User {
 public:
     using OperandSet = std::unordered_set<Value *>;
 
+    explicit Instruction() = default;
+
     Instruction(InstructionType type, BasicType basic_type, bool isptr, bool isbool, BasicBlock *block, const std::string &name = "");
 
     virtual ~Instruction();
@@ -462,7 +464,7 @@ public:
 
     OperandSet getUses() override;
 
-    OperandSet getDefs() {
+    OperandSet getDefs() override {
         return {};
     }
 

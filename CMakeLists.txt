@@ -2,16 +2,16 @@ cmake_minimum_required(VERSION 3.16)
 project(yfscc)
 
 set(CMAKE_CXX_STANDARD 17)
+SET (CMAKE_CXX_COMPILER clang++)
 
 enable_testing()
 
+
 set(CXX_FLAGS
-        -g
         -Wall
         -std=c++17
-        -D_PTHREADS
-        -Wno-unused-parameter
-        -Wno-unreachable
+        #-Wno-unused-parameter
+        #-Wno-unreachable
         -O2
         )
 

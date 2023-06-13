@@ -200,7 +200,7 @@ public:
 
     ~ConstDeclare() = default;
 
-    void addDef(const DefinePtr &def) {
+    void addDef(const DefinePtr &def) override {
         defs_.push_back(def);
     }
 
@@ -215,7 +215,7 @@ public:
 
     ~VarDeclare() = default;
 
-    void addDef(const DefinePtr &def) {
+    void addDef(const DefinePtr &def) override {
         defs_.push_back(def);
     }
 
