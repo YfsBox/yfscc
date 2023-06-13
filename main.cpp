@@ -31,6 +31,7 @@ int main(int argc, char **argv) {
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-O2") == 0) { //判断参数是否为 "-S"
             enable_opt = true; // 如果是，则将flag设置为true
+            continue;
         }
         if (strcmp(argv[i], "-o") == 0) {
             target_file = argv[i + 1];
