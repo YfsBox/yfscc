@@ -8,8 +8,5 @@
 #include "../ir/BasicBlock.h"
 
 class LoopInvHoist : public Pass {
-public:
-    LoopInvHoist(Module *m) : Pass(m) {}
 
-    void run() override;
 };

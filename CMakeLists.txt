@@ -43,6 +43,7 @@ set(IROPT_SRC
         opt/InstCombine.cc
         opt/ComputeDominators.cc
         opt/Mem2Reg.cc
+        opt/GvnGcm.cc
 )
 
 set(BACKEND_SRC

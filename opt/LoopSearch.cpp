@@ -3,7 +3,7 @@
 #include <unordered_set>
 #include <fstream>
 
-struct CFGNode
+/*struct CFGNode
 {
     std::unordered_set<CFGNodePtr> succs;
     std::unordered_set<CFGNodePtr> prevs;
@@ -292,7 +292,7 @@ void LoopSearch::run()
         std::string dot_cmd = "dot -Tpng " + title + ".dot" + " -o " + title + ".png";
         std::system(dot_cmd.c_str());
     }
-}*/
+}
 
 BBset_t *LoopSearch::get_parent_loop(BBset_t *loop)
 {
@@ -315,4 +315,4 @@ BBset_t *LoopSearch::get_parent_loop(BBset_t *loop)
 std::unordered_set<BBset_t *> LoopSearch::get_loops_in_func(Function *f)
 {
     return func2loop.count(f) ? func2loop[f] : std::unordered_set<BBset_t *>();
-}
+}*/

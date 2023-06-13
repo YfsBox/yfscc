@@ -16,7 +16,7 @@ using BBset_t = std::unordered_set<BasicBlock *>;
 
 
 class LoopSearch : public Pass{
-public:
+/*public:
     explicit LoopSearch(Module* m, bool dump=false) : Pass(m), dump(dump){}
     ~LoopSearch() = default;
     void build_cfg(Function *func,std::unordered_set<CFGNode *> &result);
@@ -66,7 +66,7 @@ private:
     // { loop : entry bb of loop }
     std::unordered_map<BBset_t *, BasicBlock *> loop2base;
     // { bb :  entry bb of loop} 默认最低层次的loop
-    std::unordered_map<BasicBlock *, BasicBlock *> bb2base;
+    std::unordered_map<BasicBlock *, BasicBlock *> bb2base;*/
 };
 
 
