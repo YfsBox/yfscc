@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
     RegsAllocator::regsAllocate(codegen.getMCModule(), &codegen);
 
     MachineDumper mcdumper(codegen.getMCModule(), target_file);
-    mcdumper.dump();
+    // mcdumper.dump();
     // yylex();
     return 0;
 }
