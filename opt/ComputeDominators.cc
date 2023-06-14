@@ -16,6 +16,12 @@ void ComputeDominators::clearSets() {
     basicblock_dom_depth_map_.clear();
 }
 
+void ComputeDominators::getPostOrderList() {
+
+
+}
+
+
 void ComputeDominators::initForBasicBlockIndexMap() {
     int index = 0;
     for (auto &bb: curr_func_->getBlocks()) {
@@ -159,7 +165,7 @@ void ComputeDominators::run() {
     computeFrontiers();
     computeSuccessors();
 
-    printf("------------the metrix is here: ------------\n");
+    /*printf("------------the metrix is here: ------------\n");
     for (int i = 0; i < basicblock_n_; ++i) {
         for (int j = 0; j < basicblock_n_; ++j) {
             printf("%d ", dominators_matrix_[i][j]);
@@ -167,7 +173,7 @@ void ComputeDominators::run() {
         printf("\n");
     }
 
-    /*printf("------------the dom node is here: ------------\n");
+    printf("------------the dom node is here: ------------\n");
     for (auto &bb: curr_func_->getBlocks()) {
         assert(bb);
         printf("the bb is %s\n", bb->getName().c_str());
@@ -197,6 +203,7 @@ BasicBlock *ComputeDominators::intersect(BasicBlock *bb1, BasicBlock *bb2) {
 }
 
 void ComputeDominators::computeImmDoms() {
+
     for (auto &bb: curr_func_->getBlocks()) {
         imm_doms_map_[bb.get()] = nullptr;
     }

@@ -76,14 +76,12 @@ int main(int argc, char **argv) {
     }
 
     pass_manager.run();
-    irbuilder.dump();
+    // irbuilder.dump();
 
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();
-
-    MachineDumper vmcdumper(codegen.getMCModule(), "yfscc.v.s");
-    vmcdumper.dump();
-
+    //MachineDumper vmcdumper(codegen.getMCModule(), "yfscc.v.s");
+    // vmcdumper.dump();
     RegsAllocator::regsAllocate(codegen.getMCModule(), &codegen);
 
     MachineDumper mcdumper(codegen.getMCModule(), target_file);

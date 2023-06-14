@@ -20,7 +20,7 @@ void Mem2Reg::init() {
             if (alloca_inst->isPtrPtr() || alloca_inst->isArray()) {
                 continue;
             }
-            ir_dumper_->dump(alloca_inst);
+            // ir_dumper_->dump(alloca_inst);
             alloca_insts_.insert(alloca_inst);
         }
     }
@@ -64,7 +64,6 @@ void Mem2Reg::genPhiInsts() {
                     }
                 }
             }
-            printf("\n");
         }
     }
 
@@ -101,23 +100,19 @@ void Mem2Reg::rename(BasicBlock *basic_block) {
             if (auto alloca_var = dynamic_cast<AllocaInstruction *>(store_ptr); alloca_var && alloca_insts_.count(alloca_var)) {
                 // printf("push %s to stack of %s\n", phi_inst->getName().c_str(), alloca_var->getName().c_str());
                 phi_var_stack_[alloca_var].push_back(store_value);
-                printf("deleted add store inst:\n");
-                ir_dumper_->dump(store_inst);
+                // ir_dumper_->dump(store_inst);
                 deleted_insts.insert(store_inst);
             }
         }
     }
-
-    printf("--------curr basicblock is %s, and the phi_var_stack is: --------------\n", bb->getName().c_str());
+    /*printf("--------curr basicblock is %s, and the phi_var_stack is: --------------\n", bb->getName().c_str());
     for (auto &[var, st]: phi_var_stack_) {
         printf("the var %s stack is here\n", var->getName().c_str());
         for (auto st_value: st) {
             printf("%s\t", st_value->getName().c_str());
         }
         printf("\n");
-    }
-
-    // 填充phi指令的内容
+    }*/
     for (auto &succ_bb : bb->getSuccessorBlocks()) {
         for (auto &inst : succ_bb->getInstructionList()) {
             if (inst->getInstType() == PhiType) {
@@ -156,7 +151,7 @@ void Mem2Reg::rename(BasicBlock *basic_block) {
     for (auto it = inst_list.begin(); it != inst_list.end();) {
         auto inst = it->get();
         if (deleted_insts.count(inst)) {
-            ir_dumper_->dump(inst);
+            // ir_dumper_->dump(inst);
             it = inst_list.erase(it);
         } else {
             it++;

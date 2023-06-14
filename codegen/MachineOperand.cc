@@ -76,8 +76,9 @@ std::string MachineReg::machineReg2RegName(MachineReg::Reg reg) {
             return "lr";
         case pc:
             return "pc";
+        default:
+            return "";
     }
-    return "";
 }
 
 std::string MachineReg::machieReg2RegName() const {

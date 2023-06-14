@@ -406,7 +406,7 @@ public:
 
     GEPInstruction(BasicBlock *block, BasicType btype, Value *base, bool ptr_offset, const std::vector<Value *> &indexes, const std::string &name = "");
 
-    GEPInstruction() = default;
+    explicit GEPInstruction() = default;
 
     ~GEPInstruction();
 

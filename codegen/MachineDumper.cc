@@ -190,6 +190,8 @@ void MachineDumper::dump(const BranchInst *inst) {
         case BranchInst::BrNe:
             fout_ << "ne";
             break;
+        default:
+            break;
     }
     fout_ << "\t";
     dump(inst->getOperand());
@@ -239,6 +241,8 @@ void MachineDumper::dump(const BinaryInst *inst) {
         case BinaryInst::BinaryOp::IAsr:
             fout_ << "asr";
             break;
+        default:
+            break;
     }
     fout_ << "\t";
     dump(inst->getDst());
@@ -285,6 +289,8 @@ void MachineDumper::dump(const MoveInst *inst) {
         case MoveInst::MoveType::H2I:
             fout_ << "movt";
             break;
+        default:
+            break;
     }
 
     auto move_cond = inst->getMoveCond();
@@ -306,6 +312,8 @@ void MachineDumper::dump(const MoveInst *inst) {
             break;
         case MoveInst::MoveGt:
             fout_ << "gt";
+            break;
+        default:
             break;
     }
     if (move_type == MoveInst::F2F) {

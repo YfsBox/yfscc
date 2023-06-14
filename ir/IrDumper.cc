@@ -81,6 +81,8 @@ std::string IrDumper::getCmpCondType(SetCondInstruction *inst) const {
         case SetCondInstruction::SetEQ:
             cmp_cond_type = "eq";
             break;
+        default:
+            break;
     }
     std::string cmp_flag;
     if (inst->isFloatCmp()) {
@@ -139,6 +141,8 @@ std::string IrDumper::getOptype(Instruction *inst, BasicType basic_type) const {
             break;
         case InstructionType::ModType:
             optype = "srem";
+            break;
+        default:
             break;
     }
     if (basic_type == BasicType::INT_BTYPE && inst_type == InstructionType::DivType) {
@@ -295,6 +299,8 @@ void IrDumper::dump(Function *function) {
         case BasicType::VOID_BTYPE:
             ret_type = "void";
             break;
+        default:
+            break;
     }
     out_ << "define " << ret_type << " @" << function->getName() << "(";
     auto argument_size = function->getArgumentSize();
@@ -382,6 +388,7 @@ void IrDumper::dump(Instruction *inst) {
         case PhiType:
             dump(dynamic_cast<PhiInstruction *>(inst));
             return;
+        default:;
     }
     if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
         dump(binary_inst);

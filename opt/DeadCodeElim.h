@@ -28,8 +28,6 @@ private:
 
     void removeDeadInsts();
 
-    void markAsUsefulInst(Instruction *inst);
-
     bool hasSideEffect(Instruction *inst);
 
     std::unordered_set<Instruction *> useful_insts_;

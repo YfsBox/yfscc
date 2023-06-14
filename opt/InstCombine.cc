@@ -103,7 +103,7 @@ void InstCombine::combine(BinaryOpInstruction *inst) {
         }
         inst->replaceWithValue(inst->getLeft(), left_binary_inst->getLeft());
         inst->replaceWithValue(inst->getRight(), constvar);
-        ir_dumper_->dump(inst);
+        // ir_dumper_->dump(inst);
         combined_insts_set_.insert(inst);
     }
 

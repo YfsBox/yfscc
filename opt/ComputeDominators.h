@@ -53,6 +53,8 @@ public:
 
 private:
 
+    void getPostOrderList();
+
     void clearSets();
 
     void initForBasicBlockIndexMap();

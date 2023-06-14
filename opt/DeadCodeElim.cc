@@ -35,20 +35,6 @@ bool DeadCodeElim::hasSideEffect(Instruction *inst) {
     return false;
 }
 
-void DeadCodeElim::markAsUsefulInst(Instruction *inst) {
-    if (useful_insts_.count(inst)) {
-        return;
-    }
-    useful_insts_.insert(inst);
-    auto uses = inst->getUses();
-    for (auto use: uses) {
-        auto use_inst = dynamic_cast<Instruction *>(use);
-        if (use_inst) {
-            markAsUsefulInst(use_inst);
-        }
-    }
-}
-
 void DeadCodeElim::runOnFunction() {
     useful_insts_.clear();
     dead_insts_.clear();

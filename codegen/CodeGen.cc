@@ -248,13 +248,15 @@ void CodeGen::visit(Instruction *inst) {
         case ZextType:
             visit(dynamic_cast<ZextInstruction *>(inst));
             return;
+        default:
+            return;
     }
 
 }
 
 void CodeGen::visit(Constant *constant) {
     bool imm_float = false;
-    auto const_reg = value2MachineOperand(constant, &imm_float);
+    auto const_reg = value2MachineOperand(constant, true);
     setCurrMachineOperand(const_reg);
 }
 
@@ -1013,6 +1015,7 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
     Value *left_value = binst->getLeft();
     Value *right_value = binst->getRight();
 
+    bool is_mod = false;
     switch (binary_op) {
         case InstructionType::AddType:
             can_be_swap = true;
@@ -1030,7 +1033,7 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
         case InstructionType::DivType:
             binary_inst_op = basic_type == BasicType::INT_BTYPE ? BinaryInst::IDiv: BinaryInst::FDiv;
             break;
-        case InstructionType::ModType:
+        case InstructionType::ModType: {
             auto div_dst = createVirtualReg(MachineOperand::Int);
             auto mul_dst = createVirtualReg(MachineOperand::Int);
             auto sub_dst = createVirtualReg(MachineOperand::Int, binst);
@@ -1048,8 +1051,10 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
 
             auto sub_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, sub_dst, lhs, mul_dst);
             addMachineInst(sub_inst);
-
             return;
+        }
+        default:
+            break;
     }
 
     if (dynamic_cast<ConstantVar *>(left_value) && !dynamic_cast<ConstantVar *>(right_value) && can_be_swap) {

@@ -25,6 +25,8 @@ class Value {
 public:
     using UserMap = std::set<User *>;
 
+    explicit Value() = default;
+
     Value(ValueType vtype, bool isptr, bool isbool, const std::string &name = ""): name_(name), type_(vtype), is_bool_type_(isbool), is_ptr_(isptr) {}
 
     virtual ~Value() = default;
