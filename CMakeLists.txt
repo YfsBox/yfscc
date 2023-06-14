@@ -10,8 +10,6 @@ enable_testing()
 set(CXX_FLAGS
         -Wall
         -std=c++17
-        #-Wno-unused-parameter
-        #-Wno-unreachable
         -O2
         )
 
@@ -45,6 +43,8 @@ set(IROPT_SRC
         opt/Mem2Reg.cc
         opt/GvnGcm.cc
         opt/DeadBlockElim.cc
+        opt/CallGraphAnalysis.cc
+        opt/FunctionInline.cc
 )
 
 set(BACKEND_SRC
