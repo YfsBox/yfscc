@@ -16,9 +16,15 @@ void ComputeDominators::clearSets() {
     basicblock_dom_depth_map_.clear();
 }
 
-void ComputeDominators::getPostOrderList() {
-
-
+void ComputeDominators::getPostOrderList(BasicBlock *bb) {
+    visited_bb_set_.insert(bb);
+    for (auto succ_bb: bb->getSuccessorBlocks()) {
+        if (!visited_bb_set_.count(succ_bb)) {
+            getPostOrderList(succ_bb);
+        }
+    }
+    post_order_index_map_[bb] = post_order_list_.size();
+    post_order_list_.push_back(bb);
 }
 
 
@@ -87,105 +93,15 @@ void ComputeDominators::run() {
         dominators_matrix_.push_back(line);
     }
 
-    int post_index = 0;
-    for (auto rit = blocks_list.rbegin(); rit != blocks_list.rend(); ++rit) {
-        post_order_index_map_[rit->get()] = post_index++;
-    }
+    auto enter_bb = curr_func_->getBlocks().front().get();
+    getPostOrderList(enter_bb);
 
     initForBasicBlockIndexMap();
-    // printf("init for matrix, the block number is %d\n", basicblock_n_);
-    // initForMatrix();
-    /*
-    for (auto &bb : curr_func_->getBlocks()) {
-        auto bb_index = basicblock2index_map_[bb.get()];
-        for (int i = 0; i < basicblock_n_; ++i) {
-            if (dominators_matrix_[bb_index][i]) {
-                basicblock_doms_[bb.get()].insert(index2basicblock_map_[i]);
-            }
-        }
-    }
 
-    for (int i = basicblock_n_ - 1; i >= 0; i--) {
-        auto bb1 = index2basicblock_map_[i];
-        auto bb1_doms = basicblock_doms_[bb1];
-
-        for (int j = basicblock_n_ - 1; j >= 0; j--) {
-            if (i == j) {
-                continue;
-            }
-
-            auto bb2 = index2basicblock_map_[j];
-            auto bb2_doms = basicblock_doms_[bb2];
-            if (bb1_doms.size() - 1 == bb2_doms.size()) {
-                bool same = true;
-                for (auto dom: bb1_doms) {
-                    if (dom == bb1) {
-                        continue;
-                    }
-                    if (!bb2_doms.count(bb1)) {
-                        same = false;
-                        break;
-                    }
-                }
-
-                if (same) {
-                    imm_doms_map_[bb1] = bb2;
-                    dom_tree_[bb2].insert(bb1);
-                }
-            }
-        }
-    }
-    // 计算dom depth的深度
-    // std::queue<BasicBlock *> q;
-    // q.push();
-    auto start_block = index2basicblock_map_[0];
-    std::queue<BasicBlock *> bb_q;
-    bb_q.push(start_block);
-    std::unordered_map<BasicBlock *, bool> visited_map;
-
-    for (int i = 0; i < basicblock_n_; ++i) {
-        auto bb = index2basicblock_map_[i];
-        visited_map[bb] = false;
-    }
-
-    basicblock_dom_depth_map_[start_block] = 0;
-    while (!bb_q.empty()) {
-        auto bb = bb_q.front();
-        bb_q.pop();
-
-        for (auto child_bb: dom_tree_[bb]) {
-            if (!visited_map[child_bb]) {
-                visited_map[child_bb] = true;
-                basicblock_dom_depth_map_[child_bb] = basicblock_dom_depth_map_[bb] + 1;
-                bb_q.push(child_bb);
-            }
-        }
-    }*/
     computeImmDoms();
     computeFrontiers();
     computeSuccessors();
 
-    /*printf("------------the metrix is here: ------------\n");
-    for (int i = 0; i < basicblock_n_; ++i) {
-        for (int j = 0; j < basicblock_n_; ++j) {
-            printf("%d ", dominators_matrix_[i][j]);
-        }
-        printf("\n");
-    }
-
-    printf("------------the dom node is here: ------------\n");
-    for (auto &bb: curr_func_->getBlocks()) {
-        assert(bb);
-        printf("the bb is %s\n", bb->getName().c_str());
-        for (auto dom_bb: basicblock_doms_[bb.get()]) {
-            printf("%s\t", dom_bb->getName().c_str());
-        }
-        printf("\n");
-    }
-    printf("------------the immdom node is here: ------------\n");
-    for (auto &bb : curr_func_->getBlocks()) {
-        printf("the bb is %s, its imm dom is %s\n", bb->getName().c_str(), imm_doms_map_[bb.get()]->getName().c_str());
-    }*/
 }
 
 BasicBlock *ComputeDominators::intersect(BasicBlock *bb1, BasicBlock *bb2) {
@@ -208,14 +124,15 @@ void ComputeDominators::computeImmDoms() {
         imm_doms_map_[bb.get()] = nullptr;
     }
     auto enter_block = curr_func_->getBlocks().front().get();
+    // printf("the enter bb is %s, the bb size is %d\n", enter_block->getName().c_str(), curr_func_->getBlocks().size());
     imm_doms_map_[enter_block] = enter_block;
 
     bool changed = true;
     while (changed) {
         changed = false;
         auto &bb_list = curr_func_->getBlocks();
-        for (auto rit = bb_list.rbegin(); rit != bb_list.rend(); ++rit) {
-            auto curr_bb = rit->get();
+        for (auto it = post_order_list_.begin(); it != post_order_list_.end(); ++it) {
+            auto curr_bb = *it;
             if (curr_bb == enter_block) {
                 continue;
             }

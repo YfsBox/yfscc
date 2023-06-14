@@ -9,6 +9,7 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <list>
 
 class BasicBlock;
 class Function;
@@ -53,7 +54,7 @@ public:
 
 private:
 
-    void getPostOrderList();
+    void getPostOrderList(BasicBlock *bb);
 
     void clearSets();
 
@@ -88,6 +89,10 @@ private:
     Function *curr_func_;
 
     std::unordered_map<int, BasicBlock *> index2basicblock_map_;
+
+    std::list<BasicBlock *> post_order_list_;
+
+    std::unordered_set<BasicBlock *> visited_bb_set_;
 
     std::unordered_map<BasicBlock *, int> post_order_index_map_;
 

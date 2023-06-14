@@ -44,6 +44,7 @@ set(IROPT_SRC
         opt/ComputeDominators.cc
         opt/Mem2Reg.cc
         opt/GvnGcm.cc
+        opt/DeadBlockElim.cc
 )
 
 set(BACKEND_SRC

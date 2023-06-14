@@ -11,6 +11,7 @@
 #include "opt/ConstantPropagation.h"
 #include "opt/InstCombine.h"
 #include "opt/Mem2Reg.h"
+#include "opt/DeadBlockElim.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -59,6 +60,9 @@ int main(int argc, char **argv) {
 
     ConstantPropagation const_propagation(ir_module);
     pass_manager.addPass(&const_propagation);
+
+    DeadBlockElim dead_bb_elim(ir_module);
+    pass_manager.addPass(&dead_bb_elim);
 
     DeadCodeElim dead_code_elim(ir_module);
     Mem2Reg mem2reg(ir_module);
