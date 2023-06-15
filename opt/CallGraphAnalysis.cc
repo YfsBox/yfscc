@@ -13,6 +13,14 @@ void CallGraphAnalysis::initForLibFunction() {
     }
 }
 
+void CallGraphAnalysis::findRecursive() {       // 寻找递归的函数
+    for (int i = 0; i < module_->getFuncSize(); ++i) {
+        auto func = module_->getFunction(i);
+        if (callee_sets_[func].count(func)) {
+            recursive_functions_.insert(func);
+        }
+    }
+}
 
 void CallGraphAnalysis::buildCallGraph() {
     for (int i = 0; i < module_->getFuncSize(); ++i) {
@@ -54,6 +62,10 @@ void CallGraphAnalysis::buildCallGraph() {
 }
 
 void CallGraphAnalysis::analysis() {
+    if (has_analysis_) {
+        return;
+    }
+
     initForLibFunction();
     buildCallGraph();
 
@@ -80,5 +92,8 @@ void CallGraphAnalysis::analysis() {
             printf("function %s has side effect\n", func->getName().c_str());
         }
     }
+
+    findRecursive();
+    has_analysis_ = true;
 
 }

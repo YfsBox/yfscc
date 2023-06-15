@@ -16,12 +16,20 @@ public:
 
     using FunctionSet = std::unordered_set<Function *>;
 
-    explicit CallGraphAnalysis(Module *module): module_(module) {}
+    explicit CallGraphAnalysis(Module *module): module_(module), has_analysis_(false) {}
 
     ~CallGraphAnalysis() = default;
 
     bool hasSideEffect(Function *function) {
         return side_effect_functions_.count(function);
+    }
+
+    bool isRecursive(Function *function) {
+        return recursive_functions_.count(function);
+    }
+
+    bool isLibFunction(Function *function) {
+        return lib_function_set_.count(function);
     }
 
     void analysis();
@@ -32,9 +40,15 @@ private:
 
     void initForLibFunction();
 
+    void findRecursive();
+
+    bool has_analysis_;
+
     Module *module_;
 
     FunctionSet side_effect_functions_;
+
+    FunctionSet recursive_functions_;
 
     FunctionSet lib_function_set_;
 
