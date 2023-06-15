@@ -45,6 +45,7 @@ set(IROPT_SRC
         opt/DeadBlockElim.cc
         opt/CallGraphAnalysis.cc
         opt/FunctionInline.cc
+        opt/Svn.cc
 )
 
 set(BACKEND_SRC
