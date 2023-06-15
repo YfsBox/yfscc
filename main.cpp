@@ -12,6 +12,8 @@
 #include "opt/InstCombine.h"
 #include "opt/Mem2Reg.h"
 #include "opt/DeadBlockElim.h"
+#include "opt/FunctionInline.h"
+#include "opt/Svn.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -67,20 +69,25 @@ int main(int argc, char **argv) {
     DeadCodeElim dead_code_elim(ir_module);
     Mem2Reg mem2reg(ir_module);
     InstCombine inst_combine(ir_module);
+    FunctionInline function_inline(ir_module);
+    Svn svn(ir_module);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
         inst_combine.ir_dumper_ = new IrDumper(std::cout);
         dead_code_elim.ir_dumper_ = new IrDumper(std::cout);
+        svn.ir_dumper_ = new IrDumper(std::cout);
 
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&mem2reg);
         pass_manager.addPass(&inst_combine);
+        pass_manager.addPass(&svn);
         pass_manager.addPass(&dead_code_elim);
+        pass_manager.addPass(&function_inline);
     }
 
     pass_manager.run();
-    // irbuilder.dump();
+    irbuilder.dump();
 
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();
@@ -89,7 +96,7 @@ int main(int argc, char **argv) {
     RegsAllocator::regsAllocate(codegen.getMCModule(), &codegen);
 
     MachineDumper mcdumper(codegen.getMCModule(), target_file);
-    // mcdumper.dump();
-    // yylex();
+    mcdumper.dump();
+
     return 0;
 }

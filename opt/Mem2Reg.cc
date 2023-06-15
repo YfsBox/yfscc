@@ -152,6 +152,7 @@ void Mem2Reg::rename(BasicBlock *basic_block) {
         auto inst = it->get();
         if (deleted_insts.count(inst)) {
             // ir_dumper_->dump(inst);
+            inst->removeUseForOperand();
             it = inst_list.erase(it);
         } else {
             it++;
@@ -166,6 +167,7 @@ void Mem2Reg::removeAllocaCode() {
         for (auto it = insts_list.begin(); it != insts_list.end();) {
             auto inst = it->get();
             if (auto alloca_inst = dynamic_cast<AllocaInstruction *>(inst); alloca_inst && alloca_insts_.count(alloca_inst)) {
+                inst->removeUseForOperand();
                 it = insts_list.erase(it);
             } else {
                 ++it;
