@@ -12,6 +12,8 @@
 #include "DeadCodeElim.h"
 #include "DataflowAnalysis.h"
 
+DeadCodeElim::DeadCodeElim(Module *module): Pass(module), call_graph_analysis_(std::make_unique<CallGraphAnalysis>(module)) {}
+
 void DeadCodeElim::removeDeadInsts() {
     auto &bbs = curr_func_->getBlocks();
     for (auto &bb: bbs) {
@@ -19,6 +21,7 @@ void DeadCodeElim::removeDeadInsts() {
         for (auto it = insts.begin(); it != insts.end();) {
             auto inst = it->get();
             if (dead_insts_.count(inst)) {
+                inst->removeUseForOperand();
                 it = insts.erase(it);
             } else {
                 it++;
@@ -29,13 +32,16 @@ void DeadCodeElim::removeDeadInsts() {
 
 bool DeadCodeElim::hasSideEffect(Instruction *inst) {
     auto inst_type = inst->getInstType();
-    if (inst_type == StoreType || inst_type == RetType || inst_type == BrType || inst_type == CallType) {
+    if (inst_type == StoreType || inst_type == RetType || inst_type == BrType) {
+        return true;
+    } else if (inst_type == CallType && call_graph_analysis_->hasSideEffect(dynamic_cast<CallInstruction *>(inst)->getFunction())) {
         return true;
     }
     return false;
 }
 
 void DeadCodeElim::runOnFunction() {
+    call_graph_analysis_->analysis();
     useful_insts_.clear();
     dead_insts_.clear();
 

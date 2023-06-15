@@ -8,6 +8,7 @@
 #include <vector>
 #include "Value.h"
 
+
 class User: public Value {
 public:
 
@@ -48,10 +49,24 @@ public:
 
     void replaceWithValue(Value *oldv, Value *newv) {
         Value *curr_value = nullptr;
+        auto old_value_map = oldv->getUserMap();
+        old_value_map.erase(this);
         for (int i = 0; i < operands_.size(); ++i) {
             curr_value = operands_[i];
             if (curr_value == oldv) {
                 operands_[i] = newv;
+            }
+        }
+        auto new_value_map = newv->getUserMap();
+        new_value_map.insert(this);
+    }
+
+    void removeUseForOperand() {
+        for (int i = 0; i < operands_.size(); ++i) {
+            auto operand = operands_[i];
+            if (operand->getValueType() == InstructionValue) {
+                auto &user_map = operand->getUserMap();
+                user_map.erase(this);
             }
         }
     }
