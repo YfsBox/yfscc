@@ -7,9 +7,13 @@
 
 #include <memory>
 #include <list>
+#include <unordered_map>
 #include "CallGraphAnalysis.h"
 #include "PassManager.h"
 #include "../ir/BasicBlock.h"
+#include "../ir/Function.h"
+
+class CallInstruction;
 
 class FunctionInline: public Pass {
 public:
@@ -24,15 +28,42 @@ protected:
     void runOnFunction() override;  // 这里的runOnFunction并不是针对某个function的，而是整个module的所有
 private:
 
-    void copyFunction(Function *function, std::list<BasicBlockUptr> &copyed_bbs);
-
     static const constexpr int32_t inline_insts_size = 200;
 
     bool canBeInline(Function *function);
 
-    void inlineOnFunction(Function *function);
+    void inlineOnFunction();
+
+    void collectCallPoint();
+
+    void initForFunction();
+
+    void preSetCopyMap(CallInstruction *call_inst);
+
+    void generateBasicBlocks(Function *inlined_function, std::list<BasicBlock *> &bbs_list);
+
+    BasicBlock *dfsSetCopyMap(BasicBlock *basic_block);
+
+    BasicBlock *curr_caller_basicblock_;
+
+    BasicBlock *curr_inlined_exit_basicblock_;
+
+    std::unordered_map<Function *, int> call_cnt_map_;
 
     std::unique_ptr<CallGraphAnalysis> call_graph_analysis_;
+
+    std::unordered_set<CallInstruction *> call_insts_for_inline_;
+
+    std::unordered_map<BasicBlock *, Function::BasicBlocksIt> insert_point_nextit_map_;
+
+    std::unordered_map<Value *, Value *> copy_value_map_;
+
+    std::unordered_map<Function *, std::unordered_set<BasicBlock *>> copy_exit_blocks_;
+
+    std::unordered_map<BasicBlock *, Value *> exitblock_retvalue_map_;
+
+    std::unordered_set<BasicBlock *> visited_basicblocks_;
+
 };
 
 
