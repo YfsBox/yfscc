@@ -30,7 +30,7 @@ void CallGraphAnalysis::buildCallGraph() {
             auto arg = func->getArgument(j);
             if (arg->isPtrArg()) {
                 ptr_args.insert(arg);
-                printf("the ptr arg is %s in function %s\n", arg->getName().c_str(), func->getName().c_str());
+                // printf("the ptr arg is %s in function %s\n", arg->getName().c_str(), func->getName().c_str());
             }
         }
 
@@ -85,13 +85,6 @@ void CallGraphAnalysis::analysis() {
             break;
         }
     }
-    // 输出有副作用的function
-
-    /*for (auto func: side_effect_functions_) {
-        if (!lib_function_set_.count(func)) {
-            printf("function %s has side effect\n", func->getName().c_str());
-        }
-    }*/
 
     findRecursive();
     has_analysis_ = true;
