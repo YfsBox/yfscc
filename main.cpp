@@ -6,13 +6,13 @@
 #include "ir/IrBuilder.h"
 #include "ir/IrDumper.h"
 #include "ir/Module.h"
-#include "opt/CollectUsedGlobals.h"
 #include "opt/DeadCodeElim.h"
 #include "opt/ConstantPropagation.h"
 #include "opt/InstCombine.h"
 #include "opt/Mem2Reg.h"
 #include "opt/DeadBlockElim.h"
 #include "opt/FunctionInline.h"
+#include "opt/GlobalAnalysis.h"
 #include "opt/Svn.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
@@ -60,6 +60,9 @@ int main(int argc, char **argv) {
 
     PassManager pass_manager(ir_module);
 
+    GlobalAnalysis global_analysis(ir_module);
+    pass_manager.addPass(&global_analysis);
+
     ConstantPropagation const_propagation(ir_module);
     pass_manager.addPass(&const_propagation);
 
@@ -87,12 +90,11 @@ int main(int argc, char **argv) {
     }
 
     pass_manager.run();
-    irbuilder.dump();
+    // irbuilder.dump();
 
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();
-    //MachineDumper vmcdumper(codegen.getMCModule(), "yfscc.v.s");
-    // vmcdumper.dump();
+
     RegsAllocator::regsAllocate(codegen.getMCModule(), &codegen);
 
     MachineDumper mcdumper(codegen.getMCModule(), target_file);

@@ -71,8 +71,6 @@ void Svn::lvn(BasicBlock *basicblock) {
         auto inst = inst_uptr.get();
         if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
             auto value_name = getValueName(inst);
-            printf("the value number is %s for inst %s in bb %s\n", value_name.c_str(), inst->getName().c_str(),
-                   basicblock->getName().c_str());
             auto lookup_inst = lookupOrAdd(value_name, inst);
             if (lookup_inst != inst) {
                 replaced_map_[inst] = lookup_inst;
@@ -88,9 +86,8 @@ void Svn::replaceValues() {
         for (auto &inst_uptr: insts_list) {
             auto inst = inst_uptr.get();
             if (replaced_map_.count(inst)) {
-                ir_dumper_->dump(inst);
-                printf("relpace with\n");
-                ir_dumper_->dump(replaced_map_[inst]);
+                // ir_dumper_->dump(inst);
+                // ir_dumper_->dump(replaced_map_[inst]);
                 inst->replaceAllUseWith(replaced_map_[inst]);
             }
         }

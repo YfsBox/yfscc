@@ -87,11 +87,11 @@ void CallGraphAnalysis::analysis() {
     }
     // 输出有副作用的function
 
-    for (auto func: side_effect_functions_) {
+    /*for (auto func: side_effect_functions_) {
         if (!lib_function_set_.count(func)) {
             printf("function %s has side effect\n", func->getName().c_str());
         }
-    }
+    }*/
 
     findRecursive();
     has_analysis_ = true;

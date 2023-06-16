@@ -34,7 +34,6 @@ set(FRONTEND_SRC
 
 set(IROPT_SRC
         opt/PassManager.cc
-        opt/CollectUsedGlobals.cc
         opt/DataflowAnalysis.cc
         opt/DeadCodeElim.cc
         opt/ConstantPropagation.cc
@@ -46,6 +45,7 @@ set(IROPT_SRC
         opt/CallGraphAnalysis.cc
         opt/FunctionInline.cc
         opt/Svn.cc
+        opt/GlobalAnalysis.cc
 )
 
 set(BACKEND_SRC

@@ -34,6 +34,10 @@ public:
         return is_const_;
     }
 
+    bool isArray() const {
+        return dynamic_cast<ConstantArray *>(const_init_.get()) != nullptr;
+    }
+
     BasicType getBasicType() const {
         return const_init_->getBasicType();
     }
