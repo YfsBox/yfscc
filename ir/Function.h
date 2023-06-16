@@ -25,6 +25,8 @@ public:
 
     using BasicBlockPtr = std::unique_ptr<BasicBlock>;
 
+    using BasicBlocksIt = std::list<BasicBlockPtr>::iterator;
+
     Function(BasicType ret_type, Module *module, const std::string &name);
 
     ~Function();
@@ -65,6 +67,8 @@ public:
     std::unordered_set<GlobalVariable *> getUsedGlobals() {
         return used_globals_;
     }
+
+    void insertBlock(BasicBlocksIt it, BasicBlock *new_bb);
 
     void bindBasicBlocks();
 
