@@ -42,7 +42,13 @@ private:
 
     void generateBasicBlocks(Function *inlined_function, std::list<BasicBlock *> &bbs_list);
 
+    void splitAndInsert(const std::list<BasicBlock *> &basicblocks);
+
+    Value *getCopyValue(Value *value);
+
     BasicBlock *dfsSetCopyMap(BasicBlock *basic_block);
+
+    void setForUnfinishedCopyValue(Function *inlined_func);
 
     BasicBlock *curr_caller_basicblock_;
 
@@ -63,6 +69,8 @@ private:
     std::unordered_map<BasicBlock *, Value *> exitblock_retvalue_map_;
 
     std::unordered_set<BasicBlock *> visited_basicblocks_;
+
+    std::unordered_set<Value *> unfinished_copy_values_;
 
 };
 
