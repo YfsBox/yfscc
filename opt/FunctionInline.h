@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <list>
+#include <set>
 #include <unordered_map>
 #include "CallGraphAnalysis.h"
 #include "PassManager.h"
@@ -50,6 +51,10 @@ private:
 
     void setForUnfinishedCopyValue(Function *inlined_func);
 
+    void replaceWithNextBasicBlock();
+
+    int inline_point_cnt_;
+
     BasicBlock *curr_caller_basicblock_;
 
     BasicBlock *curr_inlined_exit_basicblock_;
@@ -68,7 +73,11 @@ private:
 
     std::unordered_map<BasicBlock *, Value *> exitblock_retvalue_map_;
 
+    std::unordered_map<BasicBlock *, BasicBlock *> next_block_map_;
+
     std::unordered_set<BasicBlock *> visited_basicblocks_;
+
+    std::set<Instruction *> inlined_alloca_insts_;
 
 };
 

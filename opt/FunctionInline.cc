@@ -26,6 +26,7 @@ bool FunctionInline::canBeInline(Function *function) {
 }
 
 FunctionInline::FunctionInline(Module *module):
+        inline_point_cnt_(0),
         curr_caller_basicblock_(nullptr),
         curr_inlined_exit_basicblock_(nullptr),
         Pass(module),
@@ -67,7 +68,7 @@ BasicBlock *FunctionInline::dfsSetCopyMap(BasicBlock *basic_block) {
     for (auto &inst_uptr: insts_list) {
         Instruction *new_inst = nullptr;
         Instruction *inst = inst_uptr.get();
-        auto new_inst_name = inline_name_prefix + inst->getName();
+        auto new_inst_name = inline_name_prefix + inst->getName() + "." + std::to_string(inline_point_cnt_);
         switch (inst->getInstType()) {
             case StoreType: {
                 // new_inst = new StoreInstruction(new_bb, inst->getBasicType(), );
@@ -80,12 +81,12 @@ BasicBlock *FunctionInline::dfsSetCopyMap(BasicBlock *basic_block) {
             }
             case AllocaType: {
                 auto alloca_inst = dynamic_cast<const AllocaInstruction *>(inst);
-                std::string alloca_inst_name = alloca_inst->getName();
                 if (alloca_inst->isArray()) {
                     new_inst = new AllocaInstruction(new_basicblock, alloca_inst->getBasicType(), alloca_inst->isPtrPtr(), alloca_inst->getArrayDimensionSize(), new_inst_name);
                 } else {
                     new_inst = new AllocaInstruction(new_basicblock, alloca_inst->getBasicType(), alloca_inst->isPtrPtr(), new_inst_name);
                 }
+                inlined_alloca_insts_.insert(new_inst);
                 break;
             }
             case LoadType: {
@@ -108,14 +109,14 @@ BasicBlock *FunctionInline::dfsSetCopyMap(BasicBlock *basic_block) {
             }
             case GEPType: {
                 auto gep_inst = dynamic_cast<const GEPInstruction *>(inst);
-                std::vector<Value *> new_indexes;
-                auto new_ptr = getCopyValue(gep_inst->getPtr());
-                for (int i = 0; i < gep_inst->getIndexSize(); ++i) {
-                    auto index = gep_inst->getIndexValue(i);
-                    auto new_index = getCopyValue(index);
-                    new_indexes.push_back(new_index);
+                std::vector<Value *> operands;
+                for (int i = 0; i < gep_inst->getOperandNum(); ++i) {
+                    auto operand = gep_inst->getOperand(i);
+                    auto copy_operand = getCopyValue(operand);
+                    operands.push_back(copy_operand);
                 }
-                new_inst = new GEPInstruction(new_basicblock, gep_inst->getBasicType(), new_ptr, gep_inst->isPtrOffset(), new_indexes, new_inst_name);
+
+                new_inst = new GEPInstruction(new_basicblock, gep_inst->getBasicType(), operands, gep_inst->getArrayDimension(), gep_inst->isPtrOffset(), new_inst_name);
                 break;
             }
             case MemSetType: {
@@ -223,9 +224,25 @@ BasicBlock *FunctionInline::dfsSetCopyMap(BasicBlock *basic_block) {
     return new_basicblock;
 }
 
+void FunctionInline::replaceWithNextBasicBlock() {
+    for (auto &bb: curr_func_->getBlocks()) {
+        auto &insts_list = bb->getInstructionList();
+        for (auto &inst_uptr: insts_list) {
+            if (auto phi_inst = dynamic_cast<PhiInstruction *>(inst_uptr.get()); phi_inst) {
+                for (int i = 0; i < phi_inst->getSize(); ++i) {
+                    auto basic_block = phi_inst->getBasicBlock(i);
+                    if (next_block_map_.count(basic_block)) {
+                        phi_inst->replaceWithValue(basic_block, next_block_map_[basic_block]);
+                    }
+                }
+            }
+        }
+    }
+}
+
 void FunctionInline::inlineOnFunction() {
     for (auto call_inst: call_insts_for_inline_) {
-        printf("inlined function insts for\n");
+        inline_point_cnt_++;
         ir_dumper_->dump(call_inst);
         auto owner_bb = call_inst->getParent();
         auto bb_it = insert_point_nextit_map_[owner_bb];
@@ -234,11 +251,13 @@ void FunctionInline::inlineOnFunction() {
         visited_basicblocks_.insert(enter_bb);
         curr_caller_basicblock_ = bb_it->get();
 
-        curr_inlined_exit_basicblock_ = new BasicBlock(curr_func_, curr_caller_basicblock_->getName() + ".ilnext");
+        curr_inlined_exit_basicblock_ = new BasicBlock(curr_func_, curr_caller_basicblock_->getName() + ".ilnext." + std::to_string(inline_point_cnt_));
         curr_inlined_exit_basicblock_->setHasRet(curr_caller_basicblock_->getHasRet());
         curr_inlined_exit_basicblock_->setHasJump(curr_caller_basicblock_->getHasJump());
         curr_inlined_exit_basicblock_->setWhileLoopDepth(curr_caller_basicblock_->getWhileLoopDepth());
         curr_inlined_exit_basicblock_->setBranchInst(curr_caller_basicblock_->getBranchInst());
+
+        next_block_map_[curr_caller_basicblock_] = curr_inlined_exit_basicblock_;
 
         preSetCopyMap(call_inst);
         dfsSetCopyMap(enter_bb);
@@ -246,24 +265,29 @@ void FunctionInline::inlineOnFunction() {
         std::list<BasicBlock *> basicblock_list;
         generateBasicBlocks(call_inst->getFunction(), call_inst, basicblock_list);
         BasicBlock::bindBasicBlock(call_inst->getParent(), basicblock_list.front());
-        printf("the enter bb is here:\n");
-        ir_dumper_->dump(call_inst->getParent());
-        printf("the new basicblock is here:\n");
-        for (auto &new_basicblock: basicblock_list) {
-            ir_dumper_->dump(new_basicblock);
-        }
         // 将这些块插入
         for (auto bb: basicblock_list) {
             curr_func_->insertBlock(bb_it, bb);
         }
     }
+    auto curr_func_enter_bb = curr_func_->getBlocks().front().get();
+
+    for (auto inst: inlined_alloca_insts_) {
+        inst->setParent(curr_func_enter_bb);
+        curr_func_enter_bb->addFrontInstruction(inst);
+    }
+
+    replaceWithNextBasicBlock();
 }
 
 void FunctionInline::initForFunction() {
+    inline_point_cnt_ = 0;
     call_cnt_map_.clear();
     call_insts_for_inline_.clear();
     insert_point_nextit_map_.clear();
     copy_value_map_.clear();
+    inlined_alloca_insts_.clear();
+    next_block_map_.clear();
 }
 
 void FunctionInline::preSetCopyMap(CallInstruction *call_inst) {
@@ -282,7 +306,7 @@ void FunctionInline::preSetCopyMap(CallInstruction *call_inst) {
     }
     std::string inline_name_prefix = "il." + call_function->getName() + ".";
     for (auto &bb_uptr: call_function->getBlocks()) {
-        copy_value_map_[bb_uptr.get()] = new BasicBlock(curr_func_, inline_name_prefix + bb_uptr->getName());
+        copy_value_map_[bb_uptr.get()] = new BasicBlock(curr_func_, inline_name_prefix + bb_uptr->getName() + "." + std::to_string(inline_point_cnt_));
     }
 }
 
@@ -314,7 +338,10 @@ void FunctionInline::generateBasicBlocks(Function *inlined_function, CallInstruc
 
         for (auto &inst_uptr: bb->getInstructionList()) {
             auto inst = inst_uptr.get();
-            assert(getCopyValue(inst));
+            auto copyed_inst = getCopyValue(inst);
+            if (inlined_alloca_insts_.count(dynamic_cast<Instruction *>(copyed_inst))) {
+                continue;
+            }
             new_bb->addInstruction(getCopyValue(inst));
         }
     }
@@ -358,7 +385,6 @@ void FunctionInline::generateBasicBlocks(Function *inlined_function, CallInstruc
 
     for (auto new_bb: bbs_list) {
         BranchInstruction *br_inst = new_bb->getBranchInst();
-        printf("the br inst is here then bind bbs\n");
         if (br_inst && !new_bb->getHasRet()) {
             ir_dumper_->dump(br_inst);
             if (!br_inst->isCondBranch()) {
@@ -406,8 +432,15 @@ void FunctionInline::collectCallPoint() {
 }
 
 void FunctionInline::runOnFunction() {
+    printf("inlined for function %s\n", curr_func_->getName().c_str());
     call_graph_analysis_->analysis();
     initForFunction();
     collectCallPoint();
     inlineOnFunction();
+
+    for (auto &bb: curr_func_->getBlocks()) {
+        bb->clearSuccessors();
+        bb->clearPresuccessors();
+    }
+    curr_func_->bindBasicBlocks();
 }
