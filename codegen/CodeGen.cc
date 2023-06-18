@@ -424,12 +424,11 @@ void CodeGen::visit(GEPInstruction *inst) {
     std::vector<int32_t> array_base_offsets;
     getDimensionBasesSize(array_dimension, array_base_offsets);
 
-
     for (int i = 0; i < index_size; ++i) {
         auto index = inst->getIndexValue(i);
         int32_t addbase_offset = array_base_offsets[i];
         MachineOperand *tmp_mul_dst = nullptr;
-        if (auto const_index = dynamic_cast<ConstantVar *>(index)) {
+        if (auto const_index = dynamic_cast<ConstantVar *>(index); const_index) {
             int32_t const_index_number = const_index->getIValue();
             if (const_index_number == 0) {
                 continue;
