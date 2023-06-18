@@ -51,6 +51,10 @@ public:
         return parent_;
     }
 
+    void setParent(BasicBlock *parent) {
+        parent_ = parent;
+    }
+
     InstructionType getInstType() const {
         return inst_type_;
     }
@@ -405,6 +409,8 @@ class GEPInstruction: public Instruction {
 public:
 
     GEPInstruction(BasicBlock *block, BasicType btype, Value *base, bool ptr_offset, const std::vector<Value *> &indexes, const std::string &name = "");
+
+    GEPInstruction(BasicBlock *block, BasicType btype, const std::vector<Value *> &operands, const std::vector<int32_t> &array_dimensions, bool ptr_offset, const std::string &name = "");
 
     explicit GEPInstruction() = default;
 

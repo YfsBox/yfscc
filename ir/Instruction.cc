@@ -308,6 +308,17 @@ GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, Value *base, 
     }
 }
 
+GEPInstruction::GEPInstruction(BasicBlock *block, BasicType btype, const std::vector<Value *> &operands, const std::vector<int32_t> &array_dimensions, bool ptr_offset,
+                               const std::string &name):
+        Instruction(InstructionType::GEPType, btype, true, false, block, name),
+        is_ptr_offset_(ptr_offset) {
+    for (auto operand: operands) {
+        addOperand(operand);
+    }
+    array_dimension_numbers_ = array_dimensions;
+}
+
+
 Instruction::OperandSet GEPInstruction::getUses() {
     OperandSet results;
     for (int i = 0; i < getOperandNum(); ++i) {
