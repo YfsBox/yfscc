@@ -40,7 +40,7 @@ private:
 
     void preSetCopyMap(CallInstruction *call_inst);
 
-    void generateBasicBlocks(Function *inlined_function, std::list<BasicBlock *> &bbs_list);
+    void generateBasicBlocks(Function *inlined_function, CallInstruction *call_inst, std::list<BasicBlock *> &bbs_list);
 
     void splitAndInsert(const std::list<BasicBlock *> &basicblocks);
 
@@ -69,8 +69,6 @@ private:
     std::unordered_map<BasicBlock *, Value *> exitblock_retvalue_map_;
 
     std::unordered_set<BasicBlock *> visited_basicblocks_;
-
-    std::unordered_set<Value *> unfinished_copy_values_;
 
 };
 

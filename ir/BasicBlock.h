@@ -45,6 +45,10 @@ public:
         instructions_.push_back(std::unique_ptr<Instruction>(dynamic_cast<Instruction *>(instruction)));
     }
 
+    void addInstruction(InstructionPtr instruction) {
+        instructions_.push_back(std::move(instruction));
+    }
+
     void addSuccessorBlock(BasicBlock *block) {
         successor_blocks_.insert(block);
     }

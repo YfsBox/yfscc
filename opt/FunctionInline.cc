@@ -40,7 +40,7 @@ void FunctionInline::setForUnfinishedCopyValue(Function *inlined_func) {
             auto copyed_inst = dynamic_cast<Instruction *>(getCopyValue(inst));
             assert(copyed_inst);
 
-            for (int i = 0; i < copyed_inst->getOperandNum(); ++i) {
+            for (int i = 0; i < inst->getOperandNum(); ++i) {
                 auto operand = inst->getOperand(i);
                 auto copyed_operand = copyed_inst->getOperand(i);
                 if (!copyed_operand) {
@@ -58,7 +58,7 @@ BasicBlock *FunctionInline::dfsSetCopyMap(BasicBlock *basic_block) {
     auto new_basicblock = dynamic_cast<BasicBlock *>(getCopyValue(basic_block));
 
     new_basicblock->setHasJump(basic_block->getHasJump());
-    new_basicblock->setHasRet(basic_block->getHasRet());
+    new_basicblock->setHasRet(false);
     assert(curr_caller_basicblock_);
     new_basicblock->setWhileLoopDepth(curr_caller_basicblock_->getWhileLoopDepth() + basic_block->getWhileLoopDepth());
 
@@ -226,26 +226,36 @@ BasicBlock *FunctionInline::dfsSetCopyMap(BasicBlock *basic_block) {
 void FunctionInline::inlineOnFunction() {
     for (auto call_inst: call_insts_for_inline_) {
         printf("inlined function insts for\n");
-        // ir_dumper_->dump(call_inst);
+        ir_dumper_->dump(call_inst);
         auto owner_bb = call_inst->getParent();
         auto bb_it = insert_point_nextit_map_[owner_bb];
         auto enter_bb = call_inst->getFunction()->getBlocks().front().get();
         visited_basicblocks_.clear();
         visited_basicblocks_.insert(enter_bb);
         curr_caller_basicblock_ = bb_it->get();
+
         curr_inlined_exit_basicblock_ = new BasicBlock(curr_func_, curr_caller_basicblock_->getName() + ".ilnext");
+        curr_inlined_exit_basicblock_->setHasRet(curr_caller_basicblock_->getHasRet());
+        curr_inlined_exit_basicblock_->setHasJump(curr_caller_basicblock_->getHasJump());
+        curr_inlined_exit_basicblock_->setWhileLoopDepth(curr_caller_basicblock_->getWhileLoopDepth());
+        curr_inlined_exit_basicblock_->setBranchInst(curr_caller_basicblock_->getBranchInst());
+
         preSetCopyMap(call_inst);
         dfsSetCopyMap(enter_bb);
         bb_it++;
         std::list<BasicBlock *> basicblock_list;
-        generateBasicBlocks(call_inst->getFunction(), basicblock_list);
-        setForUnfinishedCopyValue(call_inst->getFunction());
+        generateBasicBlocks(call_inst->getFunction(), call_inst, basicblock_list);
+        BasicBlock::bindBasicBlock(call_inst->getParent(), basicblock_list.front());
+        printf("the enter bb is here:\n");
+        ir_dumper_->dump(call_inst->getParent());
+        printf("the new basicblock is here:\n");
         for (auto &new_basicblock: basicblock_list) {
             ir_dumper_->dump(new_basicblock);
         }
-        // for (auto &insert_bb: basicblock_list) {
-            // curr_func_->insertBlock(bb_it, insert_bb);
-        // }
+        // 将这些块插入
+        for (auto bb: basicblock_list) {
+            curr_func_->insertBlock(bb_it, bb);
+        }
     }
 }
 
@@ -257,7 +267,6 @@ void FunctionInline::initForFunction() {
 }
 
 void FunctionInline::preSetCopyMap(CallInstruction *call_inst) {
-    unfinished_copy_values_.clear();
     auto call_function = call_inst->getFunction();
     for (int i = 0; i < call_inst->getActualSize(); ++i) {
         auto actual = call_inst->getActual(i);
@@ -293,7 +302,7 @@ Value *FunctionInline::getCopyValue(Value *value) {
     return copy_value;
 }
 
-void FunctionInline::generateBasicBlocks(Function *inlined_function, std::list<BasicBlock *> &bbs_list) {
+void FunctionInline::generateBasicBlocks(Function *inlined_function, CallInstruction *call_inst, std::list<BasicBlock *> &bbs_list) {
     for (auto &bb_uptr: inlined_function->getBlocks()) {
         // ir_dumper_->dump(bb_uptr.get());
         auto bb = bb_uptr.get();
@@ -307,13 +316,51 @@ void FunctionInline::generateBasicBlocks(Function *inlined_function, std::list<B
             auto inst = inst_uptr.get();
             assert(getCopyValue(inst));
             new_bb->addInstruction(getCopyValue(inst));
-            // printf("new bb size is %d\n", new_bb->getInstructionSize());
         }
     }
 
+    setForUnfinishedCopyValue(call_inst->getFunction());
+
+    auto inlined_function_enter_bb = bbs_list.front();
+    auto inlined_func_next_bb = curr_inlined_exit_basicblock_;
+
+    auto &caller_insts_list = curr_caller_basicblock_->getInstructionList();
+    PhiInstruction *next_bb_phi_inst = nullptr;
+    if (call_inst->getBasicType() != VOID_BTYPE) {
+        std::vector<BasicBlock *> bbs;
+        std::vector<Value *> values;
+        for (auto exit_bb: copy_exit_blocks_[call_inst->getFunction()]) {
+            bbs.push_back(exit_bb);
+            values.push_back(exitblock_retvalue_map_[exit_bb]);
+        }
+        next_bb_phi_inst = new PhiInstruction(inlined_func_next_bb, call_inst->getBasicType(), values, bbs, call_inst->getName());
+        call_inst->replaceAllUseWith(next_bb_phi_inst);
+    }
+    // 定位到call inst所在的迭代器，并移除
+    auto insts_it = caller_insts_list.begin();
+    for (; insts_it != caller_insts_list.end() && insts_it->get() != call_inst; ++insts_it);
+    insts_it = caller_insts_list.erase(insts_it);
+    // 也移除call_inst之后的
+    for (; insts_it != caller_insts_list.end();) {
+        inlined_func_next_bb->addInstruction(std::move(*insts_it));
+        insts_it = caller_insts_list.erase(insts_it);
+    }
+    if (next_bb_phi_inst) {
+        inlined_func_next_bb->addFrontInstruction(next_bb_phi_inst);
+    }
+    auto branch_inlined_func_inst = new BranchInstruction(curr_caller_basicblock_, inlined_function_enter_bb);
+    curr_caller_basicblock_->addInstruction(branch_inlined_func_inst);
+    curr_caller_basicblock_->setBranchInst(branch_inlined_func_inst);
+    curr_caller_basicblock_->setHasRet(false);
+    curr_caller_basicblock_->setHasJump(true);
+
+    bbs_list.push_back(inlined_func_next_bb);
+
     for (auto new_bb: bbs_list) {
         BranchInstruction *br_inst = new_bb->getBranchInst();
+        printf("the br inst is here then bind bbs\n");
         if (br_inst && !new_bb->getHasRet()) {
+            ir_dumper_->dump(br_inst);
             if (!br_inst->isCondBranch()) {
                 BasicBlock::bindBasicBlock(new_bb, dynamic_cast<BasicBlock *>(br_inst->getLabel()));
             } else {
@@ -327,6 +374,7 @@ void FunctionInline::generateBasicBlocks(Function *inlined_function, std::list<B
 void FunctionInline::splitAndInsert(const std::list<BasicBlock *> &basicblocks) {
     auto inlined_func_enter_bb = basicblocks.front();
     // auto inlined_func_next_bb = new BasicBlock(curr_func_, );
+
 
 }
 
