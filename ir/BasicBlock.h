@@ -100,6 +100,13 @@ public:
         successor_blocks_.clear();
     }
 
+    void clearPresuccessors() {
+        for (auto pre: predecessor_blocks_) {
+            pre->removeSuccessorBlock(this);
+        }
+        predecessor_blocks_.clear();
+    }
+
     void setBranchInst(BranchInstruction *inst) {
         branch_inst_ = inst;
     }
