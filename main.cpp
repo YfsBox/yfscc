@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     std::string target_file;
 
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "-O2") == 0) { //判断参数是否为 "-S"
+        if (strcmp(argv[i], "-O2") == 0 || strcmp(argv[i], "-O1") == 0) { //判断参数是否为 "-S"
             enable_opt = true; // 如果是，则将flag设置为true
             continue;
         }
@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     auto checker = std::make_unique<SemanticCheck>(std::cout);
     checker->visit(root);
 
-    checker->dumpErrorMsg();
+    // checker->dumpErrorMsg();
 
     IrBuilder irbuilder(std::cout, checker->getLibFunctionsMap());
     irbuilder.visit(root);
