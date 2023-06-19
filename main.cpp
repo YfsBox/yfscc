@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&mem2reg);
         pass_manager.addPass(&inst_combine);
-        pass_manager.addPass(&svn1);
+
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&function_inline);
         pass_manager.addPass(&dead_code_elim);
