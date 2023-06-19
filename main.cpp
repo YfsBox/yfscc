@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     auto checker = std::make_unique<SemanticCheck>(std::cout);
     checker->visit(root);
 
-    checker->dumpErrorMsg();
+    // checker->dumpErrorMsg();
 
     IrBuilder irbuilder(std::cout, checker->getLibFunctionsMap());
     irbuilder.visit(root);
@@ -73,20 +73,26 @@ int main(int argc, char **argv) {
     Mem2Reg mem2reg(ir_module);
     InstCombine inst_combine(ir_module);
     FunctionInline function_inline(ir_module);
-    Svn svn(ir_module);
+    Svn svn1(ir_module);
+    Svn svn2(ir_module);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
         inst_combine.ir_dumper_ = new IrDumper(std::cout);
         dead_code_elim.ir_dumper_ = new IrDumper(std::cout);
-        svn.ir_dumper_ = new IrDumper(std::cout);
+        svn1.ir_dumper_ = new IrDumper(std::cout);
+        function_inline.ir_dumper_ = new IrDumper(std::cout);
 
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&mem2reg);
         pass_manager.addPass(&inst_combine);
-        pass_manager.addPass(&svn);
+        pass_manager.addPass(&svn1);
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&function_inline);
+        pass_manager.addPass(&dead_code_elim);
+        pass_manager.addPass(&function_inline);
+        pass_manager.addPass(&svn2);
+        pass_manager.addPass(&dead_code_elim);
     }
 
     pass_manager.run();
@@ -95,6 +101,8 @@ int main(int argc, char **argv) {
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();
 
+    /*MachineDumper vmcdumper(codegen.getMCModule(), target_file + ".v");
+    vmcdumper.dump();*/
     RegsAllocator::regsAllocate(codegen.getMCModule(), &codegen);
 
     MachineDumper mcdumper(codegen.getMCModule(), target_file);

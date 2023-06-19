@@ -35,7 +35,11 @@ private:
 
     void inlineOnFunction();
 
+    void collectCaninlineFunctions();
+
     void collectCallPoint();
+
+    void computeCallCnt();
 
     void initForFunction();
 
@@ -53,7 +57,9 @@ private:
 
     void replaceWithNextBasicBlock();
 
-    int inline_point_cnt_;
+    static int inline_point_cnt_;
+
+    bool has_collect_caninline_functions_;
 
     BasicBlock *curr_caller_basicblock_;
 
@@ -78,6 +84,8 @@ private:
     std::unordered_set<BasicBlock *> visited_basicblocks_;
 
     std::set<Instruction *> inlined_alloca_insts_;
+
+    std::unordered_set<Function *> caninline_functions_;
 
 };
 

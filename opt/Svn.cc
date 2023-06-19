@@ -86,8 +86,6 @@ void Svn::replaceValues() {
         for (auto &inst_uptr: insts_list) {
             auto inst = inst_uptr.get();
             if (replaced_map_.count(inst)) {
-                // ir_dumper_->dump(inst);
-                // ir_dumper_->dump(replaced_map_[inst]);
                 inst->replaceAllUseWith(replaced_map_[inst]);
             }
         }

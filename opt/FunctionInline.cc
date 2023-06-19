@@ -11,22 +11,27 @@
 #include "../ir/GlobalVariable.h"
 #include "../ir/Constant.h"
 
+int FunctionInline::inline_point_cnt_ = 0;
+
 bool FunctionInline::canBeInline(Function *function) {
     if (call_graph_analysis_->isLibFunction(function)) {
+        return false;
+    }
+    if (function->getName() == "main") {
         return false;
     }
     int32_t inst_size = 0;
     for (auto &bb_uptr: function->getBlocks()) {
         inst_size += bb_uptr->getInstructionSize();
     }
-    if (inst_size > inline_insts_size || call_graph_analysis_->isRecursive(function) || call_cnt_map_[function] > 1) {
+    if ((inst_size > inline_insts_size && function->getBlocks().size() > 3) || call_graph_analysis_->isRecursive(function) /*|| call_cnt_map_[function] > 1*/) {
         return false;
     }
     return true;
 }
 
 FunctionInline::FunctionInline(Module *module):
-        inline_point_cnt_(0),
+        has_collect_caninline_functions_(false),
         curr_caller_basicblock_(nullptr),
         curr_inlined_exit_basicblock_(nullptr),
         Pass(module),
@@ -185,6 +190,7 @@ BasicBlock *FunctionInline::dfsSetCopyMap(BasicBlock *basic_block) {
                     auto value_basicblock = phi_inst->getValueBlock(i);
                     auto new_phi_value = getCopyValue(value_basicblock.first);
                     auto new_phi_basicblock = getCopyValue(value_basicblock.second);
+
                     assert(new_phi_basicblock->getValueType() == BasicBlockValue);
 
                     new_phi_values.push_back(new_phi_value);
@@ -210,7 +216,6 @@ BasicBlock *FunctionInline::dfsSetCopyMap(BasicBlock *basic_block) {
         }
 
         assert(new_inst);
-        // ir_dumper_->dump(new_inst);
         copy_value_map_[const_cast<Instruction *>(inst)] = new_inst;
     }
 
@@ -243,7 +248,6 @@ void FunctionInline::replaceWithNextBasicBlock() {
 void FunctionInline::inlineOnFunction() {
     for (auto call_inst: call_insts_for_inline_) {
         inline_point_cnt_++;
-        ir_dumper_->dump(call_inst);
         auto owner_bb = call_inst->getParent();
         auto bb_it = insert_point_nextit_map_[owner_bb];
         auto enter_bb = call_inst->getFunction()->getBlocks().front().get();
@@ -278,6 +282,19 @@ void FunctionInline::inlineOnFunction() {
     }
 
     replaceWithNextBasicBlock();
+}
+
+void FunctionInline::collectCaninlineFunctions() {
+    if (!has_collect_caninline_functions_) {
+        auto ir_module = curr_func_->getParent();
+        for (int i = 0; i < ir_module->getFuncSize(); ++i) {
+            auto func = ir_module->getFunction(i);
+            if (canBeInline(func)) {
+                caninline_functions_.insert(func);
+            }
+        }
+        has_collect_caninline_functions_ = true;
+    }
 }
 
 void FunctionInline::initForFunction() {
@@ -328,7 +345,6 @@ Value *FunctionInline::getCopyValue(Value *value) {
 
 void FunctionInline::generateBasicBlocks(Function *inlined_function, CallInstruction *call_inst, std::list<BasicBlock *> &bbs_list) {
     for (auto &bb_uptr: inlined_function->getBlocks()) {
-        // ir_dumper_->dump(bb_uptr.get());
         auto bb = bb_uptr.get();
         assert(copy_value_map_.count(bb));
         auto new_bb = dynamic_cast<BasicBlock *>(getCopyValue(bb));
@@ -382,19 +398,6 @@ void FunctionInline::generateBasicBlocks(Function *inlined_function, CallInstruc
     curr_caller_basicblock_->setHasJump(true);
 
     bbs_list.push_back(inlined_func_next_bb);
-
-    for (auto new_bb: bbs_list) {
-        BranchInstruction *br_inst = new_bb->getBranchInst();
-        if (br_inst && !new_bb->getHasRet()) {
-            ir_dumper_->dump(br_inst);
-            if (!br_inst->isCondBranch()) {
-                BasicBlock::bindBasicBlock(new_bb, dynamic_cast<BasicBlock *>(br_inst->getLabel()));
-            } else {
-                BasicBlock::bindBasicBlock(new_bb, dynamic_cast<BasicBlock *>(br_inst->getTrueLabel()));
-                BasicBlock::bindBasicBlock(new_bb, dynamic_cast<BasicBlock *>(br_inst->getFalseLabel()));
-            }
-        }
-    }
 }
 
 void FunctionInline::splitAndInsert(const std::list<BasicBlock *> &basicblocks) {
@@ -404,7 +407,7 @@ void FunctionInline::splitAndInsert(const std::list<BasicBlock *> &basicblocks) 
 
 }
 
-void FunctionInline::collectCallPoint() {
+void FunctionInline::computeCallCnt() {
     for (auto &bb: curr_func_->getBlocks()) {
         auto &insts_list = bb->getInstructionList();
         for (auto &inst_uptr: insts_list) {
@@ -415,16 +418,31 @@ void FunctionInline::collectCallPoint() {
             }
         }
     }
+    /*printf("the call cnt in function %s is here\n", curr_func_->getName().c_str());
+    for (auto &call_cnt: call_cnt_map_) {
+        printf("%s: %d\n", call_cnt.first->getName().c_str(), call_cnt.second);
+    }*/
+}
+
+void FunctionInline::collectCallPoint() {
 
     auto &blocks_list = curr_func_->getBlocks();
     for (auto bb_it = blocks_list.begin(); bb_it != blocks_list.end(); ++bb_it) {
+        bool has_inlined_in_bb = false;
         auto &bb = *bb_it;
         auto &insts_list = bb->getInstructionList();
         for (auto &inst_uptr : insts_list) {
             auto inst = inst_uptr.get();
-            if (auto call_inst = dynamic_cast<CallInstruction *>(inst); call_inst && canBeInline(call_inst->getFunction())) {
+            auto call_inst = dynamic_cast<CallInstruction *>(inst);
+            if (!call_inst) {
+                continue;
+            }
+
+            if (call_cnt_map_[call_inst->getFunction()] == 1 && canBeInline(call_inst->getFunction()) && !has_inlined_in_bb && call_inst->getParent()->getWhileLoopDepth() > 0) {
                 call_insts_for_inline_.insert(call_inst);
+                // printf("the function %s can be inlined in function %s\n", call_inst->getFunction()->getName().c_str(), curr_func_->getName().c_str());
                 insert_point_nextit_map_[bb.get()] = bb_it;
+                has_inlined_in_bb = true;
             }
         }
     }
@@ -432,9 +450,15 @@ void FunctionInline::collectCallPoint() {
 }
 
 void FunctionInline::runOnFunction() {
-    printf("inlined for function %s\n", curr_func_->getName().c_str());
+    // printf("inlined for function %s\n", curr_func_->getName().c_str());
     call_graph_analysis_->analysis();
+    collectCaninlineFunctions();
+
+    if (caninline_functions_.count(curr_func_)) {
+        return;
+    }
     initForFunction();
+    computeCallCnt();
     collectCallPoint();
     inlineOnFunction();
 
