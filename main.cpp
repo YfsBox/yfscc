@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&function_inline);
         pass_manager.addPass(&dead_code_elim);
-        pass_manager.addPass(&function_inline);
+        // pass_manager.addPass(&function_inline);
         pass_manager.addPass(&svn2);
         pass_manager.addPass(&dead_code_elim);
     }
