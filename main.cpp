@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     auto checker = std::make_unique<SemanticCheck>(std::cout);
     checker->visit(root);
 
-    // checker->dumpErrorMsg();
+    checker->dumpErrorMsg();
 
     IrBuilder irbuilder(std::cout, checker->getLibFunctionsMap());
     irbuilder.visit(root);
@@ -88,11 +88,11 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&inst_combine);
 
         pass_manager.addPass(&dead_code_elim);
-        /*pass_manager.addPass(&function_inline);
+        pass_manager.addPass(&function_inline);
         pass_manager.addPass(&dead_code_elim);
 
         pass_manager.addPass(&svn2);
-        pass_manager.addPass(&dead_code_elim);*/
+        pass_manager.addPass(&dead_code_elim);
     }
 
     pass_manager.run();
