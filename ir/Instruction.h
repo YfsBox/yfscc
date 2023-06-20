@@ -87,6 +87,10 @@ public:
 
     Value *getRight() const;
 
+    void replaceLeft(Value *value);
+
+    void replaceRight(Value *value);
+
     void swapLeftAndRight();
 
     OperandSet getUses() override;

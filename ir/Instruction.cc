@@ -30,6 +30,24 @@ BinaryOpInstruction::BinaryOpInstruction(InstructionType type, BasicType basic_t
     addOperand(right);
 }
 
+void BinaryOpInstruction::replaceLeft(Value *value) {
+    auto old_left = getLeft();
+    if (getRight() != old_left) {
+        old_left->getUserMap().erase(this);
+    }
+    operands_[0] = value;
+    value->getUserMap().insert(this);
+}
+
+void BinaryOpInstruction::replaceRight(Value *value) {
+    auto old_right = getRight();
+    if (getRight() != old_right) {
+        old_right->getUserMap().erase(this);
+    }
+    operands_[1] = value;
+    value->getUserMap().insert(this);
+}
+
 Instruction::OperandSet BinaryOpInstruction::getUses() {
     OperandSet results;
     if (getLeft()->getValueType() != ConstantValue) {
