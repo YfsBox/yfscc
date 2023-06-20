@@ -64,7 +64,7 @@ void InstCombine::initWorkList() {
                 if (canCombineWithConst(binary_inst)) {
                     work_insts_withconst_set_.insert(binary_inst);
                 } else if (canCombineNonConst(binary_inst, &value)) {
-                    printf("binary inst: %s, the common value is %s\n", binary_inst->getName().c_str(), value->getName().c_str());
+                    // ("binary inst: %s, the common value is %s\n", binary_inst->getName().c_str(), value->getName().c_str());
                     work_insts_nonconst_map_.insert({binary_inst, value});
                 }
             }
