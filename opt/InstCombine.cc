@@ -24,13 +24,17 @@ bool InstCombine::canCombineNonConst(BinaryOpInstruction *inst, Value **value) {
     if (binary_op_type == AddType) {
         if (auto left_inst = dynamic_cast<BinaryOpInstruction *>(left); left_inst) {
             if (left_inst->getInstType() == AddType && (left_inst->getLeft() == right || left_inst->getRight() == right)) {
-                *value = right;
+                if (value) {
+                    *value = right;
+                }
                 return true;
             }
         }
         if (auto right_inst = dynamic_cast<BinaryOpInstruction *>(right); right_inst) {
             if (right_inst->getInstType() == AddType && (right_inst->getLeft() == left || right_inst->getRight() == left)) {
-                *value = left;
+                if (value) {
+                    *value = left;
+                }
                 return true;
             }
         }
@@ -40,6 +44,8 @@ bool InstCombine::canCombineNonConst(BinaryOpInstruction *inst, Value **value) {
 
 void InstCombine::initWorkList() {
     combine_value_cnt_.clear();
+    inserted_inst_.clear();
+    inserted_it_.clear();
     for (auto &bb: curr_func_->getBlocks()) {
         auto &inst_list = bb->getInstructionList();
         for (auto &inst: inst_list) {
@@ -58,6 +64,7 @@ void InstCombine::initWorkList() {
                 if (canCombineWithConst(binary_inst)) {
                     work_insts_withconst_set_.insert(binary_inst);
                 } else if (canCombineNonConst(binary_inst, &value)) {
+                    printf("binary inst: %s, the common value is %s\n", binary_inst->getName().c_str(), value->getName().c_str());
                     work_insts_nonconst_map_.insert({binary_inst, value});
                 }
             }
@@ -187,6 +194,7 @@ void InstCombine::runOnFunction() {
     for (auto &bb: curr_func_->getBlocks()) {
         auto &insts_list = bb->getInstructionList();
         inserted_inst_.clear();
+        inserted_it_.clear();
         combine_value_cnt_.clear();
         for (auto inst_it = insts_list.rbegin(); inst_it != insts_list.rend(); ++inst_it) {
             auto inst = inst_it->get();
@@ -208,6 +216,11 @@ void InstCombine::runOnFunction() {
                     mul_cnt = new ConstantVar(static_cast<float>(combine_value_cnt_[common_value]));
                     inserted_inst_[binary_inst] = new BinaryOpInstruction(MulType, FLOAT_BTYPE, bb.get(), common_value, mul_cnt, inserted_inst_name);
                 }
+                if (binary_inst->getLeft() == common_value) {
+                     binary_inst->replaceLeft(inserted_inst_[binary_inst]);
+                } else {
+                    binary_inst->replaceRight(inserted_inst_[binary_inst]);
+                }
             }
         }
         // 正序遍历用来设置迭代器map
@@ -220,6 +233,7 @@ void InstCombine::runOnFunction() {
 
         for (auto &[inserted_point, inserted_it]: inserted_it_) {
             auto inserted_inst = inserted_inst_[inserted_point];
+            assert(inserted_inst);
             bb->insertInstruction(inserted_it, inserted_inst);
         }
     }

@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "PassManager.h"
+#include "../ir/BasicBlock.h"
+#include "../ir/Instruction.h"
 
 class BinaryOpInstruction;
 class IrDumper;
