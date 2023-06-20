@@ -10,14 +10,14 @@
 #include <unordered_set>
 #include "PassManager.h"
 
-class Instruction;
 class BinaryOpInstruction;
 class IrDumper;
+class Value;
 
 class InstCombine: public Pass {
 public:
 
-    explicit InstCombine(Module *module): Pass(module) {}
+    explicit InstCombine(Module *module): Pass(module), curr_insert_inst_(nullptr) {}
 
     ~InstCombine() = default;
 
@@ -29,13 +29,29 @@ private:
 
     void initWorkList();
 
-    void combine(BinaryOpInstruction *inst);
+    void combineWithConst(BinaryOpInstruction *inst);
 
-    bool canCombine(BinaryOpInstruction *inst);
+    void combineNonConst(BinaryOpInstruction *inst);
 
-    std::unordered_set<BinaryOpInstruction *> work_insts_set_;
+    bool canCombineWithConst(BinaryOpInstruction *inst);
 
-    std::unordered_set<BinaryOpInstruction *> combined_insts_set_;
+    bool canCombineNonConst(BinaryOpInstruction *inst, Value **value = nullptr);
+
+    BinaryOpInstruction *curr_insert_inst_;
+
+    std::unordered_set<BinaryOpInstruction *> work_insts_withconst_set_;
+
+    std::unordered_map<BinaryOpInstruction *, Value *> work_insts_nonconst_map_;
+
+    std::unordered_set<BinaryOpInstruction *> combined_insts_withconst_set_;
+
+    std::unordered_set<BinaryOpInstruction *> combined_insts_nonconst_set_;
+
+    std::unordered_map<BinaryOpInstruction *, BinaryOpInstruction *> inserted_inst_;
+
+    std::unordered_map<BinaryOpInstruction *, BasicBlock::InstructionListIt> inserted_it_;
+
+    std::unordered_map<Value *, int> combine_value_cnt_;
 };
 
 #endif //YFSCC_INSTCOMBINE_H
