@@ -18,6 +18,7 @@ class BasicBlock: public Value {
 public:
     using InstructionPtr = std::unique_ptr<Instruction>;
     using BlockList = std::unordered_set<BasicBlock *>;
+    using InstructionListIt = std::list<InstructionPtr>::iterator;
 
     BasicBlock(Function *func, const std::string &lebal);
 
@@ -130,6 +131,8 @@ public:
     void addFrontInstruction(Value *instruction) {
         instructions_.push_front(std::unique_ptr<Instruction>(dynamic_cast<Instruction *>(instruction)));
     }
+
+    void insertInstruction(InstructionListIt inst_it, Instruction *inst);
 
 private:
     bool has_jump_;

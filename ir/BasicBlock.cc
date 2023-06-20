@@ -9,6 +9,10 @@ BasicBlock::BasicBlock(Function *func, const std::string &lebal):
 
 BasicBlock::~BasicBlock() = default;
 
+void BasicBlock::insertInstruction(InstructionListIt inst_it, Instruction *inst) {
+    instructions_.insert(inst_it, std::unique_ptr<Instruction>(inst));
+}
+
 void BasicBlock::bindBasicBlock(BasicBlock *pre, BasicBlock *succ) {
     pre->addSuccessorBlock(succ);
     assert(succ);
