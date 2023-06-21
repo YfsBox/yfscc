@@ -14,6 +14,7 @@
 #include "opt/FunctionInline.h"
 #include "opt/GlobalAnalysis.h"
 #include "opt/Svn.h"
+#include "opt/BranchOptimizer.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -66,6 +67,9 @@ int main(int argc, char **argv) {
     ConstantPropagation const_propagation(ir_module);
     pass_manager.addPass(&const_propagation);
 
+    BranchOptimizer branch_opt(ir_module);
+    pass_manager.addPass(&branch_opt);
+
     DeadBlockElim dead_bb_elim(ir_module);
     pass_manager.addPass(&dead_bb_elim);
 
@@ -99,13 +103,11 @@ int main(int argc, char **argv) {
     }
 
     pass_manager.run();
-    // irbuilder.dump();
+    irbuilder.dump();
 
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();
 
-    /*MachineDumper vmcdumper(codegen.getMCModule(), target_file + ".v");
-    vmcdumper.dump();*/
     RegsAllocator::regsAllocate(codegen.getMCModule(), &codegen);
 
     MachineDumper mcdumper(codegen.getMCModule(), target_file);

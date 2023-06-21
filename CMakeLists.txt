@@ -46,6 +46,8 @@ set(IROPT_SRC
         opt/FunctionInline.cc
         opt/Svn.cc
         opt/GlobalAnalysis.cc
+        opt/ComputeLoops.cc
+        opt/BranchOptimizer.cc
 )
 
 set(BACKEND_SRC
