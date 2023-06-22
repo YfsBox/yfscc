@@ -16,6 +16,7 @@
 #include "opt/Svn.h"
 #include "opt/LoopUnrolling.h"
 #include "opt/BranchOptimizer.h"
+// #include "opt/AlgebraicSimplify.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -80,6 +81,7 @@ int main(int argc, char **argv) {
     Svn svn1(ir_module);
     Svn svn2(ir_module);
     LoopUnrolling loopunrolling(ir_module);
+    // AlgebraicSimplify algebric_simplify(ir_module);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
@@ -88,6 +90,7 @@ int main(int argc, char **argv) {
         svn1.ir_dumper_ = new IrDumper(std::cout);
         function_inline.ir_dumper_ = new IrDumper(std::cout);
         loopunrolling.ir_dumper_ = new IrDumper(std::cout);
+        // algebric_simplify.ir_dumper_ = new IrDumper(std::cout);
 
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&branch_opt);
@@ -97,17 +100,16 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&function_inline);
         pass_manager.addPass(&dead_code_elim);
-
-
         pass_manager.addPass(&svn2);
 
         pass_manager.addPass(&dead_code_elim);
 
         pass_manager.addPass(&const_propagation);
         pass_manager.addPass(&inst_combine);
+        // pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&dead_code_elim);
 
-        pass_manager.addPass(&loopunrolling);
+        // pass_manager.addPass(&loopunrolling);
     }
 
     pass_manager.run();
