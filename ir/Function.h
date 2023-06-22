@@ -72,6 +72,8 @@ public:
 
     void bindBasicBlocks();
 
+    void rebuildCfg();
+
 private:
     Module *parent_;
     BasicType ret_type_;

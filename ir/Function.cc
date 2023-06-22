@@ -57,6 +57,14 @@ void Function::bindBasicBlocks() {
     }
 }
 
+void Function::rebuildCfg() {
+    for (auto &bb: getBlocks()) {
+        bb->clearSuccessors();
+        bb->clearPresuccessors();
+    }
+    bindBasicBlocks();
+}
+
 void Function::insertBlock(BasicBlocksIt it, BasicBlock *new_bb) {
     blocks_.insert(it, std::unique_ptr<BasicBlock>(new_bb));
 }
