@@ -210,13 +210,13 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
     LoopUnrollingInfo unrolling_info(loopinfo);
 
     if (isFixedIterations(loopinfo, unrolling_info)) {
-        printf("the loopinfo is %s, and the limit is %d, init is %d, stride is %d, iteration cnt is %d, the loop body cnt is %d\n",
+        /*printf("the loopinfo is %s, and the limit is %d, init is %d, stride is %d, iteration cnt is %d, the loop body cnt is %d\n",
                loopinfo->enter_block_->getName().c_str(),
                unrolling_info.limit_,
                unrolling_info.init_value_,
                unrolling_info.stride_,
                unrolling_info.cal_iteratorions_cnt_,
-               loopinfo->loop_body_.size());
+               loopinfo->loop_body_.size());*/
 
         if (loopinfo->loop_body_.size() == 1) {     // 如果是循环体只有一个basicblock的情况，就直接往里面append拷贝的指令
             auto body_basicblock = *loopinfo->loop_body_.begin();
@@ -259,7 +259,13 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
                 for (auto insert_inst: inserted_insts) {
                     body_basicblock->insertInstruction(branch_inst_it, insert_inst);
                 }
-                printf("i = %d\n", i);
+            }
+
+            for (auto &inst_uptr: loopinfo->next_block_->getInstructionList()) {
+                if (auto phi_inst = dynamic_cast<PhiInstruction *>(inst_uptr.get()); phi_inst) {
+                    phi_inst->replaceWithValue(loopinfo->enter_block_, body_basicblock);
+                    phi_inst->replaceWithValue(phi_var, curr_condition_var_);
+                }
             }
 
         } else {            // 如果有多个基本块，那么就需要额外拷贝基本块了。
@@ -373,10 +379,10 @@ void LoopUnrolling::runOnFunction() {
     }
     auto &loop_infos = compute_loops_->getDeepestLoops(curr_func_);
     for (auto &loop_info: loop_infos) {
-        printf("the enter bb is %s, and exit bb is %s\n", loop_info->enter_block_->getName().c_str(), loop_info->exit_block_->getName().c_str());
+        /*printf("the enter bb is %s, and exit bb is %s\n", loop_info->enter_block_->getName().c_str(), loop_info->exit_block_->getName().c_str());
         for (auto body_bb: loop_info->loop_body_) {
             printf("the body bb is %s\n", body_bb->getName().c_str());
-        }
+        }*/
         unroll(loop_info);
     }
 
