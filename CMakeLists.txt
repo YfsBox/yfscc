@@ -48,6 +48,7 @@ set(IROPT_SRC
         opt/GlobalAnalysis.cc
         opt/ComputeLoops.cc
         opt/BranchOptimizer.cc
+        opt/LoopUnrolling.cc
 )
 
 set(BACKEND_SRC

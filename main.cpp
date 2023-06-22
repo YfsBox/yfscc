@@ -14,6 +14,7 @@
 #include "opt/FunctionInline.h"
 #include "opt/GlobalAnalysis.h"
 #include "opt/Svn.h"
+#include "opt/LoopUnrolling.h"
 #include "opt/BranchOptimizer.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
@@ -68,7 +69,6 @@ int main(int argc, char **argv) {
     pass_manager.addPass(&const_propagation);
 
     BranchOptimizer branch_opt(ir_module);
-    pass_manager.addPass(&branch_opt);
 
     DeadBlockElim dead_bb_elim(ir_module);
     pass_manager.addPass(&dead_bb_elim);
@@ -79,6 +79,7 @@ int main(int argc, char **argv) {
     FunctionInline function_inline(ir_module);
     Svn svn1(ir_module);
     Svn svn2(ir_module);
+    LoopUnrolling loopunrolling(ir_module);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
@@ -86,13 +87,18 @@ int main(int argc, char **argv) {
         dead_code_elim.ir_dumper_ = new IrDumper(std::cout);
         svn1.ir_dumper_ = new IrDumper(std::cout);
         function_inline.ir_dumper_ = new IrDumper(std::cout);
+        loopunrolling.ir_dumper_ = new IrDumper(std::cout);
 
         pass_manager.addPass(&dead_code_elim);
+        pass_manager.addPass(&branch_opt);
+        pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&mem2reg);
 
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&function_inline);
         pass_manager.addPass(&dead_code_elim);
+
+
         pass_manager.addPass(&svn2);
 
         pass_manager.addPass(&dead_code_elim);
@@ -100,10 +106,12 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&const_propagation);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&dead_code_elim);
+
+        pass_manager.addPass(&loopunrolling);
     }
 
     pass_manager.run();
-    irbuilder.dump();
+    // irbuilder.dump();
 
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();
