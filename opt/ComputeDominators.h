@@ -50,9 +50,15 @@ public:
         return basicblock_succbb_map_[bb];
     }
 
+    BasicBlockSet getDoms(BasicBlock *basicblock) {
+        return doms_map_[basicblock];
+    }
+
     void run();
 
 private:
+
+    static bool isEqual(const BasicBlockSet &seta, const BasicBlockSet &setb);
 
     void getPostOrderList(BasicBlock *bb);
 
@@ -70,6 +76,8 @@ private:
 
     void computeSuccessors();
 
+    void computeDoms();
+
     int32_t basicblock_n_;
 
     Matrix dominators_matrix_;
@@ -81,6 +89,8 @@ private:
     BasicblockMap imm_doms_map_;
 
     DomsSet dom_frontiers_map_;
+
+    DomsSet doms_map_;
 
     DomsSet basicblock_succbb_map_;
 

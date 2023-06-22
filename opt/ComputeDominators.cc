@@ -1,6 +1,7 @@
 //
 // Created by 杨丰硕 on 2023/6/10.
 //
+#include <algorithm>
 #include <queue>
 #include "ComputeDominators.h"
 #include "../ir/BasicBlock.h"
@@ -81,6 +82,60 @@ void ComputeDominators::initForMatrix() {
     }
 }
 
+bool ComputeDominators::isEqual(const BasicBlockSet &seta, const BasicBlockSet &setb) {
+    if (seta.size() != setb.size()) {
+        return false;
+    }
+    for (auto &bb: seta) {
+        if (!setb.count(bb)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void ComputeDominators::computeDoms() {
+    std::unordered_set<BasicBlock *> init_set;
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        init_set.insert(bb_uptr.get());
+    }
+
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        doms_map_[bb_uptr.get()] = init_set;
+    }
+
+    auto enter_block = curr_func_->getBlocks().front().get();
+    doms_map_[enter_block].clear();
+    doms_map_[enter_block].insert(enter_block);
+
+    bool has_changed = true;
+    while (has_changed) {
+        has_changed = false;
+
+        for (auto &bb_uptr: curr_func_->getBlocks()) {
+            std::unordered_set<BasicBlock *> temp_set;
+            temp_set.insert(bb_uptr.get());
+
+            std::unordered_map<BasicBlock *, int> cnt_map;
+            int intersect_cnt = bb_uptr->getPreDecessorBlocks().size();
+            for (auto &pre: bb_uptr->getPreDecessorBlocks()) {
+                for (auto pre_dom: doms_map_[pre]) {
+                    cnt_map[pre_dom]++;
+                    if (cnt_map[pre_dom] == intersect_cnt) {
+                        temp_set.insert(pre_dom);
+                    }
+                }
+            }
+
+            if (!isEqual(temp_set, doms_map_[bb_uptr.get()])) {
+                doms_map_[bb_uptr.get()] = temp_set;
+                has_changed = true;
+            }
+
+        }
+    }
+}
+
 void ComputeDominators::run() {
 
     clearSets();
@@ -99,6 +154,7 @@ void ComputeDominators::run() {
     initForBasicBlockIndexMap();
 
     computeImmDoms();
+    computeDoms();
     computeFrontiers();
     computeSuccessors();
 
