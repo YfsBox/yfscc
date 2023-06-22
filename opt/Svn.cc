@@ -20,6 +20,16 @@ Svn::ValueName Svn::getValueName(Instruction *inst) {
         }
 
         valuename = std::to_string(binary_inst->getInstType()) + "_" + lhs_name + "_" + rhs_name;
+    } else if (auto gep_inst = dynamic_cast<GEPInstruction *>(inst); gep_inst) {
+        auto base_name = gep_inst->getPtr()->getName();
+        valuename = base_name + "_";
+        auto index_size = gep_inst->getIndexSize();
+        for (int i = 0; i < index_size; ++i) {
+            valuename += getOperandName(gep_inst->getIndexValue(i));
+            if (i != index_size - 1) {
+                valuename += "_";
+            }
+        }
     }
     return valuename;
 }
@@ -37,7 +47,7 @@ Svn::ValueName Svn::getOperandName(Value *value) {
 }
 
 Instruction* Svn::lookupOrAdd(const ValueName &value_name, Instruction *inst) {
-    if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
+    if (inst->getInstType() == GEPType || dynamic_cast<BinaryOpInstruction *>(inst)) {
         auto &curr_table = binary_value_name_table_.back();
         if (curr_table.count(value_name)) {
             return curr_table[value_name];
@@ -70,6 +80,13 @@ void Svn::lvn(BasicBlock *basicblock) {
     for (auto &inst_uptr: insts_list) {
         auto inst = inst_uptr.get();
         if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
+            auto value_name = getValueName(inst);
+            auto lookup_inst = lookupOrAdd(value_name, inst);
+            if (lookup_inst != inst) {
+                replaced_map_[inst] = lookup_inst;
+            }
+        }
+        if (auto gep_inst = dynamic_cast<GEPInstruction *>(inst); gep_inst) {
             auto value_name = getValueName(inst);
             auto lookup_inst = lookupOrAdd(value_name, inst);
             if (lookup_inst != inst) {
