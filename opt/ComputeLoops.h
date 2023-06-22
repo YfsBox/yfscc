@@ -16,15 +16,19 @@
 
 class BasicBlock;
 class BranchInstruction;
+class Instruction;
+class PhiInstruction;
 
 class ComputeLoops {
 public:
 
     struct LoopInfo {
 
-        explicit LoopInfo(): enter_block_(nullptr), exit_block_(nullptr), parent_info_(nullptr) {}
+        explicit LoopInfo(): enter_block_(nullptr), exit_block_(nullptr), parent_info_(nullptr), has_ret_or_break_(false) {}
 
         ~LoopInfo() = default;
+
+        bool has_ret_or_break_;
 
         BasicBlock *enter_block_;
 
@@ -32,12 +36,21 @@ public:
 
         std::shared_ptr<LoopInfo> parent_info_;
 
-        std::list<BasicBlock *> loop_body_;
+        std::set<BasicBlock *> loop_body_;
+
+        std::set<BasicBlock *> sub_loops_;
 
         Instruction *getSetCondInst();
 
         PhiInstruction *getCondVarPhiInst();
 
+        void setHasReturnOrBreak();
+
+        std::set<BasicBlock *> getSubLoops() {
+            return sub_loops_;
+        }
+
+        bool isInLoop(BasicBlock *basicblock);
     };
 
     using LoopInfoPtr = std::shared_ptr<LoopInfo>;
@@ -52,6 +65,10 @@ public:
         return loop_info_map_[block].get();
     }
 
+    LoopInfosList &getLoopInfosList(Function *function);
+
+    LoopInfosList &getDeepestLoops(Function *function);
+
     void run();
 
 private:
@@ -62,6 +79,8 @@ private:
 
     void computeLoopBody(const LoopInfoPtr &loopinfo);
 
+    void setDeepestLoops(Function *function);
+
     Module *module_;
 
     std::unique_ptr<ComputeDominators> compute_dominators_;
@@ -71,6 +90,8 @@ private:
     std::unordered_set<BasicBlock *> visited_blocks_;
 
     std::unordered_map<BasicBlock *, LoopInfoPtr> loop_info_map_;
+
+    std::unordered_map<Function *, LoopInfosList> deepest_loops_;
 
     std::unordered_map<BasicBlock *, int> basicblock_index_;
 

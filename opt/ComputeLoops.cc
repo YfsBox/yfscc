@@ -30,6 +30,40 @@ PhiInstruction *ComputeLoops::LoopInfo::getCondVarPhiInst() {
     return nullptr;
 }
 
+void ComputeLoops::LoopInfo::setHasReturnOrBreak() {
+    for (auto body_bb: loop_body_) {
+        auto terminal_inst = body_bb->getInstructionList().back().get();
+        if (auto ret_inst = dynamic_cast<RetInstruction *>(terminal_inst); ret_inst) {
+            has_ret_or_break_ = false;
+            return;
+        }
+
+        if (auto branch_inst = dynamic_cast<BranchInstruction *>(terminal_inst); branch_inst) {
+            if (branch_inst->isCondBranch()) {
+                auto br_label = dynamic_cast<BasicBlock *>(branch_inst->getLabel());
+                if (!loop_body_.count(br_label)) {
+                    has_ret_or_break_ = false;
+                    return;
+                }
+            } else {
+                auto true_label = dynamic_cast<BasicBlock *>(branch_inst->getTrueLabel());
+                auto false_label = dynamic_cast<BasicBlock *>(branch_inst->getFalseLabel());
+
+                if ((!loop_body_.count(true_label) && true_label != exit_block_)
+                || (!loop_body_.count(false_label) && false_label != exit_block_)) {
+                    has_ret_or_break_ = false;
+                    return;
+                }
+            }
+        }
+    }
+    has_ret_or_break_ = true;
+}
+
+bool ComputeLoops::LoopInfo::isInLoop(BasicBlock *basicblock) {
+    return basicblock == enter_block_ || basicblock == exit_block_ || loop_body_.count(basicblock);
+}
+
 void ComputeLoops::dfsBasicBlocks(BasicBlock *basicblock, int index) {
     if (visited_blocks_.count(basicblock)) {
         return;
@@ -74,10 +108,11 @@ void ComputeLoops::computeLoopBody(const LoopInfoPtr &loopinfo) {
         }
 
         visited_blocks.insert(front_bb);
-        loopinfo->loop_body_.push_back(front_bb);
+        loopinfo->loop_body_.insert(front_bb);
 
         if (loop_info_map_.find(front_bb) != loop_info_map_.end()) {
             loop_info_map_[front_bb]->parent_info_ = loopinfo;
+            loopinfo->sub_loops_.insert(front_bb);
         }
         loop_info_map_[front_bb] = loopinfo;
         visited_blocks.insert(front_bb);
@@ -90,13 +125,31 @@ void ComputeLoops::computeLoopBody(const LoopInfoPtr &loopinfo) {
 }
 
 void ComputeLoops::init() {
+
+}
+
+void ComputeLoops::setDeepestLoops(Function *function) {
+    auto &loopinfos_list = getLoopInfosList(function);
+    for (auto &loopinfo: loopinfos_list) {
+        if (loopinfo->getSubLoops().empty()) {
+            deepest_loops_[function].push_back(loopinfo);
+        }
+    }
+}
+
+ComputeLoops::LoopInfosList &ComputeLoops::getLoopInfosList(Function *function) {
+    return func_loopinfos_list_[function];
+}
+
+ComputeLoops::LoopInfosList &ComputeLoops::getDeepestLoops(Function *function) {
+    return deepest_loops_[function];
 }
 
 void ComputeLoops::run() {
     init();
     for (int i = 0; i < module_->getFuncSize(); ++i) {
         auto function = module_->getFunction(i);
-        printf("the function is %s\n", function->getName().c_str());
+        // printf("the function is %s\n", function->getName().c_str());
         if (function->getBlocks().size() < 1) {
             continue;
         }
@@ -117,17 +170,10 @@ void ComputeLoops::run() {
 
     for (int i = 0; i < module_->getFuncSize(); ++i) {
         auto function = module_->getFunction(i);
-
+        setDeepestLoops(function);
         auto &loopinfo_list = func_loopinfos_list_[function];
         for (auto &loopinfo: loopinfo_list) {
-            printf("the enter bb is %s, and exit bb is %s\n", loopinfo->enter_block_->getName().c_str(), loopinfo->exit_block_->getName().c_str());
-
-            for (auto loopbody_bb: loopinfo->loop_body_) {
-                printf("the body has %s\n", loopbody_bb->getName().c_str());
-            }
-
-            printf("\n");
+            loopinfo->setHasReturnOrBreak();
         }
-
     }
 }
