@@ -34,6 +34,8 @@ public:
 
         BasicBlock *exit_block_;
 
+        BasicBlock *next_block_;
+
         std::shared_ptr<LoopInfo> parent_info_;
 
         std::set<BasicBlock *> loop_body_;
@@ -45,6 +47,8 @@ public:
         PhiInstruction *getCondVarPhiInst();
 
         void setHasReturnOrBreak();
+
+        void setNextBasicBlock();
 
         std::set<BasicBlock *> getSubLoops() {
             return sub_loops_;

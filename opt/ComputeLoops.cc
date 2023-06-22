@@ -60,6 +60,19 @@ void ComputeLoops::LoopInfo::setHasReturnOrBreak() {
     has_ret_or_break_ = true;
 }
 
+void ComputeLoops::LoopInfo::setNextBasicBlock() {
+    auto branch_inst = dynamic_cast<BranchInstruction *>(enter_block_->getInstructionList().back().get());
+    assert(branch_inst);
+    auto true_label = dynamic_cast<BasicBlock *>(branch_inst->getTrueLabel());
+    auto false_label = dynamic_cast<BasicBlock *>(branch_inst->getFalseLabel());
+
+    if (loop_body_.count(true_label)) {
+        next_block_ = false_label;
+    } else {
+        next_block_ = true_label;
+    }
+}
+
 bool ComputeLoops::LoopInfo::isInLoop(BasicBlock *basicblock) {
     return basicblock == enter_block_ || basicblock == exit_block_ || loop_body_.count(basicblock);
 }
@@ -174,6 +187,7 @@ void ComputeLoops::run() {
         auto &loopinfo_list = func_loopinfos_list_[function];
         for (auto &loopinfo: loopinfo_list) {
             loopinfo->setHasReturnOrBreak();
+            loopinfo->setNextBasicBlock();
         }
     }
 }
