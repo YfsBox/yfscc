@@ -8,11 +8,15 @@
 #include <memory>
 #include "PassManager.h"
 #include "ComputeLoops.h"
+#include "../ir/BasicBlock.h"
+
+class Value;
+class BinaryOpInstruction;
 
 class LoopUnrolling: public Pass {
 public:
 
-    explicit LoopUnrolling(Module *module): Pass(module), has_compute_loop_(false), compute_loops_(nullptr) {}
+    explicit LoopUnrolling(Module *module): Pass(module), has_compute_loop_(false), curr_condition_var_(nullptr), compute_loops_(nullptr) {}
 
     ~LoopUnrolling() = default;
 
@@ -24,11 +28,13 @@ private:
 
     struct LoopUnrollingInfo {
 
-        explicit LoopUnrollingInfo(const ComputeLoops::LoopInfoPtr &loopinfo): loopinfo_(loopinfo) {}
+        explicit LoopUnrollingInfo(const ComputeLoops::LoopInfoPtr &loopinfo): loopinfo_(loopinfo), iterator_inst(nullptr) {}
 
         ~LoopUnrollingInfo() = default;
 
         ComputeLoops::LoopInfoPtr loopinfo_;
+
+        Instruction *iterator_inst;
 
         int32_t limit_;
 
@@ -37,7 +43,14 @@ private:
         int32_t init_value_;
 
         int32_t cal_iteratorions_cnt_;
+
     };
+
+    Instruction *getCopyInstruction(Instruction *inst, BasicBlock *basicblock, const std::string &new_name);
+
+    Value *getCopyValue(Value *value);
+
+    void copyOneBasicBlockForFullUnroll(const std::list<Instruction *> &origin_insts, BasicBlock *basicblock, int32_t unroll_index, const LoopUnrollingInfo &unrolling_info);
 
     bool isFixedIterations(const ComputeLoops::LoopInfoPtr &loopinfo, LoopUnrollingInfo &unrolling_info) const;
 
@@ -47,9 +60,14 @@ private:
 
     bool has_compute_loop_;
 
+    Value *curr_condition_var_;
+
     static const constexpr int unrolling_cnt = 4;
 
     std::unique_ptr<ComputeLoops> compute_loops_;
+
+    std::unordered_map<Value *, Value *> copy_insts_map_;
+
 
 };
 
