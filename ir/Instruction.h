@@ -19,6 +19,8 @@ enum InstructionType {
     ModType,
     DivType,
     AndType,
+    LshrType,
+    RshrType,
     OrType,
     XorType,
     AllocaType,
@@ -70,6 +72,10 @@ public:
     }
 
     void replaceAllUseWith(Value *value);
+
+    void setInstType(InstructionType inst_type) {
+        inst_type_ = inst_type;
+    }
 
 protected:
     BasicType basic_type_;

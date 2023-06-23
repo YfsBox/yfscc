@@ -750,7 +750,7 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, boo
         }
     }
     if (ret_operand == nullptr) {
-        printf("the value type is %d, the inst is %s\n", value_type, value->getName().c_str());
+        printf("the value type is %d, the inst is %s, in function %s\n", value_type, value->getName().c_str(), curr_machine_function_->getFunctionName().c_str());
     }
     return ret_operand;
 }
@@ -1018,11 +1018,9 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
     switch (binary_op) {
         case InstructionType::AddType:
             can_be_swap = true;
-            rhs_can_be_imm = true;
             binary_inst_op = basic_type == BasicType::INT_BTYPE ? BinaryInst::IAdd: BinaryInst::FAdd;
             break;
         case InstructionType::SubType:
-            rhs_can_be_imm = true;
             binary_inst_op = basic_type == BasicType::INT_BTYPE ? BinaryInst::ISub: BinaryInst::FSub;
             break;
         case InstructionType::MulType:
@@ -1052,6 +1050,18 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
             addMachineInst(sub_inst);
             return;
         }
+        case InstructionType::LshrType: {
+            can_be_swap = false;
+            rhs_can_be_imm = true;
+            binary_inst_op = BinaryInst::IAsl;
+            break;
+        }
+        case InstructionType::RshrType: {
+            can_be_swap = false;
+            rhs_can_be_imm = true;
+            binary_inst_op = BinaryInst::IAsr;
+            break;
+        }
         default:
             break;
     }
@@ -1062,7 +1072,7 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
 
     MachineOperand *lhs = value2MachineOperand(left_value, false);
     assert(lhs);
-    MachineOperand *rhs = value2MachineOperand(right_value, false);
+    MachineOperand *rhs = value2MachineOperand(right_value, rhs_can_be_imm);
     assert(rhs);
 
     auto binary_dst = createVirtualReg(value_type, binst);

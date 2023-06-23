@@ -142,6 +142,12 @@ std::string IrDumper::getOptype(Instruction *inst, BasicType basic_type) const {
         case InstructionType::ModType:
             optype = "srem";
             break;
+        case InstructionType::LshrType:
+            optype = "ashl";
+            break;
+        case InstructionType::RshrType:
+            optype = "ashr";
+            break;
         default:
             break;
     }

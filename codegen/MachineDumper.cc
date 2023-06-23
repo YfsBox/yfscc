@@ -233,7 +233,7 @@ void MachineDumper::dump(const BinaryInst *inst) {
             fout_ << "rsb";
             break;
         case BinaryInst::BinaryOp::IAsl:
-            fout_ << "asl";
+            fout_ << "lsl";
             break;
         case BinaryInst::BinaryOp::ILsl:
             fout_ << "lsl";

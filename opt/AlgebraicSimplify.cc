@@ -1,6 +1,7 @@
 //
 // Created by 杨丰硕 on 2023/6/21.
 //
+#include <cmath>
 #include "AlgebraicSimplify.h"
 #include "../ir/BasicBlock.h"
 #include "../ir/Instruction.h"
@@ -90,7 +91,46 @@ void AlgebraicSimplify::removeInsts() {
 }
 
 void AlgebraicSimplify::replaceWithSimpleInst() {
+    for (auto &bb: curr_func_->getBlocks()) {
+        for (auto &inst_uptr: bb->getInstructionList()) {
+            if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst_uptr.get()); binary_inst) {
+                auto lhs = binary_inst->getLeft();
+                auto rhs = binary_inst->getRight();
+                int32_t pcnt = 0;
+                if (binary_inst->getInstType() == MulType && (lhs->getValueType() == ConstantValue || rhs->getValueType() == ConstantValue)) {
+                    ConstantVar *const_var = nullptr;
+                    ConstantVar *shift_var = nullptr;
+                    if (lhs->getValueType() == ConstantValue) {
+                        const_var = dynamic_cast<ConstantVar *>(lhs);
+                        binary_inst->swapLeftAndRight();
+                    } else {
+                        const_var = dynamic_cast<ConstantVar *>(rhs);
+                    }
+                    assert(const_var);
+                    int32_t const_var_value = const_var->getIValue();
+                    if (isPowerOfTwo(const_var_value)) {
+                        pcnt = static_cast<int32_t>(std::log2(const_var_value));
+                        shift_var = new ConstantVar(pcnt);
+                        inst_uptr->replaceWithValue(const_var, shift_var);
+                        inst_uptr->setInstType(LshrType);
+                        printf("%d replace by %d in inst %s for mul\n", const_var_value, pcnt, inst_uptr->getName().c_str());
+                    }
 
+                } /*else if (binary_inst->getInstType() == DivType && rhs->getValueType() == ConstantValue) {
+                    ConstantVar *const_var = dynamic_cast<ConstantVar *>(rhs);
+                    assert(const_var);
+                    int32_t const_var_value = const_var->getIValue();
+                    if (isPowerOfTwo(const_var_value)) {
+                        pcnt = static_cast<int32_t>(std::log2(const_var_value));
+                        auto shift_var = new ConstantVar(pcnt);
+                        inst_uptr->replaceWithValue(const_var, shift_var);
+                        inst_uptr->setInstType(RshrType);
+                        printf("%d replace by %d in inst %s for div\n", const_var_value, pcnt, inst_uptr->getName().c_str());
+                    }
+                }*/
+            }
+        }
+    }
 
 
 }
