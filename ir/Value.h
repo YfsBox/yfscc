@@ -68,6 +68,14 @@ public:
         return user_map_;
     }
 
+    void addUser(User *user) {
+        user_map_.insert(user);
+    }
+
+    void eraseUser(User *user) {
+        user_map_.erase(user);
+    }
+
 protected:
     bool is_bool_type_;
     bool is_ptr_;
