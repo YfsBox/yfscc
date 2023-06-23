@@ -49,6 +49,7 @@ set(IROPT_SRC
         opt/ComputeLoops.cc
         opt/BranchOptimizer.cc
         opt/LoopUnrolling.cc
+        opt/AlgebraicSimplify.cc
 )
 
 set(BACKEND_SRC
