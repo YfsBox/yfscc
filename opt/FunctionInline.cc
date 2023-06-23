@@ -24,7 +24,7 @@ bool FunctionInline::canBeInline(Function *function) {
     for (auto &bb_uptr: function->getBlocks()) {
         inst_size += bb_uptr->getInstructionSize();
     }
-    if ((inst_size > inline_insts_size && function->getBlocks().size() > 3) || call_graph_analysis_->isRecursive(function) /*|| call_cnt_map_[function] > 1*/) {
+    if ((inst_size > inline_insts_size && function->getBlocks().size() > 5) || call_graph_analysis_->isRecursive(function) /*|| call_cnt_map_[function] > 1*/) {
         return false;
     }
     return true;
@@ -438,7 +438,7 @@ void FunctionInline::collectCallPoint() {
                 continue;
             }
 
-            if (call_cnt_map_[call_inst->getFunction()] == 1 && canBeInline(call_inst->getFunction()) && !has_inlined_in_bb && call_inst->getParent()->getWhileLoopDepth() > 0) {
+            if (call_cnt_map_[call_inst->getFunction()] == 1 && canBeInline(call_inst->getFunction()) && !has_inlined_in_bb /*&& call_inst->getParent()->getWhileLoopDepth() > 0*/) {
                 call_insts_for_inline_.insert(call_inst);
                 // printf("the function %s can be inlined in function %s\n", call_inst->getFunction()->getName().c_str(), curr_func_->getName().c_str());
                 insert_point_nextit_map_[bb.get()] = bb_it;
