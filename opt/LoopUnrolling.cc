@@ -210,15 +210,7 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
     LoopUnrollingInfo unrolling_info(loopinfo);
 
     if (isFixedIterations(loopinfo, unrolling_info)) {
-        /*printf("the loopinfo is %s, and the limit is %d, init is %d, stride is %d, iteration cnt is %d, the loop body cnt is %d\n",
-               loopinfo->enter_block_->getName().c_str(),
-               unrolling_info.limit_,
-               unrolling_info.init_value_,
-               unrolling_info.stride_,
-               unrolling_info.cal_iteratorions_cnt_,
-               loopinfo->loop_body_.size());*/
-
-        if (loopinfo->loop_body_.size() == 1) {     // 如果是循环体只有一个basicblock的情况，就直接往里面append拷贝的指令
+        if (loopinfo->loop_body_.size() == 1 && unrolling_info.cal_iteratorions_cnt_ < max_inst_cnt_for_fullunroll_) {     // 如果是循环体只有一个basicblock的情况，就直接往里面append拷贝的指令
             auto body_basicblock = *loopinfo->loop_body_.begin();
             // 设置末尾的跳转语句，从而切换到next
             auto body_branch_inst = dynamic_cast<BranchInstruction *>(body_basicblock->getInstructionList().back().get());
