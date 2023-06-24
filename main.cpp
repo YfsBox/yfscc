@@ -93,8 +93,8 @@ int main(int argc, char **argv) {
         algebric_simplify.ir_dumper_ = new IrDumper(std::cout);
 
         pass_manager.addPass(&dead_code_elim);
-        pass_manager.addPass(&branch_opt);
-        pass_manager.addPass(&dead_bb_elim);
+        // pass_manager.addPass(&branch_opt);
+        // pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&mem2reg);
 
         pass_manager.addPass(&dead_code_elim);
@@ -118,6 +118,9 @@ int main(int argc, char **argv) {
 
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();
+
+    /*MachineDumper vmcdumper(codegen.getMCModule(), target_file + ".v");
+    vmcdumper.dump();*/
 
     RegsAllocator::regsAllocate(codegen.getMCModule(), &codegen);
 

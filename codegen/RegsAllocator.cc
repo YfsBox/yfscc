@@ -322,8 +322,8 @@ void ColoringRegsAllocator::build() {
                 auto move_inst = dynamic_cast<MoveInst *>(mc_inst);
                 if (((move_inst->getMoveType() == MoveInst::F2F && allocate_float_)
                 || (move_inst->getMoveType() == MoveInst::I2I && !allocate_float_))
-                && isNeedAlloca(move_inst->getSrc())
-                && isNeedAlloca(move_inst->getDst())) {
+                && move_inst->getSrc()->getOperandType() == MachineOperand::VirtualReg
+                && move_inst->getDst()->getOperandType() == MachineOperand::VirtualReg) {
                     for (auto use: uses) {     // live :=  live \ use(I)
                         live.erase(use);
                         move_list_[use].insert(mc_inst);
