@@ -252,8 +252,13 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
                     body_basicblock->insertInstruction(branch_inst_it, insert_inst);
                 }
             }
+            // 这一部分的处理需要完善
+            BasicBlock *succ_bb_has_phi = loopinfo->next_block_;
+            while (succ_bb_has_phi->getInstructionList().size() == 1) {
+                succ_bb_has_phi = *succ_bb_has_phi->getSuccessorBlocks().begin();
+            }
 
-            for (auto &inst_uptr: loopinfo->next_block_->getInstructionList()) {
+            for (auto &inst_uptr: succ_bb_has_phi->getInstructionList()) {
                 if (auto phi_inst = dynamic_cast<PhiInstruction *>(inst_uptr.get()); phi_inst) {
                     phi_inst->replaceWithValue(loopinfo->enter_block_, body_basicblock);
                     phi_inst->replaceWithValue(phi_var, curr_condition_var_);
