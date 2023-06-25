@@ -204,7 +204,7 @@ public:
         IRsb,
     };
 
-    BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *lhs, MachineOperand *rhs);
+    BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *lhs, MachineOperand *rhs, int rhs_lsr = 0);
 
     ~BinaryInst();
 
@@ -239,7 +239,12 @@ public:
         }
     }
 
+    int getRhsLsr() const {
+        return with_rhs_lsr_;
+    }
+
 private:
+    int with_rhs_lsr_;          // add  r0, r0, r1, lsr #22
     BinaryOp binary_op_type_;
     OperandPtr dst_;
     OperandPtr lhs_;

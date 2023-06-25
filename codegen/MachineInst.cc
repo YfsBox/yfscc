@@ -214,12 +214,13 @@ ClzInst::ClzInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperand 
 
 ClzInst::~ClzInst() = default;
 
-BinaryInst::BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *lhs, MachineOperand *rhs):
+BinaryInst::BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *lhs, MachineOperand *rhs, int rhs_lsr):
     MachineInst(Binary, Undef, parent),
     binary_op_type_(op),
     dst_(dst),
     lhs_(lhs),
-    rhs_(rhs){
+    rhs_(rhs),
+    with_rhs_lsr_(rhs_lsr){
     setValueType(getValueType(dst_));
 }
 

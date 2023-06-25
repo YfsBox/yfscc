@@ -250,6 +250,9 @@ void MachineDumper::dump(const BinaryInst *inst) {
     dump(inst->getLeft());
     fout_ << ", ";
     dump(inst->getRight());
+    if (inst->getRhsLsr()) {
+        fout_ << " , lsr #" << inst->getRhsLsr();
+    }
     fout_ << "\n";
 }
 

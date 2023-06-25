@@ -1057,10 +1057,25 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
             break;
         }
         case InstructionType::RshrType: {
-            can_be_swap = false;
-            rhs_can_be_imm = true;
-            binary_inst_op = BinaryInst::IAsr;
-            break;
+            auto asr1_dst = createVirtualReg(MachineOperand::Int);
+            auto add_dst = createVirtualReg(MachineOperand::Int);
+            auto asr2_dst = createVirtualReg(MachineOperand::Int, binst);
+
+            MachineOperand *lhs_vreg = value2MachineOperand(left_value, false);
+            auto *rhs_const = dynamic_cast<ConstantVar *>(binst->getRight());
+            assert(lhs_vreg);
+            assert(rhs_const);
+
+            auto asr1_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAsr, asr1_dst, lhs_vreg, new ImmNumber(31));
+            addMachineInst(asr1_inst);
+
+            auto add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, add_dst, lhs_vreg, asr1_dst, 32 - rhs_const->getIValue());
+            addMachineInst(add_inst);
+
+            auto asr2_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAsr, asr2_dst, add_dst, new ImmNumber(rhs_const->getIValue()));
+            addMachineInst(asr2_inst);
+
+            return;
         }
         default:
             break;
