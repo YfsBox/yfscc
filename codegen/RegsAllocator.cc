@@ -486,7 +486,7 @@ bool ColoringRegsAllocator::ok(MachineOperand *t, MachineOperand *r) {
 }
 
 void ColoringRegsAllocator::combine(MachineOperand *u, MachineOperand *v) {
-    if (freeze_work_list_.count(u)) {
+    if (freeze_work_list_.count(v)) {
         freeze_work_list_.erase(v);
     } else {
         spill_work_list_.erase(v);
