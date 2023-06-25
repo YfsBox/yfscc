@@ -298,6 +298,16 @@ void ColoringRegsAllocator::addEdge(MachineOperand *a, MachineOperand *b) {
     }
 }
 
+static std::string getRegStr(MachineOperand *operand) {
+    if (operand->getOperandType() == MachineOperand::MachineReg) {
+        return dynamic_cast<MachineReg *>(operand)->machieReg2RegName();
+    } else if (operand->getOperandType() == MachineOperand::VirtualReg) {
+        return "vreg" + std::to_string(dynamic_cast<VirtualReg *>(operand)->getRegId());
+    } else {
+        return "";
+    }
+}
+
 static void printRegStr(MachineOperand *operand) {
     if (operand->getOperandType() == MachineOperand::MachineReg) {
         printf("%s", dynamic_cast<MachineReg *>(operand)->machieReg2RegName().c_str());
@@ -322,8 +332,8 @@ void ColoringRegsAllocator::build() {
                 auto move_inst = dynamic_cast<MoveInst *>(mc_inst);
                 if (((move_inst->getMoveType() == MoveInst::F2F && allocate_float_)
                 || (move_inst->getMoveType() == MoveInst::I2I && !allocate_float_))
-                && move_inst->getSrc()->getOperandType() == MachineOperand::VirtualReg
-                && move_inst->getDst()->getOperandType() == MachineOperand::VirtualReg) {
+                && /*move_inst->getSrc()->getOperandType() == MachineOperand::VirtualReg*/ isNeedAlloca(move_inst->getSrc())
+                && /*move_inst->getDst()->getOperandType() == MachineOperand::VirtualReg*/ isNeedAlloca(move_inst->getDst())) {
                     for (auto use: uses) {     // live :=  live \ use(I)
                         live.erase(use);
                         move_list_[use].insert(mc_inst);
@@ -482,8 +492,7 @@ void ColoringRegsAllocator::combine(MachineOperand *u, MachineOperand *v) {
         spill_work_list_.erase(v);
     }
     coalesced_nodes_.insert(v);
-
-    alias_.insert({v, u});
+    alias_[v] = u;
     for (auto node: move_list_[v]) {
         move_list_[u].insert(node);
     }
@@ -537,10 +546,12 @@ void ColoringRegsAllocator::coalesce() {
         join.insert(n);
     }
 
+    bool has_already_spilled = already_spilled_.count(u) || already_spilled_.count(v);
+
     if (u == v) {
         coalesced_moves_.insert(m);
         addWorkList(u);
-    } else if (isPrecolored(v) || isInAdjSet(u, v)) {
+    } else if (isPrecolored(v) || isInAdjSet(u, v) || has_already_spilled) {
         constrained_moves_.insert(m);
         addWorkList(u);
         addWorkList(v);
@@ -659,17 +670,23 @@ void ColoringRegsAllocator::freezeMoves(MachineOperand *operand) {
         assert(move_inst);
         auto u = move_inst->getSrc();
         auto v = move_inst->getDst();
+        if (getAlias(move_inst->getSrc()) == getAlias(operand)) {
+            v = getAlias(move_inst->getDst());
+        } else {
+            v = getAlias(move_inst->getSrc());
+        }
 
-        if (active_moves_.count(m)) {
+        /*if (active_moves_.count(m)) {
             active_moves_.erase(m);
         } else {
             worklist_moves_.erase(m);
-        }
-
+        }*/
+        active_moves_.erase(m);
         frozen_moves_.insert(m);
         if (nodeMoves(v).empty() && degree_[v] < k_) {
             freeze_work_list_.erase(v);
             simplify_work_list_.insert(v);
+            assert(simplify_work_list_.count(v));
         }
     }
 }
@@ -731,8 +748,8 @@ void ColoringRegsAllocator::assignColors() {
         }
     }
 
-    for (auto node : coalesced_nodes_) {
-        color_[node] = color_[getAlias(node)];
+    for (auto coalesced_node : coalesced_nodes_) {
+        color_[coalesced_node] = color_[getAlias(coalesced_node)];
     }
 
 }
