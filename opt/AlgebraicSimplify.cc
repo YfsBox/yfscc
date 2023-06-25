@@ -97,6 +97,9 @@ void AlgebraicSimplify::replaceWithSimpleInst() {
                 auto lhs = binary_inst->getLeft();
                 auto rhs = binary_inst->getRight();
                 int32_t pcnt = 0;
+                if (inst_uptr->getBasicType() != INT_BTYPE) {
+                    continue;
+                }
                 if (binary_inst->getInstType() == MulType && (lhs->getValueType() == ConstantValue || rhs->getValueType() == ConstantValue)) {
                     ConstantVar *const_var = nullptr;
                     ConstantVar *shift_var = nullptr;
