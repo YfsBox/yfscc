@@ -46,6 +46,10 @@ void InstCombine::initWorkList() {
     combine_value_cnt_.clear();
     inserted_inst_.clear();
     inserted_it_.clear();
+    work_insts_withconst_set_.clear();
+    work_insts_nonconst_map_.clear();
+    combined_insts_nonconst_set_.clear();
+    combined_insts_withconst_set_.clear();
     for (auto &bb: curr_func_->getBlocks()) {
         auto &inst_list = bb->getInstructionList();
         for (auto &inst: inst_list) {
@@ -76,8 +80,10 @@ void InstCombine::combineWithConst(BinaryOpInstruction *inst) {
     auto left_inst = dynamic_cast<Instruction *>(inst->getLeft());
     auto right_constvar = dynamic_cast<ConstantVar *>(inst->getRight());
 
-    assert(left_inst);
-    assert(right_constvar);
+
+    if (!left_inst || !right_constvar) {
+        return;
+    }
 
     auto left_binary_inst = dynamic_cast<BinaryOpInstruction *>(left_inst);
     if (left_binary_inst && canCombineWithConst(left_binary_inst)) {
@@ -143,8 +149,9 @@ void InstCombine::combineNonConst(BinaryOpInstruction *inst) {
     auto left_inst = dynamic_cast<BinaryOpInstruction *>(inst->getLeft());
     auto right_inst = dynamic_cast<BinaryOpInstruction *>(inst->getRight());
 
-    assert(left_inst);
-    assert(right_inst);
+    if (!left_inst || !right_inst) {
+        return;
+    }
 
     bool has_sub_combine = false;
     if (left_inst) {
