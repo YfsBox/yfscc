@@ -54,6 +54,10 @@ private:
 
     void copyOneBasicBlockForFullUnroll(const std::list<Instruction *> &origin_insts, BasicBlock *basicblock, int32_t unroll_index, const LoopUnrollingInfo &unrolling_info);
 
+    void copyBodyBasicblocksForFullUnroll(const ComputeLoops::LoopInfoPtr &loopinfo, const LoopUnrollingInfo &unroll_info, int32_t unroll_index, std::vector<BasicBlock *> &new_basicblocks);
+
+    void initLastIterateVarMap(const LoopUnrollingInfo &unroll_info);
+
     bool isFixedIterations(const ComputeLoops::LoopInfoPtr &loopinfo, LoopUnrollingInfo &unrolling_info) const;
 
     bool isNotFixedIterations(const ComputeLoops::LoopInfoPtr &loopinfo) const;
@@ -69,6 +73,8 @@ private:
     std::unique_ptr<ComputeLoops> compute_loops_;
 
     std::unordered_map<Value *, Value *> copy_insts_map_;
+
+    std::unordered_map<Value *, Value *> last_iterate_var_map_;
 
 
 };

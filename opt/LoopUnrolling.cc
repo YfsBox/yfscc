@@ -10,6 +10,9 @@
 
 Value *LoopUnrolling::getCopyValue(Value *value) {
     Value *copy_value = nullptr;
+    if (last_iterate_var_map_.find(value) != last_iterate_var_map_.end()) {
+        return last_iterate_var_map_[value];
+    }
     if (value->getValueType() == ConstantValue) {
         auto const_var = dynamic_cast<ConstantVar *>(value);
         assert(const_var);
@@ -160,31 +163,30 @@ void LoopUnrolling::copyOneBasicBlockForFullUnroll(const std::list<Instruction *
         assert(iterate_inst);
         Instruction *copy_inst = nullptr;
         std::string new_inst_name = inst->getName() + ".lu" + std::to_string(unroll_index);
-        if (iterate_inst == inst) {     // 需要变换const值
-            auto lhs = iterate_inst->getLeft();
-            auto rhs = iterate_inst->getRight();
-            ConstantVar *const_var = nullptr;
-            ConstantVar *new_const_var = nullptr;
-            Value *new_lhs = nullptr, *new_rhs = nullptr;
-            if (lhs->getValueType() == ConstantValue) {
-                const_var = dynamic_cast<ConstantVar *>(lhs);
-                new_const_var = new ConstantVar(const_var->getIValue());
-                new_lhs = new_const_var;
-                new_rhs = curr_condition_var_;
-            } else {
-                const_var = dynamic_cast<ConstantVar *>(rhs);
-                new_const_var = new ConstantVar(const_var->getIValue());
-                new_rhs = new_const_var;
-                new_lhs = curr_condition_var_;
-            }
-            copy_inst = new BinaryOpInstruction(inst->getInstType(), inst->getBasicType(), basicblock, new_lhs, new_rhs, new_inst_name);
-            copy_insts_map_[const_var] = new_const_var;
-        } else {            // 其他情况下直接拷贝
-            copy_inst = getCopyInstruction(inst, basicblock, new_inst_name);
-        }
+        auto use_vars = inst->getUses();
+           // 其他情况下直接拷贝
+        copy_inst = getCopyInstruction(inst, basicblock, new_inst_name);
+
         assert(copy_inst);
         copy_insts_map_[inst] = copy_inst;
     }
+
+}
+
+void LoopUnrolling::copyBodyBasicblocksForFullUnroll(const ComputeLoops::LoopInfoPtr &loopinfo,
+                                                     const LoopUnrollingInfo &unroll_info,
+                                                     int32_t unroll_index,
+                                                     std::vector<BasicBlock *> &new_basicblocks) {
+    for (auto body_basicblock: loopinfo->loop_body_) {
+        copy_insts_map_[body_basicblock] = new BasicBlock(curr_func_, body_basicblock->getName() + "." + std::to_string(unroll_index));
+        auto &origin_insts = body_basicblock->getInstructionList();
+        for (auto &inst: origin_insts) {
+
+        }
+    }
+}
+
+void LoopUnrolling::initLastIterateVarMap(const LoopUnrollingInfo &unroll_info) {
 
 }
 
@@ -229,12 +231,19 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
             }
 
             curr_condition_var_ = unrolling_info.iterator_inst;
+            for (auto &[phi_inst, iterator_var]: loopinfo->iterator_var_phi_insts_) {
+                last_iterate_var_map_[phi_inst] = iterator_var;
+                printf("the phi %s has iterator var %s\n", phi_inst->getName().c_str(), iterator_var->getName().c_str());
+            }
+
             for (int i = 1; i < unrolling_info.cal_iteratorions_cnt_; ++i) {
                 copy_insts_map_.clear();
                 std::list<Instruction *> unroll_insts;
                 copy_insts_map_[phi_var] = curr_condition_var_;
                 copyOneBasicBlockForFullUnroll(origin_insts, body_basicblock, i, unrolling_info);
-                curr_condition_var_ = copy_insts_map_[unrolling_info.iterator_inst];
+                for (auto &[phi_inst, iterate_inst]: unrolling_info.loopinfo_->iterator_var_phi_insts_) {
+                    last_iterate_var_map_[phi_inst] = copy_insts_map_[iterate_inst];
+                }
 
                 std::vector<Instruction *> inserted_insts;
                 inserted_insts.reserve(body_basicblock->getInstructionSize());
@@ -242,8 +251,6 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
                     auto inst = inst_uptr.get();
                     auto copy_inst = dynamic_cast<Instruction *>(copy_insts_map_[inst]);
                     if (copy_inst) {
-                        // ir_dumper_->dump(copy_inst);
-                        // body_basicblock->insertInstruction(branch_inst_it, copy_inst);
                         inserted_insts.push_back(copy_inst);
                     }
                 }
@@ -261,7 +268,18 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
             for (auto &inst_uptr: succ_bb_has_phi->getInstructionList()) {
                 if (auto phi_inst = dynamic_cast<PhiInstruction *>(inst_uptr.get()); phi_inst) {
                     phi_inst->replaceWithValue(loopinfo->enter_block_, body_basicblock);
-                    phi_inst->replaceWithValue(phi_var, curr_condition_var_);
+                    phi_inst->replaceWithValue(phi_var, getCopyValue(phi_var));
+                }
+            }
+
+            for (auto &[header_phi_inst, iterate_value]: loopinfo->iterator_var_phi_insts_) {
+                assert(header_phi_inst);
+                auto value0 = header_phi_inst->getValue(0);
+                auto value1 = header_phi_inst->getValue(1);
+                if (value0->getValueType() == ConstantValue) {
+                    header_phi_inst->replaceAllUseWith(value0);
+                } else if (value1->getValueType() == ConstantValue) {
+                    header_phi_inst->replaceAllUseWith(value1);
                 }
             }
 
@@ -376,10 +394,11 @@ void LoopUnrolling::runOnFunction() {
     }
     auto &loop_infos = compute_loops_->getDeepestLoops(curr_func_);
     for (auto &loop_info: loop_infos) {
-        /*printf("the enter bb is %s, and exit bb is %s\n", loop_info->enter_block_->getName().c_str(), loop_info->exit_block_->getName().c_str());
+        printf("the enter bb is %s, and exit bb is %s, the body bb cnt is %d\n", loop_info->enter_block_->getName().c_str(), loop_info->exit_block_->getName().c_str(), loop_info->loop_body_.size());
         for (auto body_bb: loop_info->loop_body_) {
             printf("the body bb is %s\n", body_bb->getName().c_str());
-        }*/
+        }
+        assert(loop_info);
         unroll(loop_info);
     }
 
