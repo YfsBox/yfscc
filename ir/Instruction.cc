@@ -19,8 +19,9 @@ Instruction::~Instruction() = default;
 void Instruction::replaceAllUseWith(Value *value) {
     for (auto user: user_map_) {
         auto user_inst = dynamic_cast<Instruction *>(user);
-        assert(user_inst);
-        user_inst->replaceWithValue(this, value);
+        if (user_inst) {
+            user_inst->replaceWithValue(this, value);
+        }
     }
 }
 

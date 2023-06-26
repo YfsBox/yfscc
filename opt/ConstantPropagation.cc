@@ -79,6 +79,8 @@ void ConstantPropagation::runOnFunction() {
                 case OrType:
                     cal_value = static_cast<int32_t>(left_value) || static_cast<int32_t>(right_value);
                     break;
+                case LshrType:
+                    cal_value = static_cast<int32_t>(left_value) << static_cast<int32_t>(right_value);
                 default:
                     break;
             }
@@ -114,8 +116,7 @@ void ConstantPropagation::runOnFunction() {
         for (auto inst_user: inst->getUserMap()) {
             inst_user->replaceWithValue(inst, const_var);
             auto user_inst = dynamic_cast<Instruction *>(inst_user);
-            assert(user_inst);
-            if (checkCanFold(user_inst)) {
+            if (user_inst && checkCanFold(user_inst)) {
                 work_inst_list_.push(user_inst);
             }
         }
