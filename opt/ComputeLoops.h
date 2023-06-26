@@ -8,12 +8,14 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <set>
+#include <map>
 #include <memory>
 #include <list>
 #include <vector>
 #include "ComputeDominators.h"
 #include "PassManager.h"
 
+class Value;
 class BasicBlock;
 class BranchInstruction;
 class Instruction;
@@ -42,6 +44,8 @@ public:
 
         std::set<BasicBlock *> sub_loops_;
 
+        std::map<PhiInstruction *, Value *> iterator_var_phi_insts_;
+
         Instruction *getSetCondInst();
 
         PhiInstruction *getCondVarPhiInst();
@@ -49,6 +53,8 @@ public:
         void setHasReturnOrBreak();
 
         void setNextBasicBlock();
+
+        void setInteratorVarPhiInsts();
 
         std::set<BasicBlock *> getSubLoops() {
             return sub_loops_;

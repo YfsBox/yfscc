@@ -4,6 +4,7 @@
 #include <cassert>
 #include <queue>
 #include "ComputeLoops.h"
+#include "../ir/Value.h"
 #include "../ir/Module.h"
 #include "../ir/BasicBlock.h"
 #include "../ir/Instruction.h"
@@ -70,6 +71,26 @@ void ComputeLoops::LoopInfo::setNextBasicBlock() {
         next_block_ = false_label;
     } else {
         next_block_ = true_label;
+    }
+}
+
+void ComputeLoops::LoopInfo::setInteratorVarPhiInsts() {
+    auto &enter_block_insts = enter_block_->getInstructionList();
+    for (auto &inst: enter_block_insts) {
+        if (auto phi_inst = dynamic_cast<PhiInstruction *>(inst.get()); phi_inst) {
+            if (phi_inst->getSize() == 2) {
+                auto value_bb_0 = phi_inst->getValueBlock(0);
+                auto value_bb_1 = phi_inst->getValueBlock(1);
+
+                if (!isInLoop(value_bb_0.second) && value_bb_1.second == exit_block_) {
+                    printf("phi inst %s set as %s\n", phi_inst->getName().c_str(), value_bb_1.first->getName().c_str());
+                    iterator_var_phi_insts_[phi_inst] = value_bb_1.first;
+                } else {
+                    printf("phi inst %s set as %s\n", phi_inst->getName().c_str(), value_bb_0.first->getName().c_str());
+                    iterator_var_phi_insts_[phi_inst] = value_bb_0.first;
+                }
+            }
+        }
     }
 }
 
@@ -188,6 +209,7 @@ void ComputeLoops::run() {
         for (auto &loopinfo: loopinfo_list) {
             loopinfo->setHasReturnOrBreak();
             loopinfo->setNextBasicBlock();
+            loopinfo->setInteratorVarPhiInsts();
         }
     }
 }
