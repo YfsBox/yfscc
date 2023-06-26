@@ -24,7 +24,7 @@ bool FunctionInline::canBeInline(Function *function) {
     for (auto &bb_uptr: function->getBlocks()) {
         inst_size += bb_uptr->getInstructionSize();
     }
-    if ((inst_size > inline_insts_size && function->getBlocks().size() > 5) || call_graph_analysis_->isRecursive(function) /*|| call_cnt_map_[function] > 1*/) {
+    if ((inst_size > inline_insts_size && function->getBlocks().size() >10) || call_graph_analysis_->isRecursive(function) /*|| call_cnt_map_[function] > 1*/) {
         return false;
     }
     return true;
