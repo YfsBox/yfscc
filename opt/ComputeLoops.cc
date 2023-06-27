@@ -83,10 +83,10 @@ void ComputeLoops::LoopInfo::setInteratorVarPhiInsts() {
                 auto value_bb_1 = phi_inst->getValueBlock(1);
 
                 if (!isInLoop(value_bb_0.second) && value_bb_1.second == exit_block_) {
-                    printf("phi inst %s set as %s\n", phi_inst->getName().c_str(), value_bb_1.first->getName().c_str());
+                    // printf("phi inst %s set as %s\n", phi_inst->getName().c_str(), value_bb_1.first->getName().c_str());
                     iterator_var_phi_insts_[phi_inst] = value_bb_1.first;
                 } else {
-                    printf("phi inst %s set as %s\n", phi_inst->getName().c_str(), value_bb_0.first->getName().c_str());
+                    // printf("phi inst %s set as %s\n", phi_inst->getName().c_str(), value_bb_0.first->getName().c_str());
                     iterator_var_phi_insts_[phi_inst] = value_bb_0.first;
                 }
             }
