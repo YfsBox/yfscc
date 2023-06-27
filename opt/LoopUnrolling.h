@@ -50,17 +50,23 @@ private:
 
     Instruction *getCopyInstruction(Instruction *inst, BasicBlock *basicblock, const std::string &new_name);
 
-    Value *getCopyValue(Value *value);
+    Value *getCopyValue(Value *value, Instruction *inst = nullptr);
 
     void copyOneBasicBlockForFullUnroll(const std::list<Instruction *> &origin_insts, BasicBlock *basicblock, int32_t unroll_index, const LoopUnrollingInfo &unrolling_info);
 
-    void copyBodyBasicblocksForFullUnroll(const ComputeLoops::LoopInfoPtr &loopinfo, const LoopUnrollingInfo &unroll_info, int32_t unroll_index, std::vector<BasicBlock *> &new_basicblocks);
+    void copyBodyBasicblocksForFullUnroll(const LoopUnrollingInfo &unroll_info, int32_t unroll_index, std::vector<BasicBlock *> &new_basicblocks);
 
-    void initLastIterateVarMap(const LoopUnrollingInfo &unroll_info);
+    void replaceWithConstForFullUnroll(const LoopUnrollingInfo &unrolling_info);
+
+    void replaceVarInNextBlock(const LoopUnrollingInfo &unrollingInfo, BasicBlock *pre_basicblock);
+
+    void setLastIterateVarMap(const ComputeLoops::LoopInfoPtr &loopinfo);
 
     bool isFixedIterations(const ComputeLoops::LoopInfoPtr &loopinfo, LoopUnrollingInfo &unrolling_info) const;
 
     bool isNotFixedIterations(const ComputeLoops::LoopInfoPtr &loopinfo) const;
+
+    void setCopyUnfinished(const std::vector<BasicBlock *> &new_basicblocks);
 
     void unroll(ComputeLoops::LoopInfoPtr &loopinfo);
 
@@ -76,6 +82,7 @@ private:
 
     std::unordered_map<Value *, Value *> last_iterate_var_map_;
 
+    std::unordered_set<Instruction *> may_unfinished_copy_insts_;
 
 };
 
