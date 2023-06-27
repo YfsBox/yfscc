@@ -31,10 +31,10 @@ bool FunctionInline::canBeInline(Function *function) {
 }
 
 FunctionInline::FunctionInline(Module *module):
+        Pass(module),
         has_collect_caninline_functions_(false),
         curr_caller_basicblock_(nullptr),
         curr_inlined_exit_basicblock_(nullptr),
-        Pass(module),
         call_graph_analysis_(std::make_unique<CallGraphAnalysis>(module_)){
 }
 
@@ -398,13 +398,6 @@ void FunctionInline::generateBasicBlocks(Function *inlined_function, CallInstruc
     curr_caller_basicblock_->setHasJump(true);
 
     bbs_list.push_back(inlined_func_next_bb);
-}
-
-void FunctionInline::splitAndInsert(const std::list<BasicBlock *> &basicblocks) {
-    auto inlined_func_enter_bb = basicblocks.front();
-    // auto inlined_func_next_bb = new BasicBlock(curr_func_, );
-
-
 }
 
 void FunctionInline::computeCallCnt() {
