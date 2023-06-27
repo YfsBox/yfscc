@@ -177,7 +177,7 @@ void LoopUnrolling::copyBodyBasicblocksForFullUnroll(const LoopUnrollingInfo &un
                                                      int32_t unroll_index,
                                                      std::vector<BasicBlock *> &new_basicblocks) {
     new_basicblocks.reserve(unroll_info.loopinfo_->loop_body_.size());
-    for (auto body_basicblock: unroll_info.loopinfo_->loop_body_) {
+    for (auto body_basicblock: unroll_info.loopinfo_->loop_body_list_) {
         copy_insts_map_[body_basicblock] = new BasicBlock(curr_func_, body_basicblock->getName() + ".lu" + std::to_string(unroll_index));
         auto curr_copy_body_bb = dynamic_cast<BasicBlock *>(copy_insts_map_[body_basicblock]);
         curr_copy_body_bb->setHasJump(body_basicblock->getHasJump());
@@ -185,7 +185,7 @@ void LoopUnrolling::copyBodyBasicblocksForFullUnroll(const LoopUnrollingInfo &un
         curr_copy_body_bb->setWhileLoopDepth(body_basicblock->getWhileLoopDepth());
     }
 
-    for (auto body_basicblock: unroll_info.loopinfo_->loop_body_) {
+    for (auto body_basicblock: unroll_info.loopinfo_->loop_body_list_) {
         auto curr_copy_body_bb = dynamic_cast<BasicBlock *>(copy_insts_map_[body_basicblock]);// 循环展开之后循环的深度应该降低1
 
         assert(curr_copy_body_bb);
@@ -266,7 +266,6 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
     LoopUnrollingInfo unrolling_info(loopinfo);
 
     if (isFixedIterations(loopinfo, unrolling_info) && unrolling_info.cal_iteratorions_cnt_ < max_inst_cnt_for_fullunroll_) {
-        // printf("try unroll on loop %s\n", unrolling_info.loopinfo_->enter_block_->getName().c_str());
         if (loopinfo->loop_body_.size() == 1) {     // 如果是循环体只有一个basicblock的情况，就直接往里面append拷贝的指令
             auto body_basicblock = *loopinfo->loop_body_.begin();
             // 设置末尾的跳转语句，从而切换到next
@@ -471,7 +470,7 @@ void LoopUnrolling::setCopyUnfinished(const std::vector<BasicBlock *> &new_basic
                 for (int i = 0; i < inst_uptr->getOperandNum(); ++i) {
                     auto operand = inst_uptr->getOperand(i);
                     auto copy_operand = copyed_inst->getOperand(i);
-                    if (!copy_operand) {
+                    if (copy_operand) {
                         assert(getCopyValue(operand));
                         copyed_inst->setOperand(getCopyValue(operand), i);
                     }

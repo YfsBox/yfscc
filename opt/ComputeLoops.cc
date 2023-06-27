@@ -143,6 +143,7 @@ void ComputeLoops::computeLoopBody(const LoopInfoPtr &loopinfo) {
 
         visited_blocks.insert(front_bb);
         loopinfo->loop_body_.insert(front_bb);
+        loopinfo->loop_body_list_.push_front(front_bb);
 
         if (loop_info_map_.find(front_bb) != loop_info_map_.end()) {
             loop_info_map_[front_bb]->parent_info_ = loopinfo;

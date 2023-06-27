@@ -42,6 +42,8 @@ public:
 
         std::set<BasicBlock *> loop_body_;
 
+        std::list<BasicBlock *> loop_body_list_;
+
         std::set<BasicBlock *> sub_loops_;
 
         std::map<PhiInstruction *, Value *> iterator_var_phi_insts_;
