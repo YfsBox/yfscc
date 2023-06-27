@@ -273,6 +273,14 @@ public:
         return getOperand(0);
     }
 
+    void setLable(Value *value) {
+        setOperand(value, 0);
+    }
+
+    void setHasCond(bool has_cond) {
+        is_cond_ = has_cond;
+    }
+
     void setTrueLabel(Value *value) {
         if (getOperandNum() >= 3) {
             setOperand(value, 1);
