@@ -27,6 +27,8 @@ private:
 
     bool checkCanFold(Instruction *inst);
 
+    void foldForCondJump();
+
     std::queue<Instruction *> work_inst_list_;
 
 };

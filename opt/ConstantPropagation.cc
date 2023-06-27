@@ -36,6 +36,62 @@ void ConstantPropagation::initForWorkList() {
     }
 }
 
+void ConstantPropagation::foldForCondJump() {
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        auto &insts_list = bb_uptr->getInstructionList();
+        for (auto &inst: insts_list) {
+            if (auto br_inst = dynamic_cast<BranchInstruction *>(inst.get()); br_inst && br_inst->isCondBranch()) {
+                auto setcond_inst = dynamic_cast<SetCondInstruction *>(br_inst->getCond());
+                if (!setcond_inst) {
+                    continue;
+                }
+
+                auto setcond_lhs = setcond_inst->getLeft();
+                auto setcond_rhs = setcond_inst->getRight();
+
+                if (setcond_lhs->getValueType() == ConstantValue && setcond_rhs->getValueType() == ConstantValue && setcond_inst->getBasicType() == INT_BTYPE) {
+                    bool cond_result;
+                    auto cond_type = setcond_inst->getCmpType();
+                    auto lhs_const = dynamic_cast<ConstantVar *>(setcond_lhs);
+                    auto rhs_const = dynamic_cast<ConstantVar *>(setcond_rhs);
+                    auto true_label = br_inst->getTrueLabel();
+                    auto false_label = br_inst->getFalseLabel();
+                    switch (cond_type) {
+                        case SetCondInstruction::SetEQ:
+                            cond_result = lhs_const->getIValue() == rhs_const->getIValue();
+                            break;
+                        case SetCondInstruction::SetGT:
+                            cond_result = lhs_const->getIValue() > rhs_const->getIValue();
+                            break;
+                        case SetCondInstruction::SetLT:
+                            cond_result = lhs_const->getIValue() < rhs_const->getIValue();
+                            break;
+                        case SetCondInstruction::SetLE:
+                            cond_result = lhs_const->getIValue() <= rhs_const->getIValue();
+                            break;
+                        case SetCondInstruction::SetGE:
+                            cond_result = lhs_const->getIValue() >= rhs_const->getIValue();
+                            break;
+                        case SetCondInstruction::SetNE:
+                            cond_result = lhs_const->getIValue() != rhs_const->getIValue();
+                            break;
+                        default:
+                            break;
+                    }
+                    br_inst->setHasCond(false);
+                    if (cond_result) {
+                        br_inst->setLable(true_label);
+                    } else {
+                        br_inst->setLable(false_label);
+                    }
+                }
+            }
+        }
+    }
+    curr_func_->rebuildCfg();
+}
+
+
 void ConstantPropagation::runOnFunction() {
     initForWorkList();
     while (!work_inst_list_.empty()) {
@@ -121,4 +177,5 @@ void ConstantPropagation::runOnFunction() {
             }
         }
     }
+    foldForCondJump();
 }
