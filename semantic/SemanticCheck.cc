@@ -10,7 +10,6 @@ SemanticCheck::SemanticCheck(std::ostream &out):
     AstVisitor(),
     out_(out),
     curr_while_depth_(0),
-    error_cnt(0),
     curr_func_scope_(nullptr),
     curr_decl_(nullptr) {
     addLibFunc();
@@ -304,7 +303,6 @@ void SemanticCheck::visit(const std::shared_ptr<CompUnit> &compunit) {
         auto decl = compunit->getDecl(i);
         for (auto &def : decl->defs_) {
             std::string name = def->id_->getId();
-            bool is_const = (def->getDefType() == DefType::CONSTDEF);
             if (name_set.find(name) != name_set.end()) {        // 重复过的名字
                 appendError(def.get(), "#Identifier Redination,the name is " + name + "\n");
             }
@@ -764,7 +762,6 @@ void SemanticCheck::visit(const std::shared_ptr<LvalExpr> &expr) {
     auto symbol_entry = ident_systable_.lookupFromAll(ident->getId());
     if (symbol_entry) { // 如果存在
         bool is_array = symbol_entry->isArray();
-        size_t dimension_size = expr->getId()->getDimensionSize();
 
         if (is_array) {
             // 检查其数组的纬度数是否是可以计算的

@@ -63,7 +63,6 @@ public:
         for (int i = 0; i < operands_.size(); ++i) {
             auto operand = operands_[i];
             if (operand->getValueType() == InstructionValue) {
-                auto &user_map = operand->getUserMap();
                 operand->eraseUser(this);
             }
         }

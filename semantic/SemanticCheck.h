@@ -199,9 +199,7 @@ private:
     std::ostream &out_;
 
     size_t curr_while_depth_;        // 用来记录当前是否处于while之中
-
-    size_t error_cnt;
-
+    //size_t error_cnt;
     FuncDefine *curr_func_scope_;       // 当前所处的函数
 
     Declare *curr_decl_;      // 用来追踪当前的array_decl,需要知道其声明类型
