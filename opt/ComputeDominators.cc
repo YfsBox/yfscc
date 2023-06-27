@@ -134,6 +134,26 @@ void ComputeDominators::computeDoms() {
 
         }
     }
+
+    // 计算深度
+    std::unordered_set<BasicBlock *> visited_blocks;
+    std::queue<BasicBlock *> blockq;
+    blockq.push(enter_block);
+    doms_depth_map_[enter_block] = 0;
+    visited_bb_set_.insert(enter_block);
+
+    while (!blockq.empty()) {
+        auto block = blockq.front();
+        blockq.pop();
+
+        for (auto succ: doms_map_[block]) {
+            if (!visited_bb_set_.count(succ)) {
+                visited_bb_set_.insert(succ);
+                blockq.push(succ);
+                doms_depth_map_[succ] = doms_depth_map_[block] + 1;
+            }
+        }
+    }
 }
 
 void ComputeDominators::run() {

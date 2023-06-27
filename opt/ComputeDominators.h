@@ -106,6 +106,8 @@ private:
 
     std::unordered_map<BasicBlock *, int> post_order_index_map_;
 
+    std::unordered_map<BasicBlock *, int> doms_depth_map_;
+
     BasicBlockIntValueMap basicblock2index_map_;
 
     BasicBlockIntValueMap basicblock_dom_depth_map_;

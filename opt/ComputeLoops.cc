@@ -180,6 +180,29 @@ ComputeLoops::LoopInfosList &ComputeLoops::getDeepestLoops(Function *function) {
     return deepest_loops_[function];
 }
 
+void ComputeLoops::computeLoopDepths() {
+    auto &loopinfos = func_loopinfos_list_[function_];
+    int loop_cnt = loopinfos.size();
+    for (int i = loop_cnt - 1; i >= 0; i--) {
+        auto enter_block = loopinfos[i]->enter_block_;
+        bool nested = false;
+        for (int j = i + 1; j < loop_cnt; ++j) {
+            if (loopinfos[j]->loop_body_.count(enter_block)) {
+                nested = true;
+                if (loopinfos[j]->enter_block_ == enter_block) {
+                    loops_depth_[loopinfos[i].get()] = loops_depth_[loopinfos[j].get()];
+                } else {
+                    loops_depth_[loopinfos[i].get()] = loops_depth_[loopinfos[j].get()] + 1;
+                }
+                break;
+            }
+        }
+        if (!nested) {
+            loops_depth_[loopinfos[i].get()] = 1;
+        }
+    }
+}
+
 void ComputeLoops::run() {
     init();
     for (int i = 0; i < module_->getFuncSize(); ++i) {
@@ -201,6 +224,7 @@ void ComputeLoops::run() {
         auto enter_block = function->getBlocks().front().get();
         visited_blocks_.clear();
         dfsBasicBlocks(enter_block, 0);
+        computeLoopDepths();
     }
 
     for (int i = 0; i < module_->getFuncSize(); ++i) {

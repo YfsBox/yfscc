@@ -91,6 +91,8 @@ private:
 
     void computeLoopBody(const LoopInfoPtr &loopinfo);
 
+    void computeLoopDepths();
+
     void setDeepestLoops(Function *function);
 
     Module *module_;
@@ -106,6 +108,8 @@ private:
     std::unordered_map<Function *, LoopInfosList> deepest_loops_;
 
     std::unordered_map<BasicBlock *, int> basicblock_index_;
+
+    std::unordered_map<LoopInfo *, int> loops_depth_;
 
     std::unordered_map<Function *, LoopInfosList> func_loopinfos_list_;
 
