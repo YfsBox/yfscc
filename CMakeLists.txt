@@ -8,10 +8,13 @@ enable_testing()
 
 
 set(CXX_FLAGS
+        -g
         -Wall
         -std=c++17
         -O2
         )
+
+add_definitions(${CXX_FLAGS})
 
 set(FRONTEND_SRC
         parser/Parser.cpp

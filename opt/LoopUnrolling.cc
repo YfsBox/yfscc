@@ -204,7 +204,6 @@ void LoopUnrolling::copyBodyBasicblocksForFullUnroll(const LoopUnrollingInfo &un
 void LoopUnrolling::setLastIterateVarMap(const ComputeLoops::LoopInfoPtr &loopinfo) {
     for (auto &[phi_inst, iterator_var]: loopinfo->iterator_var_phi_insts_) {
         last_iterate_var_map_[phi_inst] = iterator_var;
-        printf("the phi %s has iterator var %s\n", phi_inst->getName().c_str(), iterator_var->getName().c_str());
     }
 }
 
@@ -226,19 +225,12 @@ void LoopUnrolling::replaceVarInNextBlock(const LoopUnrollingInfo &unrollingInfo
     while (succ_bb_has_phi->getInstructionList().size() == 1 && !succ_bb_has_phi->getSuccessorBlocks().empty()) {
         succ_bb_has_phi = *succ_bb_has_phi->getSuccessorBlocks().begin();
     }
-    printf("succ bb is %s\n", succ_bb_has_phi->getName().c_str());
     for (auto &inst_uptr: succ_bb_has_phi->getInstructionList()) {
         if (auto phi_inst = dynamic_cast<PhiInstruction *>(inst_uptr.get()); phi_inst) {
             // 如果有一个来源于header中的phi指令，就需要进行替换，尝试找到并进行替换。
             for (int i = 0; i < phi_inst->getSize(); ++i) {
                 auto phi_block = phi_inst->getBasicBlock(i);
                 auto phi_value = phi_inst->getValue(i);
-                printf("the phi %s is in bb %s， the block is %s, and the value is %s, and the enter block is %s\n",
-                       phi_inst->getName().c_str(), phi_inst->getParent()->getName().c_str(),
-                       phi_block->getName().c_str(), phi_value->getName().c_str(), unrollingInfo.loopinfo_->enter_block_->getName().c_str());
-
-                printf("the phi %s replace %s with %s\n", phi_inst->getName().c_str(), phi_value->getName().c_str(),
-                       getCopyValue(phi_value)->getName().c_str());
                 phi_inst->replaceWithValue(unrollingInfo.loopinfo_->enter_block_, pre_basicblock);
                 phi_inst->replaceWithValue(phi_value, getCopyValue(phi_value));
             }
@@ -274,7 +266,7 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
     LoopUnrollingInfo unrolling_info(loopinfo);
 
     if (isFixedIterations(loopinfo, unrolling_info) && unrolling_info.cal_iteratorions_cnt_ < max_inst_cnt_for_fullunroll_) {
-        printf("try unroll on loop %s\n", unrolling_info.loopinfo_->enter_block_->getName().c_str());
+        // printf("try unroll on loop %s\n", unrolling_info.loopinfo_->enter_block_->getName().c_str());
         if (loopinfo->loop_body_.size() == 1) {     // 如果是循环体只有一个basicblock的情况，就直接往里面append拷贝的指令
             auto body_basicblock = *loopinfo->loop_body_.begin();
             // 设置末尾的跳转语句，从而切换到next
@@ -340,7 +332,7 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
             // 定位到要插入点的basicblock iterator
             setLastIterateVarMap(unrolling_info.loopinfo_);
             auto branch_next_inst = dynamic_cast<BranchInstruction *>(loopinfo->exit_block_->getInstructionList().back().get());
-            printf("the exit block is %s\n", loopinfo->exit_block_->getName().c_str());
+            // printf("the exit block is %s\n", loopinfo->exit_block_->getName().c_str());
             assert(!branch_next_inst->isCondBranch());
             std::vector<BranchInstruction *> br_next_bb_insts;
             std::vector<BasicBlock *> enter_basicblocks;
