@@ -7,6 +7,7 @@
 #include "ComputeDominators.h"
 #include "../ir/Instruction.h"
 #include "../ir/BasicBlock.h"
+#include "../ir/IrDumper.h"
 
 GlobalCodeMotion::GlobalCodeMotion(Module *module): Pass(module),
     has_compute_loop_(false),
@@ -42,17 +43,29 @@ void GlobalCodeMotion::runOnFunction() {
 
     visited_insts_.clear();
     user_insts_map_.clear();
+    move_insts_map_.clear();
+    wait_move_insts_set_.clear();
     // schedule early
     // printf("begin schedule early\n");
     root_block_in_currfunc_ = curr_func_->getBlocks().front().get();
+
+
 
     for (auto &bb_uptr: curr_func_->getBlocks()) {
         auto &insts_list = bb_uptr->getInstructionList();
         for (auto &inst_uptr: insts_list) {
             auto inst = inst_uptr.get();
+            inst_block_map_[inst] = inst->getParent();
+        }
+    }
+
+    for (auto &bb_uptr: curr_func_->getBlocks()) {          // 这一部分应该也将arg部分包含上
+        auto &insts_list = bb_uptr->getInstructionList();
+        for (auto &inst_uptr: insts_list) {
+            auto inst = inst_uptr.get();
             if (isPinned(inst)) {
                 visited_insts_.insert(inst);
-                inst_block_map_[inst] = inst->getParent();
+                printf("visit inst %s in %s\n", inst->getName().c_str(), curr_func_->getName().c_str());
                 for (int i = 0; i < inst->getOperandNum(); ++i) {
                     if (inst->getOperand(i)->getValueType() == InstructionValue) {
                         auto input_inst = dynamic_cast<Instruction *>(inst->getOperand(i));
@@ -72,6 +85,7 @@ void GlobalCodeMotion::runOnFunction() {
             auto inst = inst_uptr.get();
             if (isPinned(inst)) {
                 visited_insts_.insert(inst);
+                printf("visit inst %s in %s\n", inst->getName().c_str(), curr_func_->getName().c_str());
                 for (auto user: user_insts_map_[inst]) {
                     scheduleLate(user);
                 }
@@ -79,6 +93,7 @@ void GlobalCodeMotion::runOnFunction() {
         }
     }
     // printf("begin remove codes\n");
+    moveInsts();
 }
 
 
@@ -101,7 +116,13 @@ void GlobalCodeMotion::scheduleEarly(Instruction *inst) {
     if (visited_insts_.count(inst)) {
         return;
     }
+
+    if (isPinned(inst)) {
+        return;
+    }
+
     visited_insts_.insert(inst);
+    printf("visit inst %s in %s in early\n", inst->getName().c_str(), curr_func_->getName().c_str());
     inst_block_map_[inst] = root_block_in_currfunc_;
 
     assert(inst_block_map_[inst]);
@@ -124,6 +145,59 @@ void GlobalCodeMotion::scheduleEarly(Instruction *inst) {
     }
 
     // printf("the early block of %s is %s\n", inst->getName().c_str(), inst_block_map_[inst]->getName().c_str());
+}
+
+void GlobalCodeMotion::moveInsts() {
+    std::unordered_map<BasicBlock *, std::list<Instruction *>> insert_insts;
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        for (auto &inst_uptr: bb_uptr->getInstructionList()) {
+            auto inst = inst_uptr.get();
+            if (wait_move_insts_set_.count(inst)) {
+                move_insts_map_[inst_block_map_[inst]].push_back(inst);
+            }
+        }
+    }
+
+    for (auto &[basicblock, insts_list]: move_insts_map_) {
+        printf("the basicblock is %s, some insts will move to here\n", basicblock->getName().c_str());
+        for (auto inst: insts_list) {
+            printf("the inst %s\n", inst->getName().c_str());
+        }
+    }
+
+    // 首先在原处进行移除
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        auto &insts_list = bb_uptr->getInstructionList();
+        for (auto inst_it = insts_list.begin(); inst_it != insts_list.end();) {
+            auto inst = inst_it->get();
+            if (wait_move_insts_set_.count(inst)) {
+                inst->setParent(inst_block_map_[inst]);
+                inst_it->release();
+                inst_it = insts_list.erase(inst_it);
+            } else {
+                inst_it++;
+            }
+        }
+    }
+    // 确定插入点，一般在倒数位置
+
+    for (auto &[basicblock, insts_list]: move_insts_map_) {
+        auto &basicblock_insts_list = basicblock->getInstructionList();
+        auto rit = basicblock_insts_list.end();
+        rit--;
+        auto end_inst = rit->get();
+        if (auto branch_inst = dynamic_cast<BranchInstruction *>(end_inst); branch_inst && branch_inst->isCondBranch()) {
+            rit--;
+        }
+
+        for (auto inst: insts_list) {
+            basicblock->insertInstruction(rit, inst);
+            printf("the inst size is %d\n", basicblock->getInstructionList().size());
+        }
+
+        ir_dumper_->dump(basicblock);
+    }
+
 }
 
 BasicBlock *GlobalCodeMotion::findLCA(BasicBlock *blocka, BasicBlock *blockb) {
@@ -156,7 +230,12 @@ void GlobalCodeMotion::scheduleLate(Instruction *inst) {
         return;
     }
 
+    if (isPinned(inst)) {
+        return;
+    }
+
     visited_insts_.insert(inst);
+    printf("visit inst %s in %s in late\n", inst->getName().c_str(), curr_func_->getName().c_str());
     BasicBlock *lca = nullptr;
     for (auto user: user_insts_map_[inst]) {
         scheduleLate(user);
@@ -172,19 +251,16 @@ void GlobalCodeMotion::scheduleLate(Instruction *inst) {
                 }
             }
         }
-        // printf("the user %s block is %s\n", user->getName().c_str(), user_block->getName().c_str());
+        printf("the user %s block is %s for inst %s\n", user->getName().c_str(), user_block->getName().c_str(), inst->getName().c_str());
         lca = findLCA(lca, user_block);
     }
+
+    assert(lca);
+
     if (lca) {      // 如果lca能够找
-        /*printf("the lca is %s end for inst %s ane the inst block is %s in function %s...\n", lca->getName().c_str(), inst->getName().c_str(),
-               inst_block_map_[inst]->getName().c_str(), curr_func_->getName().c_str());*/
-        if (isPinned(inst)) {  // 有几种坚决不进行移动的类型
-            // printf("return because %s is phi inst\n", inst->getName().c_str());
-            return;
-        }
         // 选择一个block，此时block map中的block仍然是在early调度中的结果, lca可以视为范围中dom深度最浅的，而early中计算的则是depth最小的节点，在该范围内迭代。
         BasicBlock *best = lca;
-        // printf("select a node between %s and %s,", lca->getName().c_str(), inst_block_map_[inst]->getName().c_str());
+        printf("select a node between %s and %s for node %s in function %s\n", lca->getName().c_str(), inst_block_map_[inst]->getName().c_str(), inst->getName().c_str(), curr_func_->getName().c_str());
         while (lca != inst_block_map_[inst]) {
             if (compute_loops_->getBasicBlockLoopDepth(lca) < compute_loops_->getBasicBlockLoopDepth(best)) {
                 best = lca;
@@ -193,10 +269,11 @@ void GlobalCodeMotion::scheduleLate(Instruction *inst) {
             lca = compute_doms_->getImmDomsMap(lca);
         }
         // printf("the best node is %s\n", best->getName().c_str());
-        // best就是确定要移动到的点
         best_block_map_[inst] = best;
+        inst_block_map_[inst] = best;
         if (best != inst->getParent()) {
             printf("the inst %s will be move from %s to %s\n", inst->getName().c_str(), inst->getParent()->getName().c_str(), best->getName().c_str());
+            wait_move_insts_set_.insert(inst);
         }
     }
 }

@@ -39,6 +39,8 @@ private:
 
     BasicBlock *findLCA(BasicBlock *blocka, BasicBlock *blockb);
 
+    void moveInsts();
+
     bool has_compute_loop_;
 
     BasicBlock *root_block_in_currfunc_;
@@ -54,6 +56,10 @@ private:
     std::unordered_map<Instruction *, InstsSet> user_insts_map_;        // 因为ir中的user接口存在问题，所以在这里一个map收集
 
     std::unordered_map<Instruction *, BasicBlock *> best_block_map_;
+
+    InstsSet wait_move_insts_set_;
+
+    std::unordered_map<BasicBlock *, std::list<Instruction *>> move_insts_map_;
 };
 
 
