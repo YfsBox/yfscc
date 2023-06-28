@@ -311,6 +311,28 @@ PhiInstruction::ValueBlockPair PhiInstruction::getValueBlock(int idx) const {
     return pair;
 }
 
+void PhiInstruction::remove(const std::unordered_set<BasicBlock *> &basicblocks) {
+    std::vector<Value *> tmp_operand;
+    for (int i = 0; i < getSize(); ++i) {
+        auto value_bb = getValueBlock(i);
+        printf("value %s, bb %s before erase\n", value_bb.first->getName().c_str(), value_bb.second->getName().c_str());
+        if (!basicblocks.count(value_bb.second)) {
+            tmp_operand.push_back(value_bb.first);
+            tmp_operand.push_back(value_bb.second);
+        }
+    }
+    if (tmp_operand.size() != operands_.size()) {
+
+        operands_ = tmp_operand;
+        operand_num_ = operands_.size();
+
+        for (int i = 0; i < getSize(); ++i) {
+            auto value_bb = getValueBlock(i);
+            printf("value %s, bb %s after erase\n", value_bb.first->getName().c_str(), value_bb.second->getName().c_str());
+        }
+    }
+}
+
 BasicBlock *PhiInstruction::getBasicBlock(int idx) const {
     auto value = getOperand(idx * 2 + 1);
     return dynamic_cast<BasicBlock*> (value);

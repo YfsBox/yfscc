@@ -8,6 +8,7 @@
 #include "User.h"
 #include "Function.h"
 #include "../common/Types.h"
+#include <unordered_set>
 
 
 enum InstructionType {
@@ -394,6 +395,8 @@ public:
     }
 
     OperandSet getUses() override;
+
+    void remove(const std::unordered_set<BasicBlock *> &basicblocks);
 
 private:
 };
