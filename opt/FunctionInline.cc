@@ -385,6 +385,7 @@ void FunctionInline::generateBasicBlocks(Function *inlined_function, CallInstruc
     insts_it = caller_insts_list.erase(insts_it);
     // 也移除call_inst之后的
     for (; insts_it != caller_insts_list.end();) {
+        insts_it->get()->setParent(inlined_func_next_bb);
         inlined_func_next_bb->addInstruction(std::move(*insts_it));
         insts_it = caller_insts_list.erase(insts_it);
     }
