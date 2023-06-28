@@ -27,7 +27,7 @@ public:
 
     explicit Value() = default;
 
-    Value(ValueType vtype, bool isptr, bool isbool, const std::string &name = ""): name_(name), type_(vtype), is_bool_type_(isbool), is_ptr_(isptr) {}
+    Value(ValueType vtype, bool isptr, bool isbool, const std::string &name = ""): is_bool_type_(isbool), is_ptr_(isptr), name_(name), type_(vtype) {}
 
     virtual ~Value() = default;
 

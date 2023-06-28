@@ -254,14 +254,6 @@ void IrBuilder::dealExprAsCond(const std::shared_ptr<Expression> &expr) {
     }
 }
 
-static size_t getArrayLen(const std::vector<int32_t> &dimension_numbers) {
-    size_t array_len = 1;
-    for (auto dimension: dimension_numbers) {
-        array_len *= dimension;
-    }
-    return array_len;
-}
-
 void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
     BasicType def_basic_type = curr_decl_->type_;
     std::string var_name = def->getId()->getId();
@@ -288,7 +280,6 @@ void IrBuilder::visit(const std::shared_ptr<ConstDefine> &def) {
             IrSymbolEntry new_entry(true, def_basic_type, dimension_number, new_global_array, var_name);
             var_symbol_table_.addIdent(new_entry);
         } else {
-            auto array_len = getArrayLen(dimension_number);
             Value *allac_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
                     IrFactory::createIArrayAllocaInstruction(dimension_number, var_name) : IrFactory::createFArrayAllocaInstruction(dimension_number, var_name);
             addInstruction(allac_inst_value, true);
@@ -406,7 +397,6 @@ void IrBuilder::visit(const std::shared_ptr<VarDefine> &def) {
             IrSymbolEntry new_entry(false, def_basic_type, dimension_number, new_global_array, var_name);
             var_symbol_table_.addIdent(new_entry);
         } else {
-            auto array_len = getArrayLen(dimension_number);
             Value *allac_inst_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
                                       IrFactory::createIArrayAllocaInstruction(dimension_number, var_name) : IrFactory::createFArrayAllocaInstruction(dimension_number, var_name);
             // context_->curr_bb_->addInstruction(allac_inst_value);
@@ -555,7 +545,6 @@ void IrBuilder::visit(const std::shared_ptr<FuncDefine> &def) {
     // printf("the argument size is %lu before add\n", function->getArgumentSize());
     // 进入新的一层符号表,并将参数加入到符号表
     var_symbol_table_.enterScope();
-    int32_t idx = 0;
     for (const auto argument: arguments) {
         auto to_arg = dynamic_cast<Argument *>(argument);
         function->addArgument(std::unique_ptr<Argument>(to_arg));
@@ -893,10 +882,6 @@ void IrBuilder::visit(const std::shared_ptr<BinaryExpr> &expr) {
             break;
         }
     }
-    bool is_logic_op = (op_type == EQ_OPTYPE || op_type == NEQ_OPTYPE ||
-            op_type == GTE_OPTYPE || op_type == GT_OPTYPE ||
-            op_type == LTE_OPTYPE || op_type == LT_OPTYPE);
-    // TODO还有and和or,这是比较复杂的
     if (op_type != BinaryOpType::AND_OPTYPE && op_type != BinaryOpType::OR_OPTYPE) {
         addInstruction(binaryop_inst);
         setCurrValue(binaryop_inst);
@@ -999,7 +984,6 @@ void IrBuilder::visit(const std::shared_ptr<CallFuncExpr> &expr) {
                 if (isSecondaryPtr(actual_value)) {
                     actual_value = actual->expr_type_ == BasicType::INT_BTYPE ?
                             IrFactory::createILoadInstruction(actual_value): IrFactory::createFLoadInstruction(actual_value);
-                    LoadInstruction *load_inst_value = dynamic_cast<LoadInstruction *>(actual_value);
                     addInstruction(actual_value);
                     is_from_secondry_ptr = true;
                 }
@@ -1059,7 +1043,6 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
     if (arrayval->is_number_) {     // 如果是Number类型就对其进行visit并且将改value用store拷贝到指定的指针上
         // auto gpe_inst_value
         BasicType basic_type = curr_decl_->type_;
-        auto const_offset = IrFactory::createIConstantVar(arrayval->array_idx_);
         auto gep_inst_value = basic_type == BasicType::INT_BTYPE ?
                 IrFactory::createIGEPInstruction(array_base, false, arrayIndex2IndexVec(arrayval->array_idx_))
                 :IrFactory::createFGEPInstruction(array_base, false, arrayIndex2IndexVec(arrayval->array_idx_));
@@ -1089,8 +1072,6 @@ void IrBuilder::visit(const std::shared_ptr<ArrayValue> &arrayval) {
         }
         // 对于初始化为0的空间部分
         if (!arrayval->zero_init_intervals_.empty()) {
-            auto zero_const_value = curr_decl_->type_ == BasicType::INT_BTYPE ?
-                                    IrFactory::createIConstantVar(0) : IrFactory::createFConstantVar(0.0);
             for (auto &[start, end]: arrayval->zero_init_intervals_) {
                 int32_t len = end - start;
                 assert(len >= 0);
@@ -1214,14 +1195,11 @@ void IrBuilder::visit(const std::shared_ptr<IfElseStatement> &stmt) {
     disableDealCond();
 
     auto then_value = IrFactory::createBasicBlock("it.");
-    BasicBlock *then_bb = dynamic_cast<BasicBlock *>(then_value);
     auto next_value = IrFactory::createBasicBlock("in.");
-    BasicBlock *next_bb = dynamic_cast<BasicBlock *>(next_value);
     //BasicBlock::bindBasicBlock(then_bb, next_bb);
 
     if (stmt->hasElse()) {
         auto else_value = IrFactory::createBasicBlock("ie.");
-        BasicBlock *else_bb = dynamic_cast<BasicBlock *>(else_value);
         // BasicBlock::bindBasicBlock(else_bb, next_bb);
 
         for (auto true_jump: true_jump_map_[stmt->getCond()]) {

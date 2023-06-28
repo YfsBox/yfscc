@@ -13,7 +13,7 @@ class Use {     // 表达了一种引用关系,value指的是所引用的value�
 public:
     Use() = default;
 
-    Use(User *user, int idx = -1): user_(user), idx_(idx) {}
+    Use(User *user, int idx = -1): idx_(idx), user_(user) {}
 
     ~Use() = default;
 

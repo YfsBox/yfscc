@@ -22,12 +22,14 @@ class Instruction;
 
 struct IrContext {
 
-    IrContext(Module *module): curr_module_(module),
+    explicit IrContext(Module *module):
         ssa_no_(-1),
+        block_no_(-1),
+        curr_bb_has_branch_(false),
         while_loop_depth_(0),
+        curr_module_(module),
         curr_function_(nullptr),
-        curr_bb_(nullptr),
-        curr_bb_has_branch_(false){}
+        curr_bb_(nullptr){}
         
     int ssa_no_{-1};
 
@@ -67,17 +69,17 @@ public:
 
     IrSymbolEntry(bool is_const, BasicType basic_type, Value *value, const std::string &name):
             is_const_(is_const),
+            name_(name),
             basic_type_(basic_type),
-            value_(value),
-            name_(name){
+            value_(value){
     }
 
     IrSymbolEntry(bool is_const, BasicType basic_type, std::vector<int32_t> &array_size, Value *value, const std::string &name):
             is_const_(is_const),
+            name_(name),
             basic_type_(basic_type),
-            value_(value),
             array_dimension_(std::move(array_size)),
-            name_(name) {
+            value_(value){
 
     }
 

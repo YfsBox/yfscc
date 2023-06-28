@@ -310,7 +310,7 @@ public:
     using InitInterval = std::pair<int32_t, int32_t>;
 
     ArrayValue(bool is_number, const ExpressionPtr &value = nullptr)
-    :is_number_(is_number), value_(value), array_idx_(-1) {}
+    :is_number_(is_number), array_idx_(-1), value_(value) {}
 
     void addArrayValue(const ArrayValuePtr &array_value) {
         valueList_.push_back(array_value);
@@ -427,7 +427,7 @@ public:
     BinaryExpr() = default;
 
     BinaryExpr(const ExpressionPtr &left, BinaryOpType op, const ExpressionPtr &right):
-        left_expr_(left), optype_(op), right_expr_(right){}
+            optype_(op), left_expr_(left), right_expr_(right){}
 
     BinaryOpType getOpType() const {
         return optype_;

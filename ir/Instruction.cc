@@ -10,9 +10,11 @@
 
 Instruction::Instruction(InstructionType type, BasicType basic_type, bool isptr, bool isbool, BasicBlock *block, const std::string &name):
         User(ValueType::InstructionValue, isptr, isbool, name),
+        basic_type_(basic_type),
         inst_type_(type),
-        parent_(block),
-        basic_type_(basic_type){}
+        parent_(block){
+
+}
 
 Instruction::~Instruction() = default;
 

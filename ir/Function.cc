@@ -6,8 +6,8 @@
 
 Function::Function(BasicType ret_type, Module *module, const std::string &name):
     Value(FunctionValue, false, false, name),
-    ret_type_(ret_type),
-    parent_(module) {
+    parent_(module),
+    ret_type_(ret_type){
 
 }
 

@@ -255,7 +255,6 @@ void CodeGen::visit(Instruction *inst) {
 }
 
 void CodeGen::visit(Constant *constant) {
-    bool imm_float = false;
     auto const_reg = value2MachineOperand(constant, true);
     setCurrMachineOperand(const_reg);
 }
@@ -364,7 +363,6 @@ void CodeGen::visit(Function *function) {
         }
     }
     // 一个函数在进入和退出时所需要的额外指令
-    int32_t mov_stack_offset = stack_offset_ - old_stack_offset;
     MachineBasicBlock *enter_basicblock = curr_machine_function_->getEnterBasicBlock();
 
     for (auto load_inst: args_load_insts) {
@@ -507,7 +505,6 @@ void CodeGen::visit(CallInstruction *inst) {
         addMachineInst(sub_stack_inst);
     }
 
-    int32_t old_stack_offset = stack_offset;
     int32_t curr_float_arg_cnt = 0, curr_int_arg_cnt = 0;
     for (int i = 0; i < function->getArgumentSize(); ++i) {
         auto arg = function->getArgument(i);
@@ -797,7 +794,6 @@ void CodeGen::addMoveForPhiInst() {
                 auto find_inserted_it = insert_it.find(inserted);
                 assert(find_inserted_it != insert_it.end());
                 for (auto inst: insts) {
-                    auto mov_inst = dynamic_cast<MoveInst *>(inst);
                     mc_bb->insertInstructionBefore(find_inserted_it->second, inst);
                 }
             }
@@ -1014,7 +1010,6 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
     Value *left_value = binst->getLeft();
     Value *right_value = binst->getRight();
 
-    bool is_mod = false;
     switch (binary_op) {
         case InstructionType::AddType:
             can_be_swap = true;
