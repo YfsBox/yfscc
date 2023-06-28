@@ -51,6 +51,16 @@ void DeadBlockElim::runOnFunction() {
         }
     }
 
+    // 首先移除phi指令中
+    for (auto &bb_uptr: bb_blocks) {
+        auto bb = bb_uptr.get();
+        for (auto &inst_uptr: bb->getInstructionList()) {
+            if (auto phi_inst = dynamic_cast<PhiInstruction *>(inst_uptr.get()); phi_inst) {
+                phi_inst->remove(remove_bb_set);
+            }
+        }
+    }
+
     for (auto bb_it = bb_blocks.begin(); bb_it != bb_blocks.end();) {
         auto bb = bb_it->get();
         if (remove_bb_set.count(bb)) {
