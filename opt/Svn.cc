@@ -3,6 +3,7 @@
 //
 
 #include "Svn.h"
+#include "CallGraphAnalysis.h"
 #include "../ir/BasicBlock.h"
 #include "../ir/Instruction.h"
 #include "../ir/Constant.h"
@@ -19,10 +20,10 @@ Svn::ValueName Svn::getValueName(Instruction *inst) {
             std::swap(lhs_name, rhs_name);
         }
 
-        valuename = std::to_string(binary_inst->getInstType()) + "_" + lhs_name + "_" + rhs_name;
+        valuename = "B_" + std::to_string(binary_inst->getInstType()) + "_" + lhs_name + "_" + rhs_name;
     } else if (auto gep_inst = dynamic_cast<GEPInstruction *>(inst); gep_inst) {
         auto base_name = gep_inst->getPtr()->getName();
-        valuename = base_name + "_";
+        valuename = "GEP_" + base_name + "_";
         auto index_size = gep_inst->getIndexSize();
         for (int i = 0; i < index_size; ++i) {
             valuename += getOperandName(gep_inst->getIndexValue(i));
@@ -30,6 +31,10 @@ Svn::ValueName Svn::getValueName(Instruction *inst) {
                 valuename += "_";
             }
         }
+    } else if (auto unary_inst = dynamic_cast<UnaryOpInstruction *>(inst); unary_inst) {
+        auto value_name = getOperandName(unary_inst->getValue());
+        auto unary_type = inst->getInstType();
+        valuename = "U_" + std::to_string(unary_type) + "_" + value_name;
     }
     return valuename;
 }
@@ -47,7 +52,7 @@ Svn::ValueName Svn::getOperandName(Value *value) {
 }
 
 Instruction* Svn::lookupOrAdd(const ValueName &value_name, Instruction *inst) {
-    if (inst->getInstType() == GEPType || dynamic_cast<BinaryOpInstruction *>(inst)) {
+    if (inst->getInstType() == GEPType || dynamic_cast<BinaryOpInstruction *>(inst) || dynamic_cast<UnaryOpInstruction *>(inst)) {
         auto &curr_table = binary_value_name_table_.back();
         if (curr_table.count(value_name)) {
             return curr_table[value_name];
@@ -79,14 +84,7 @@ void Svn::lvn(BasicBlock *basicblock) {
     auto &insts_list = basicblock->getInstructionList();
     for (auto &inst_uptr: insts_list) {
         auto inst = inst_uptr.get();
-        if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst); binary_inst) {
-            auto value_name = getValueName(inst);
-            auto lookup_inst = lookupOrAdd(value_name, inst);
-            if (lookup_inst != inst) {
-                replaced_map_[inst] = lookup_inst;
-            }
-        }
-        if (auto gep_inst = dynamic_cast<GEPInstruction *>(inst); gep_inst) {
+        if (dynamic_cast<BinaryOpInstruction *>(inst) || dynamic_cast<GEPInstruction *>(inst) || dynamic_cast<UnaryOpInstruction *>(inst)) {
             auto value_name = getValueName(inst);
             auto lookup_inst = lookupOrAdd(value_name, inst);
             if (lookup_inst != inst) {
