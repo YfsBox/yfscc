@@ -17,12 +17,15 @@ GlobalCodeMotion::GlobalCodeMotion(Module *module): Pass(module),
 
 }
 
-bool GlobalCodeMotion::isPinned(const Instruction *inst) {
-    auto inst_type = inst->getInstType();
-    return inst_type == PhiType || inst_type == RetType
-    || inst_type == BrType || inst_type == LoadType
-    || inst_type == StoreType || inst_type == CallType
-    || inst_type == MemSetType;
+bool GlobalCodeMotion::isPinned(const Value *value) {
+    if (auto inst = dynamic_cast<const Instruction *>(value); inst) {
+        auto inst_type = inst->getInstType();
+        return inst_type == PhiType || inst_type == RetType
+               || inst_type == BrType || inst_type == LoadType
+               || inst_type == StoreType || inst_type == CallType
+               || inst_type == MemSetType;
+    }
+    return value->getValueType() == ArgumentValue;
 }
 
 void GlobalCodeMotion::runOnFunction() {
@@ -40,7 +43,7 @@ void GlobalCodeMotion::runOnFunction() {
         // printf("run on compute loops ok\n");
         has_compute_loop_ = true;
     }
-
+    pinned_values_.clear();
     visited_insts_.clear();
     user_insts_map_.clear();
     move_insts_map_.clear();
@@ -49,28 +52,15 @@ void GlobalCodeMotion::runOnFunction() {
     // printf("begin schedule early\n");
     root_block_in_currfunc_ = curr_func_->getBlocks().front().get();
 
+    collectPinnedValues();
 
-
-    for (auto &bb_uptr: curr_func_->getBlocks()) {
-        auto &insts_list = bb_uptr->getInstructionList();
-        for (auto &inst_uptr: insts_list) {
-            auto inst = inst_uptr.get();
-            inst_block_map_[inst] = inst->getParent();
-        }
-    }
-
-    for (auto &bb_uptr: curr_func_->getBlocks()) {          // 这一部分应该也将arg部分包含上
-        auto &insts_list = bb_uptr->getInstructionList();
-        for (auto &inst_uptr: insts_list) {
-            auto inst = inst_uptr.get();
-            if (isPinned(inst)) {
-                visited_insts_.insert(inst);
-                printf("visit inst %s in %s\n", inst->getName().c_str(), curr_func_->getName().c_str());
-                for (int i = 0; i < inst->getOperandNum(); ++i) {
-                    if (inst->getOperand(i)->getValueType() == InstructionValue) {
-                        auto input_inst = dynamic_cast<Instruction *>(inst->getOperand(i));
-                        scheduleEarly(input_inst);
-                    }
+    for (auto pinned_inst_value: pinned_values_) {
+        if (auto pinned_inst = dynamic_cast<Instruction *>(pinned_inst_value); pinned_inst) {
+            visited_insts_.insert(pinned_inst);
+            for (int i = 0; i < pinned_inst->getOperandNum(); ++i) {
+                auto operand = pinned_inst->getOperand(i);
+                if (operand->getValueType() == InstructionValue) {
+                    scheduleEarly(dynamic_cast<Instruction *>(operand));
                 }
             }
         }
@@ -79,17 +69,10 @@ void GlobalCodeMotion::runOnFunction() {
     // printf("begin schedule lately\n");
     visited_insts_.clear();
     collectUserSets();
-    for (auto &bb_uptr: curr_func_->getBlocks()) {
-        auto &insts_list = bb_uptr->getInstructionList();
-        for (auto &inst_uptr: insts_list) {
-            auto inst = inst_uptr.get();
-            if (isPinned(inst)) {
-                visited_insts_.insert(inst);
-                printf("visit inst %s in %s\n", inst->getName().c_str(), curr_func_->getName().c_str());
-                for (auto user: user_insts_map_[inst]) {
-                    scheduleLate(user);
-                }
-            }
+    for (auto pinned_value: pinned_values_) {
+        visited_insts_.insert(pinned_value);
+        for (auto user: user_insts_map_[pinned_value]) {
+            scheduleLate(user);
         }
     }
     // printf("begin remove codes\n");
@@ -104,8 +87,8 @@ void GlobalCodeMotion::collectUserSets() {
             auto inst = inst_uptr.get();
             for (int i = 0; i < inst->getOperandNum(); ++i) {
                 auto operand = inst->getOperand(i);
-                if (operand->getValueType() ==  InstructionValue) {
-                    user_insts_map_[dynamic_cast<Instruction *>(operand)].insert(inst);
+                if (operand->getValueType() ==  InstructionValue || operand->getValueType() == ArgumentValue) {
+                    user_insts_map_[operand].insert(inst);
                 }
             }
         }
@@ -122,7 +105,7 @@ void GlobalCodeMotion::scheduleEarly(Instruction *inst) {
     }
 
     visited_insts_.insert(inst);
-    printf("visit inst %s in %s in early\n", inst->getName().c_str(), curr_func_->getName().c_str());
+    // printf("visit inst %s in %s in early\n", inst->getName().c_str(), curr_func_->getName().c_str());
     inst_block_map_[inst] = root_block_in_currfunc_;
 
     assert(inst_block_map_[inst]);
@@ -183,21 +166,42 @@ void GlobalCodeMotion::moveInsts() {
 
     for (auto &[basicblock, insts_list]: move_insts_map_) {
         auto &basicblock_insts_list = basicblock->getInstructionList();
-        auto rit = basicblock_insts_list.end();
-        rit--;
-        auto end_inst = rit->get();
-        if (auto branch_inst = dynamic_cast<BranchInstruction *>(end_inst); branch_inst && branch_inst->isCondBranch()) {
-            rit--;
+        auto insert_it = basicblock_insts_list.begin();
+        for (; insert_it != basicblock_insts_list.end(); ++insert_it) {
+            auto curr_inst = insert_it->get();
+            if (curr_inst->getInstType() != PhiType) {
+                break;
+            }
         }
 
         for (auto inst: insts_list) {
-            basicblock->insertInstruction(rit, inst);
+            basicblock->insertInstruction(insert_it, inst);
             printf("the inst size is %d\n", basicblock->getInstructionList().size());
         }
 
         ir_dumper_->dump(basicblock);
     }
 
+}
+
+void GlobalCodeMotion::collectPinnedValues() {
+    // put the args of current function as pinned
+    auto enter_block = curr_func_->getBlocks().front().get();
+    for (int i = 0; i < curr_func_->getArgumentSize(); ++i) {
+        auto arg = curr_func_->getArgument(i);
+        pinned_values_.push_back(arg);
+        inst_block_map_[arg] = enter_block;
+    }
+    // collect inst pinned
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        for (auto &inst_uptr: bb_uptr->getInstructionList()) {
+            auto inst = inst_uptr.get();
+            if (isPinned(inst)) {
+                pinned_values_.push_back(inst);
+                inst_block_map_[inst] = inst->getParent();
+            }
+        }
+    }
 }
 
 BasicBlock *GlobalCodeMotion::findLCA(BasicBlock *blocka, BasicBlock *blockb) {
@@ -235,7 +239,7 @@ void GlobalCodeMotion::scheduleLate(Instruction *inst) {
     }
 
     visited_insts_.insert(inst);
-    printf("visit inst %s in %s in late\n", inst->getName().c_str(), curr_func_->getName().c_str());
+    // printf("visit inst %s in %s in late\n", inst->getName().c_str(), curr_func_->getName().c_str());
     BasicBlock *lca = nullptr;
     for (auto user: user_insts_map_[inst]) {
         scheduleLate(user);
@@ -251,7 +255,7 @@ void GlobalCodeMotion::scheduleLate(Instruction *inst) {
                 }
             }
         }
-        printf("the user %s block is %s for inst %s\n", user->getName().c_str(), user_block->getName().c_str(), inst->getName().c_str());
+        // printf("the user %s block is %s for inst %s\n", user->getName().c_str(), user_block->getName().c_str(), inst->getName().c_str());
         lca = findLCA(lca, user_block);
     }
 
@@ -260,7 +264,7 @@ void GlobalCodeMotion::scheduleLate(Instruction *inst) {
     if (lca) {      // 如果lca能够找
         // 选择一个block，此时block map中的block仍然是在early调度中的结果, lca可以视为范围中dom深度最浅的，而early中计算的则是depth最小的节点，在该范围内迭代。
         BasicBlock *best = lca;
-        printf("select a node between %s and %s for node %s in function %s\n", lca->getName().c_str(), inst_block_map_[inst]->getName().c_str(), inst->getName().c_str(), curr_func_->getName().c_str());
+        // printf("select a node between %s and %s for node %s in function %s\n", lca->getName().c_str(), inst_block_map_[inst]->getName().c_str(), inst->getName().c_str(), curr_func_->getName().c_str());
         while (lca != inst_block_map_[inst]) {
             if (compute_loops_->getBasicBlockLoopDepth(lca) < compute_loops_->getBasicBlockLoopDepth(best)) {
                 best = lca;

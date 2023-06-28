@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
+#include <set>
 
 class Instruction;
 class BasicBlock;
@@ -29,17 +30,19 @@ protected:
 
 private:
 
-    bool isPinned(const Instruction *inst);
+    bool isPinned(const Value *value);
 
-    void scheduleLate(Instruction *inst);
+    void scheduleLate(Instruction *value);
 
-    void scheduleEarly(Instruction *inst);
+    void scheduleEarly(Instruction *value);
 
     void collectUserSets();    // 因为ir中的user接口存在问题，所以在这里一个map收集
 
     BasicBlock *findLCA(BasicBlock *blocka, BasicBlock *blockb);
 
     void moveInsts();
+
+    void collectPinnedValues();
 
     bool has_compute_loop_;
 
@@ -49,15 +52,17 @@ private:
 
     std::unique_ptr<ComputeDominators> compute_doms_;
 
-    std::unordered_set<Instruction *> visited_insts_;
+    std::unordered_set<Value *> visited_insts_;
 
-    std::unordered_map<Instruction *, BasicBlock *> inst_block_map_;
+    std::unordered_map<Value *, BasicBlock *> inst_block_map_;
 
-    std::unordered_map<Instruction *, InstsSet> user_insts_map_;        // 因为ir中的user接口存在问题，所以在这里一个map收集
+    std::unordered_map<Value *, InstsSet> user_insts_map_;        // 因为ir中的user接口存在问题，所以在这里一个map收集
 
-    std::unordered_map<Instruction *, BasicBlock *> best_block_map_;
+    std::unordered_map<Value *, BasicBlock *> best_block_map_;
 
     InstsSet wait_move_insts_set_;
+
+    std::list<Value *> pinned_values_;
 
     std::unordered_map<BasicBlock *, std::list<Instruction *>> move_insts_map_;
 };
