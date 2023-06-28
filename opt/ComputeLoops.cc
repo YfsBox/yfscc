@@ -216,11 +216,10 @@ void ComputeLoops::run() {
         if (function->getBlocks().size() < 1) {
             continue;
         }
-
         function_ = function;
 
         if (compute_dominators_) {
-            compute_dominators_.release();
+            compute_dominators_ = nullptr;
         }
         compute_dominators_ = std::make_unique<ComputeDominators>(function);
         compute_dominators_->run();

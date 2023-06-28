@@ -43,7 +43,6 @@ set(IROPT_SRC
         opt/InstCombine.cc
         opt/ComputeDominators.cc
         opt/Mem2Reg.cc
-        opt/GvnGcm.cc
         opt/DeadBlockElim.cc
         opt/CallGraphAnalysis.cc
         opt/FunctionInline.cc
@@ -53,6 +52,7 @@ set(IROPT_SRC
         opt/BranchOptimizer.cc
         opt/LoopUnrolling.cc
         opt/AlgebraicSimplify.cc
+        opt/GlobalCodeMotion.cc
 )
 
 set(BACKEND_SRC
