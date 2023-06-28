@@ -140,15 +140,14 @@ void ComputeDominators::computeDoms() {
     std::queue<BasicBlock *> blockq;
     blockq.push(enter_block);
     doms_depth_map_[enter_block] = 0;
-    visited_bb_set_.insert(enter_block);
+    visited_blocks.insert(enter_block);
 
     while (!blockq.empty()) {
         auto block = blockq.front();
         blockq.pop();
-
-        for (auto succ: doms_map_[block]) {
-            if (!visited_bb_set_.count(succ)) {
-                visited_bb_set_.insert(succ);
+        for (auto succ: dom_tree_[block]) {
+            if (!visited_blocks.count(succ)) {
+                visited_blocks.insert(succ);
                 blockq.push(succ);
                 doms_depth_map_[succ] = doms_depth_map_[block] + 1;
             }
@@ -177,6 +176,7 @@ void ComputeDominators::run() {
     computeDoms();
     computeFrontiers();
     computeSuccessors();
+    computeDomTreeDepth();
 
 }
 
@@ -233,6 +233,27 @@ void ComputeDominators::computeImmDoms() {
             if (imm_doms_map_[curr_bb] != new_idom) {
                 imm_doms_map_[curr_bb] = new_idom;
                 changed = true;
+            }
+        }
+    }
+}
+
+void ComputeDominators::computeDomTreeDepth() {
+    auto enter_block = curr_func_->getBlocks().front().get();
+    std::unordered_set<BasicBlock *> visited_blocks;
+    std::queue<BasicBlock *> blockq;
+    blockq.push(enter_block);
+    doms_depth_map_[enter_block] = 0;
+    visited_blocks.insert(enter_block);
+
+    while (!blockq.empty()) {
+        auto block = blockq.front();
+        blockq.pop();
+        for (auto succ: basicblock_succbb_map_[block]) {
+            if (!visited_blocks.count(succ)) {
+                visited_blocks.insert(succ);
+                blockq.push(succ);
+                doms_depth_map_[succ] = doms_depth_map_[block] + 1;
             }
         }
     }

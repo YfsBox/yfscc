@@ -54,6 +54,10 @@ public:
         return doms_map_[basicblock];
     }
 
+    int getDomDepth(BasicBlock *block) {
+        return doms_depth_map_[block];
+    }
+
     void run();
 
 private:
@@ -77,6 +81,8 @@ private:
     void computeSuccessors();
 
     void computeDoms();
+
+    void computeDomTreeDepth();
 
     int32_t basicblock_n_;
 

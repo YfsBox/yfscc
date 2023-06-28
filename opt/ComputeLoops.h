@@ -81,11 +81,13 @@ public:
 
     LoopInfosList &getDeepestLoops(Function *function);
 
+    int getBasicBlockLoopDepth(BasicBlock *block) {
+        return basicblock_loopdepth_map_[block];
+    }
+
     void run();
 
 private:
-
-    void init();
 
     void dfsBasicBlocks(BasicBlock *basicblock, int index);
 
@@ -110,6 +112,8 @@ private:
     std::unordered_map<BasicBlock *, int> basicblock_index_;
 
     std::unordered_map<LoopInfo *, int> loops_depth_;
+
+    std::unordered_map<BasicBlock *, int> basicblock_loopdepth_map_;
 
     std::unordered_map<Function *, LoopInfosList> func_loopinfos_list_;
 

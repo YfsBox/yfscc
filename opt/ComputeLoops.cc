@@ -159,10 +159,6 @@ void ComputeLoops::computeLoopBody(const LoopInfoPtr &loopinfo) {
 
 }
 
-void ComputeLoops::init() {
-
-}
-
 void ComputeLoops::setDeepestLoops(Function *function) {
     auto &loopinfos_list = getLoopInfosList(function);
     for (auto &loopinfo: loopinfos_list) {
@@ -201,10 +197,19 @@ void ComputeLoops::computeLoopDepths() {
             loops_depth_[loopinfos[i].get()] = 1;
         }
     }
+    // 计算出block的所在的loop的depth
+    for (int i = loop_cnt - 1; i >= 0; i--) {
+        auto &loop = loopinfos[i];
+        for (auto body: loop->loop_body_) {
+            if (loops_depth_[loop.get()] > basicblock_loopdepth_map_[body]) {
+                basicblock_loopdepth_map_[body] = loops_depth_[loop.get()];
+                body->setWhileLoopDepth(basicblock_loopdepth_map_[body]);
+            }
+        }
+    }
 }
 
 void ComputeLoops::run() {
-    init();
     for (int i = 0; i < module_->getFuncSize(); ++i) {
         auto function = module_->getFunction(i);
         // printf("the function is %s\n", function->getName().c_str());
