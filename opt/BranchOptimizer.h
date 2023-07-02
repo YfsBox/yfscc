@@ -28,6 +28,8 @@ private:
 
     std::unordered_set<BranchInstruction *> redundant_brinsts_;
 
+    std::unordered_set<BasicBlock *> been_phi_use_set_;
+
 };
 
 

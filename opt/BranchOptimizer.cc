@@ -7,7 +7,7 @@
 #include "../ir/BasicBlock.h"
 
 bool BranchOptimizer::findRedundantAndReplace(BranchInstruction *br_inst, BasicBlock *target) {
-    if (target->getInstructionList().size() == 1) {
+    if (target->getInstructionList().size() == 1 && !been_phi_use_set_.count(target)) {
         auto inst = target->getInstructionList().back().get();
         if (auto target_br_inst = dynamic_cast<BranchInstruction *>(inst); target_br_inst) {
             assert(!target_br_inst->isCondBranch());
@@ -23,6 +23,18 @@ bool BranchOptimizer::findRedundantAndReplace(BranchInstruction *br_inst, BasicB
 void BranchOptimizer::runOnFunction() {
 
     redundant_brinsts_.clear();
+    been_phi_use_set_.clear();
+
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        for (auto &inst_uptr: bb_uptr->getInstructionList()) {
+            if (auto phi_inst = dynamic_cast<PhiInstruction *>(inst_uptr.get()); phi_inst) {
+                for (int i = 0; i < phi_inst->getSize(); ++i) {
+                    auto vbb = phi_inst->getValueBlock(i);
+                    been_phi_use_set_.insert(vbb.second);
+                }
+            }
+        }
+    }
 
     bool has_changed = true;
     while (has_changed) {
@@ -51,10 +63,6 @@ void BranchOptimizer::runOnFunction() {
         }
     }
 
-    for (auto &bb: curr_func_->getBlocks()) {
-        bb->clearSuccessors();
-        bb->clearPresuccessors();
-    }
-    curr_func_->bindBasicBlocks();
+    curr_func_->rebuildCfg();
 
 }
