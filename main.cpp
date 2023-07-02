@@ -1,5 +1,4 @@
 #include <iostream>
-#include <fstream>
 #include <cstring>
 #include "common/Ast.h"
 #include "common/Utils.h"
@@ -19,6 +18,7 @@
 #include "opt/AlgebraicSimplify.h"
 #include "opt/GlobalCodeMotion.h"
 #include "opt/SimplifyPhiInsts.h"
+#include "opt/GlobalValueNumber.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -85,6 +85,7 @@ int main(int argc, char **argv) {
     GlobalCodeMotion gcm1(ir_module);
     Svn svn2(ir_module);
     GlobalCodeMotion gcm2(ir_module);
+    GlobalValueNumber gvn(ir_module);
 
     LoopUnrolling loopunrolling(ir_module);
     AlgebraicSimplify algebric_simplify(ir_module);
@@ -108,7 +109,8 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&function_inline);
         pass_manager.addPass(&dead_code_elim1);
-        pass_manager.addPass(&svn1);
+        // pass_manager.addPass(&svn1);
+        pass_manager.addPass(&gvn);
         pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&gcm1);
 
@@ -126,7 +128,8 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);
-        pass_manager.addPass(&svn2);
+        // pass_manager.addPass(&svn2);
+        pass_manager.addPass(&gvn);
         pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);

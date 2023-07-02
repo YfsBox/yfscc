@@ -54,6 +54,7 @@ set(IROPT_SRC
         opt/AlgebraicSimplify.cc
         opt/GlobalCodeMotion.cc
         opt/SimplifyPhiInsts.cc
+        opt/GlobalValueNumber.cc
 )
 
 set(BACKEND_SRC
