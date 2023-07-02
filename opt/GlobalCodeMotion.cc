@@ -75,7 +75,6 @@ void GlobalCodeMotion::runOnFunction() {
             scheduleLate(user);
         }
     }
-    // printf("begin remove codes\n");
     moveInsts();
 }
 
@@ -141,12 +140,12 @@ void GlobalCodeMotion::moveInsts() {
         }
     }
 
-    for (auto &[basicblock, insts_list]: move_insts_map_) {
+    /*for (auto &[basicblock, insts_list]: move_insts_map_) {
         printf("the basicblock is %s, some insts will move to here\n", basicblock->getName().c_str());
         for (auto inst: insts_list) {
             printf("the inst %s\n", inst->getName().c_str());
         }
-    }
+    }*/
 
     // 首先在原处进行移除
     for (auto &bb_uptr: curr_func_->getBlocks()) {
@@ -176,10 +175,10 @@ void GlobalCodeMotion::moveInsts() {
 
         for (auto inst: insts_list) {
             basicblock->insertInstruction(insert_it, inst);
-            printf("the inst size is %d\n", basicblock->getInstructionList().size());
+            // printf("the inst size is %d\n", basicblock->getInstructionList().size());
         }
 
-        ir_dumper_->dump(basicblock);
+        // ir_dumper_->dump(basicblock);
     }
 
 }
@@ -276,7 +275,7 @@ void GlobalCodeMotion::scheduleLate(Instruction *inst) {
         best_block_map_[inst] = best;
         inst_block_map_[inst] = best;
         if (best != inst->getParent()) {
-            printf("the inst %s will be move from %s to %s\n", inst->getName().c_str(), inst->getParent()->getName().c_str(), best->getName().c_str());
+            // printf("the inst %s will be move from %s to %s\n", inst->getName().c_str(), inst->getParent()->getName().c_str(), best->getName().c_str());
             wait_move_insts_set_.insert(inst);
         }
     }

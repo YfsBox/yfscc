@@ -17,6 +17,8 @@
 #include "opt/LoopUnrolling.h"
 #include "opt/BranchOptimizer.h"
 #include "opt/AlgebraicSimplify.h"
+#include "opt/GlobalCodeMotion.h"
+#include "opt/SimplifyPhiInsts.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -75,45 +77,66 @@ int main(int argc, char **argv) {
     pass_manager.addPass(&dead_bb_elim);
 
     DeadCodeElim dead_code_elim(ir_module);
+    DeadCodeElim dead_code_elim1(ir_module);
     Mem2Reg mem2reg(ir_module);
     InstCombine inst_combine(ir_module);
     FunctionInline function_inline(ir_module);
     Svn svn1(ir_module);
+    GlobalCodeMotion gcm1(ir_module);
     Svn svn2(ir_module);
+    GlobalCodeMotion gcm2(ir_module);
+
     LoopUnrolling loopunrolling(ir_module);
     AlgebraicSimplify algebric_simplify(ir_module);
+    SimplifyPhiInsts simplify_phiinsts(ir_module);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
         inst_combine.ir_dumper_ = new IrDumper(std::cout);
         dead_code_elim.ir_dumper_ = new IrDumper(std::cout);
+        dead_code_elim1.ir_dumper_ = new IrDumper(std::cout);
         svn1.ir_dumper_ = new IrDumper(std::cout);
         function_inline.ir_dumper_ = new IrDumper(std::cout);
         loopunrolling.ir_dumper_ = new IrDumper(std::cout);
         algebric_simplify.ir_dumper_ = new IrDumper(std::cout);
+        gcm1.ir_dumper_ = new IrDumper(std::cout);
+        gcm2.ir_dumper_ = new IrDumper(std::cout);
 
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&mem2reg);
 
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&function_inline);
-        pass_manager.addPass(&dead_code_elim);
+        pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&svn1);
+        pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&gcm1);
 
-        pass_manager.addPass(&dead_code_elim);
+        pass_manager.addPass(&dead_code_elim1);
 
         pass_manager.addPass(&const_propagation);
+        pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);
-        pass_manager.addPass(&dead_code_elim);
+        pass_manager.addPass(&dead_code_elim1);
 
         pass_manager.addPass(&loopunrolling);
-        pass_manager.addPass(&dead_code_elim);
+        pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&const_propagation);
+        pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&svn2);
-        pass_manager.addPass(&dead_code_elim);
+        pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&inst_combine);
+        pass_manager.addPass(&algebric_simplify);
+        pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&gcm2);
+        // pass_manager.addPass(&inst_combine);
+        pass_manager.addPass(&simplify_phiinsts);
+        pass_manager.addPass(&inst_combine);
+        pass_manager.addPass(&dead_code_elim1);
+        // pass_manager.addPass(&dead_code_elim1);
 
     }
     pass_manager.run();

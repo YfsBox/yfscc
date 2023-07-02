@@ -53,6 +53,7 @@ set(IROPT_SRC
         opt/LoopUnrolling.cc
         opt/AlgebraicSimplify.cc
         opt/GlobalCodeMotion.cc
+        opt/SimplifyPhiInsts.cc
 )
 
 set(BACKEND_SRC
