@@ -8,14 +8,16 @@
 #include "PassManager.h"
 #include <unordered_map>
 #include <unordered_set>
+#include <memory>
 
 class Value;
 class BasicBlock;
+class UserAnalysis;
 
 class GlobalValueNumber: public Pass {
 public:
 
-    explicit GlobalValueNumber(Module *module): Pass(module) {}
+    explicit GlobalValueNumber(Module *module);
 
     ~GlobalValueNumber() = default;
 
@@ -34,6 +36,8 @@ private:
     void replaceValues();
 
     void numberValue(Value *value);
+
+    std::unique_ptr<UserAnalysis> user_analysis_;
 
     std::unordered_map<std::string, Value *> value_number_map_;
 

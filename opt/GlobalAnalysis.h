@@ -13,6 +13,8 @@
 class GlobalVariable;
 class Function;
 class Module;
+class Instruction;
+class Value;
 
 class GlobalAnalysis: public Pass {
 public:
@@ -37,6 +39,26 @@ private:
     GlobalVarSet work_global_list_;
 
     std::unordered_map<Function *, GlobalVarSet> function_global_map_;
+};
+
+class UserAnalysis {
+public:
+    using UserInsts = std::unordered_set<Instruction *>;
+
+    explicit UserAnalysis(): curr_func_(nullptr) {}
+
+    ~UserAnalysis() = default;
+
+    UserInsts &getUserInsts(Value *value);
+
+    void analysis(Function *function);
+
+private:
+
+    Function *curr_func_;
+
+    std::unordered_map<Value *, UserInsts> user_map_;
+
 };
 
 

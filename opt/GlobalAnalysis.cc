@@ -85,3 +85,24 @@ void GlobalAnalysis::runOnFunction() {
         }
     }
 }
+
+UserAnalysis::UserInsts &UserAnalysis::getUserInsts(Value *value) {
+    return user_map_[value];
+}
+
+void UserAnalysis::analysis(Function *function) {
+    curr_func_ = function;
+    user_map_.clear();
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        auto &insts_list = bb_uptr->getInstructionList();
+        for (auto &inst_uptr: insts_list) {
+            auto inst = inst_uptr.get();
+            for (int i = 0; i < inst->getOperandNum(); ++i) {
+                auto operand = inst->getOperand(i);
+                if (operand->getValueType() ==  InstructionValue || operand->getValueType() == ArgumentValue /*|| operand->getValueType() == GlobalVariableValue*/) {
+                    user_map_[operand].insert(inst);
+                }
+            }
+        }
+    }
+}

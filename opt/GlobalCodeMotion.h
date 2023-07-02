@@ -15,6 +15,7 @@
 
 class Instruction;
 class BasicBlock;
+class UserAnalysis;
 
 class GlobalCodeMotion: public Pass {       // 一般紧接着在Svn的后面处理
 public:
@@ -36,8 +37,6 @@ private:
 
     void scheduleEarly(Instruction *value);
 
-    void collectUserSets();    // 因为ir中的user接口存在问题，所以在这里一个map收集
-
     BasicBlock *findLCA(BasicBlock *blocka, BasicBlock *blockb);
 
     void moveInsts();
@@ -48,6 +47,8 @@ private:
 
     BasicBlock *root_block_in_currfunc_;
 
+    std::unique_ptr<UserAnalysis> user_analysis_;
+
     std::unique_ptr<ComputeLoops> compute_loops_;
 
     std::unique_ptr<ComputeDominators> compute_doms_;
@@ -55,8 +56,6 @@ private:
     std::unordered_set<Value *> visited_insts_;
 
     std::unordered_map<Value *, BasicBlock *> inst_block_map_;
-
-    std::unordered_map<Value *, InstsSet> user_insts_map_;        // 因为ir中的user接口存在问题，所以在这里一个map收集
 
     std::unordered_map<Value *, BasicBlock *> best_block_map_;
 

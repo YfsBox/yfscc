@@ -3,15 +3,19 @@
 //
 
 #include "GlobalValueNumber.h"
+#include "GlobalAnalysis.h"
 #include "../ir/Module.h"
 #include "../ir/BasicBlock.h"
 #include "../ir/Constant.h"
 #include "../ir/GlobalVariable.h"
 
+GlobalValueNumber::GlobalValueNumber(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()) {}
+
 void GlobalValueNumber::runOnFunction() {
     replace_values_map_.clear();
     value_number_map_.clear();
     visited_set_.clear();
+    user_analysis_->analysis(curr_func_);
 
     for (auto &bb_uptr: curr_func_->getBlocks()) {
         auto &insts_list = bb_uptr->getInstructionList();
@@ -41,15 +45,10 @@ void GlobalValueNumber::replaceValues() {
             if (replace_values_map_.count(inst)) {
                 // printf("the inst %s replaced by %s\n", inst->getName().c_str(), dynamic_cast<Instruction *>(replace_values_map_[inst])->getName().c_str());
                 // inst->replaceAllUseWith(replace_values_map_[inst]);
-                bool has_phi_use = false;
-                for (auto user: inst->getUserMap()) {
-                    if (auto user_inst = dynamic_cast<PhiInstruction *>(user); user_inst) {
-                        has_phi_use = true;
+                for (auto user: user_analysis_->getUserInsts(inst)) {
+                    if (auto user_inst = dynamic_cast<PhiInstruction *>(user); !user_inst) {
+                        user->replaceWithValue(inst, replace_values_map_[inst]);
                     }
-                }
-
-                if (!has_phi_use) {
-                    inst->replaceAllUseWith(replace_values_map_[inst]);
                 }
             }
         }

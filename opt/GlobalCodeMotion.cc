@@ -5,6 +5,7 @@
 #include "GlobalCodeMotion.h"
 #include "ComputeLoops.h"
 #include "ComputeDominators.h"
+#include "GlobalAnalysis.h"
 #include "../ir/Instruction.h"
 #include "../ir/BasicBlock.h"
 #include "../ir/IrDumper.h"
@@ -12,6 +13,7 @@
 GlobalCodeMotion::GlobalCodeMotion(Module *module): Pass(module),
     has_compute_loop_(false),
     root_block_in_currfunc_(nullptr),
+    user_analysis_(std::make_unique<UserAnalysis>()),
     compute_loops_(std::make_unique<ComputeLoops>(module)),
     compute_doms_(nullptr) {
 
@@ -45,13 +47,12 @@ void GlobalCodeMotion::runOnFunction() {
     }
     pinned_values_.clear();
     visited_insts_.clear();
-    user_insts_map_.clear();
     move_insts_map_.clear();
     wait_move_insts_set_.clear();
     // schedule early
     // printf("begin schedule early\n");
     root_block_in_currfunc_ = curr_func_->getBlocks().front().get();
-
+    user_analysis_->analysis(curr_func_);
     collectPinnedValues();
 
     for (auto pinned_inst_value: pinned_values_) {
@@ -68,31 +69,15 @@ void GlobalCodeMotion::runOnFunction() {
     // schedule lately
     // printf("begin schedule lately\n");
     visited_insts_.clear();
-    collectUserSets();
     for (auto pinned_value: pinned_values_) {
         visited_insts_.insert(pinned_value);
-        for (auto user: user_insts_map_[pinned_value]) {
+        for (auto user: user_analysis_->getUserInsts(pinned_value)) {
             scheduleLate(user);
         }
     }
     moveInsts();
 }
 
-
-void GlobalCodeMotion::collectUserSets() {
-    for (auto &bb_uptr: curr_func_->getBlocks()) {
-        auto &insts_list = bb_uptr->getInstructionList();
-        for (auto &inst_uptr: insts_list) {
-            auto inst = inst_uptr.get();
-            for (int i = 0; i < inst->getOperandNum(); ++i) {
-                auto operand = inst->getOperand(i);
-                if (operand->getValueType() ==  InstructionValue || operand->getValueType() == ArgumentValue) {
-                    user_insts_map_[operand].insert(inst);
-                }
-            }
-        }
-    }
-}
 
 void GlobalCodeMotion::scheduleEarly(Instruction *inst) {
     if (visited_insts_.count(inst)) {
@@ -240,7 +225,7 @@ void GlobalCodeMotion::scheduleLate(Instruction *inst) {
     visited_insts_.insert(inst);
     // printf("visit inst %s in %s in late\n", inst->getName().c_str(), curr_func_->getName().c_str());
     BasicBlock *lca = nullptr;
-    for (auto user: user_insts_map_[inst]) {
+    for (auto user: user_analysis_->getUserInsts(inst)) {
         scheduleLate(user);
         BasicBlock *user_block = inst_block_map_[user];
         // if user is a phi inst
