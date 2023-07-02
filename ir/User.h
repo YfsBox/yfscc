@@ -20,7 +20,7 @@ public:
     virtual ~User() = default;
 
     size_t getOperandNum() const {
-        return operand_num_;
+        return operands_.size();
     }
 
     Value *getOperand(int idx) const {

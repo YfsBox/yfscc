@@ -37,11 +37,11 @@ void SimplifyPhiInsts::runOnFunction() {
 
         for (auto &bb_uptr: curr_func_->getBlocks()) {
             auto bb = bb_uptr.get();
-            printf("the block is %s\n", bb->getName().c_str());
+            // printf("the block is %s\n", bb->getName().c_str());
             for (auto &inst_uptr: bb->getInstructionList()) {
                 auto inst = inst_uptr.get();
                 if (auto phi_inst = dynamic_cast<PhiInstruction *>(inst); phi_inst && !has_simplify_insts.count(phi_inst)) {
-                    printf("the phi inst %s has size %d\n", phi_inst->getName().c_str(), phi_inst->getSize());
+                    // printf("the phi inst %s has size %d\n", phi_inst->getName().c_str(), phi_inst->getSize());
                     if (phi_inst->getSize() == 1) {
                         auto value_bb = phi_inst->getValueBlock(0);
                         bool need_simplify = true;
