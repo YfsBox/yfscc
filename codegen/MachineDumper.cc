@@ -442,9 +442,10 @@ void MachineDumper::dump(const VnegInst *inst) {
 
 void MachineDumper::dumpGlobals() {
     fout_ << ".data\n.align 2\n";
+    std::vector<std::string> bss_strs;
     for (auto global: global_set_) {
-        fout_ << global->getName() << ":\n";
         if (dynamic_cast<ConstantVar *>(global->getConstInit())) {
+            fout_ << global->getName() << ":\n";
             auto const_var = dynamic_cast<ConstantVar *>(global->getConstInit());
             fout_ << "  .word\t";
             if (global->getBasicType() == BasicType::INT_BTYPE) {
@@ -459,27 +460,38 @@ void MachineDumper::dumpGlobals() {
             auto &init_value_map = const_array->getInitValueMap();
             int last_index = -1;
             size_t array_len = const_array->getArrayLen();
-            for (auto &[index, value]: init_value_map) {
-                fout_ << "  ";
-                if (index != last_index + 1) {
-                    fout_ << ".zero\t" << (index - last_index - 1) * 4 << "\n";
+            if (init_value_map.empty()) {
+                bss_strs.push_back(global->getName() + ":\n");
+                bss_strs.push_back("  .space " + std::to_string(array_len * 4) + "\n");
+            } else {
+                fout_ << global->getName() << ":\n";
+                for (auto &[index, value]: init_value_map) {
                     fout_ << "  ";
+                    if (index != last_index + 1) {
+                        fout_ << ".zero\t" << (index - last_index - 1) * 4 << "\n";
+                        fout_ << "  ";
+                    }
+                    fout_ << ".word\t";
+                    if (global->getBasicType() == BasicType::INT_BTYPE) {
+                        fout_ << value->getIValue();
+                    } else {
+                        float tmp_value = value->getFValue();
+                        fout_ << getFloat2IntForm(tmp_value);
+                    }
+                    fout_ << "\n";
+                    last_index = index;
                 }
-                fout_ << ".word\t";
-                if (global->getBasicType() == BasicType::INT_BTYPE) {
-                    fout_ << value->getIValue();
-                } else {
-                    float tmp_value = value->getFValue();
-                    fout_ << getFloat2IntForm(tmp_value);
-                }
-                fout_ << "\n";
-                last_index = index;
-            }
 
-            if (array_len != last_index + 1) {
-                fout_ << "  .zero\t" << (array_len - last_index - 1) * 4 << "\n";
+                if (array_len != last_index + 1) {
+                    fout_ << "  .zero\t" << (array_len - last_index - 1) * 4 << "\n";
+                }
             }
         }
-        fout_ << "\n";
     }
+
+    fout_ << "\n.bss\n.align 2\n";
+    for (auto &dump_str: bss_strs) {
+        fout_ << dump_str;
+    }
+    fout_ << "\n";
 }
