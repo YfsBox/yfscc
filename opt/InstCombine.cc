@@ -148,40 +148,41 @@ void InstCombine::combineWithConst(BinaryOpInstruction *inst) {
 void InstCombine::combineNonConst(BinaryOpInstruction *inst) {
     auto left_inst = dynamic_cast<BinaryOpInstruction *>(inst->getLeft());
     auto right_inst = dynamic_cast<BinaryOpInstruction *>(inst->getRight());
-
-    if (!left_inst || !right_inst) {
+    if (!left_inst && !right_inst) {
         return;
     }
 
     bool has_sub_combine = false;
+
+    Value *common_value;
     if (left_inst) {
-        if (left_inst->getInstType() == AddType && (left_inst->getLeft() == right_inst || left_inst->getRight() == right_inst)) {
+        common_value = right_inst == nullptr ? inst->getRight() : right_inst;
+        if (left_inst->getInstType() == AddType && (left_inst->getLeft() == common_value || left_inst->getRight() == common_value)) {
             if (canCombineNonConst(left_inst)) {
-                has_sub_combine = true;
                 combineNonConst(left_inst);
             }
-            if (left_inst->getLeft() == right_inst) {
+            if (left_inst->getLeft() == common_value) {
                 inst->replaceWithValue(left_inst, left_inst->getRight());
             } else {
                 inst->replaceWithValue(left_inst, left_inst->getLeft());
             }
-            combine_value_cnt_[right_inst]++;
+            combine_value_cnt_[common_value]++;
             combined_insts_nonconst_set_.insert(inst);
         }
     }
 
     if (right_inst) {
-        if (right_inst->getInstType() == AddType && (right_inst->getLeft() == left_inst || right_inst->getRight() == left_inst)) {
+        common_value = left_inst == nullptr ? inst->getLeft() : left_inst;
+        if (right_inst->getInstType() == AddType && (right_inst->getLeft() == common_value || right_inst->getRight() == common_value)) {
             if (canCombineNonConst(right_inst)) {
-                has_sub_combine = true;
                 combineNonConst(right_inst);
             }
-            if (right_inst->getLeft() == left_inst) {
+            if (right_inst->getLeft() == common_value) {
                 inst->replaceWithValue(right_inst, right_inst->getRight());
             } else {
                 inst->replaceWithValue(right_inst, right_inst->getLeft());
             }
-            combine_value_cnt_[left_inst]++;
+            combine_value_cnt_[common_value]++;
             combined_insts_nonconst_set_.insert(inst);
         }
     }
@@ -212,21 +213,29 @@ void InstCombine::runOnFunction() {
                 combine_value_cnt_[binary_inst->getLeft()] = 1;
                 combine_value_cnt_[binary_inst->getRight()] = 1;
                 common_value = work_insts_nonconst_map_[binary_inst];
+                printf("the common value is %s for binary inst %s\n", common_value->getName().c_str(), binary_inst->getName().c_str());
                 assert(common_value);
                 combineNonConst(binary_inst);
-                std::string inserted_inst_name = "inst_com" + binary_inst->getName();
-                ConstantVar *mul_cnt;
-                if (binary_inst->getBasicType() == INT_BTYPE) {
-                    mul_cnt = new ConstantVar(combine_value_cnt_[common_value]);
-                    inserted_inst_[binary_inst] = new BinaryOpInstruction(MulType, INT_BTYPE, bb.get(), common_value, mul_cnt, inserted_inst_name);
-                } else {
-                    mul_cnt = new ConstantVar(static_cast<float>(combine_value_cnt_[common_value]));
-                    inserted_inst_[binary_inst] = new BinaryOpInstruction(MulType, FLOAT_BTYPE, bb.get(), common_value, mul_cnt, inserted_inst_name);
-                }
-                if (binary_inst->getLeft() == common_value) {
-                     binary_inst->replaceLeft(inserted_inst_[binary_inst]);
-                } else {
-                    binary_inst->replaceRight(inserted_inst_[binary_inst]);
+
+                if (combine_value_cnt_[common_value] > 2) {
+                    std::string inserted_inst_name = "inst_com" + binary_inst->getName();
+                    ConstantVar *mul_cnt;
+                    if (binary_inst->getBasicType() == INT_BTYPE) {
+                        mul_cnt = new ConstantVar(combine_value_cnt_[common_value]);
+                        inserted_inst_[binary_inst] = new BinaryOpInstruction(MulType, INT_BTYPE, bb.get(),
+                                                                              common_value, mul_cnt,
+                                                                              inserted_inst_name);
+                    } else {
+                        mul_cnt = new ConstantVar(static_cast<float>(combine_value_cnt_[common_value]));
+                        inserted_inst_[binary_inst] = new BinaryOpInstruction(MulType, FLOAT_BTYPE, bb.get(),
+                                                                              common_value, mul_cnt,
+                                                                              inserted_inst_name);
+                    }
+                    if (binary_inst->getLeft() == common_value) {
+                        binary_inst->replaceLeft(inserted_inst_[binary_inst]);
+                    } else {
+                        binary_inst->replaceRight(inserted_inst_[binary_inst]);
+                    }
                 }
             }
         }
