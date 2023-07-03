@@ -55,6 +55,7 @@ set(IROPT_SRC
         opt/GlobalCodeMotion.cc
         opt/SimplifyPhiInsts.cc
         opt/GlobalValueNumber.cc
+        opt/MemoryAnalysis.cc
 )
 
 set(BACKEND_SRC

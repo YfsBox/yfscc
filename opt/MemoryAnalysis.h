@@ -8,7 +8,9 @@
 #include <list>
 #include <unordered_map>
 #include <unordered_set>
+#include <memory>
 #include "PassManager.h"
+#include "GlobalAnalysis.h"
 
 class Value;
 class BasicBlock;
@@ -20,7 +22,7 @@ public:
 
     using MemVersionTable = std::unordered_map<Value *, StoreInstruction *>;
 
-    explicit MemoryAnalysis(Module *module): Pass(module) {}
+    explicit MemoryAnalysis(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()) {}
 
     ~MemoryAnalysis() = default;
 
@@ -47,6 +49,8 @@ private:
     void deallocateTable() {
         memversion_table_.pop_back();
     }
+
+    std::unique_ptr<UserAnalysis> user_analysis_;
 
     std::unordered_map<Value *, Value *> replace_load_insts_;
 

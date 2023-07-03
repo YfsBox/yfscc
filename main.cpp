@@ -19,6 +19,7 @@
 #include "opt/GlobalCodeMotion.h"
 #include "opt/SimplifyPhiInsts.h"
 #include "opt/GlobalValueNumber.h"
+#include "opt/MemoryAnalysis.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -90,6 +91,7 @@ int main(int argc, char **argv) {
     LoopUnrolling loopunrolling(ir_module);
     AlgebraicSimplify algebric_simplify(ir_module);
     SimplifyPhiInsts simplify_phiinsts(ir_module);
+    MemoryAnalysis mem_analysis(ir_module);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
@@ -102,6 +104,7 @@ int main(int argc, char **argv) {
         algebric_simplify.ir_dumper_ = new IrDumper(std::cout);
         gcm1.ir_dumper_ = new IrDumper(std::cout);
         gcm2.ir_dumper_ = new IrDumper(std::cout);
+        mem_analysis.ir_dumper_ = new IrDumper(std::cout);
 
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&mem2reg);
@@ -128,14 +131,15 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);
-        // pass_manager.addPass(&svn2);
         pass_manager.addPass(&gvn);
         pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&gcm2);
-        // pass_manager.addPass(&inst_combine);
+        pass_manager.addPass(&mem_analysis);
+        pass_manager.addPass(&const_propagation);
+        pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&simplify_phiinsts);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&dead_code_elim1);
@@ -145,7 +149,7 @@ int main(int argc, char **argv) {
 
     }
     pass_manager.run();
-    // irbuilder.dump();
+    irbuilder.dump();
 
     CodeGen codegen(irbuilder.getIrModule());
     codegen.codeGenerate();
