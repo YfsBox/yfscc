@@ -105,6 +105,7 @@ int main(int argc, char **argv) {
         gcm1.ir_dumper_ = new IrDumper(std::cout);
         gcm2.ir_dumper_ = new IrDumper(std::cout);
         mem_analysis.ir_dumper_ = new IrDumper(std::cout);
+        gvn.ir_dumper_ = new IrDumper(std::cout);
 
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&mem2reg);
@@ -112,8 +113,8 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&function_inline);
         pass_manager.addPass(&dead_code_elim1);
-        // pass_manager.addPass(&svn1);
         pass_manager.addPass(&gvn);
+        pass_manager.addPass(&svn2);
         pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&gcm1);
 
@@ -132,6 +133,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&gvn);
+        pass_manager.addPass(&svn2);
         pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);

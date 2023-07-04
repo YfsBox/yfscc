@@ -6,22 +6,24 @@
 #define YFSCC_SVN_H
 
 #include <list>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include "PassManager.h"
+#include "CallGraphAnalysis.h"
 
 class Instruction;
 class BasicBlock;
 class Value;
 
-class Svn: public Pass {
+class Svn: public Pass {        //  只保留对call指令的处理
 public:
 
     using ValueName = std::string;
 
     using ValueNameTable = std::unordered_map<ValueName, Instruction *>;
 
-    explicit Svn(Module *module): Pass(module) {}
+    explicit Svn(Module *module): Pass(module), callgraph_analysis_(std::make_unique<CallGraphAnalysis>(module_)) {}
 
     ~Svn() = default;
 
@@ -31,7 +33,7 @@ protected:
 
 private:
 
-    static ValueName getValueName(Instruction *inst);
+    ValueName getValueName(Instruction *inst);
 
     static ValueName getOperandName(Value *value);
 
@@ -50,6 +52,8 @@ private:
     void deallocateTable() {
         binary_value_name_table_.pop_back();
     }
+
+    std::unique_ptr<CallGraphAnalysis> callgraph_analysis_;
 
     std::unordered_map<Instruction *, Instruction *> replaced_map_;
 
