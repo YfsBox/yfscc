@@ -46,7 +46,7 @@ private:
 
     };
 
-    static const constexpr int32_t max_inst_cnt_for_fullunroll_ = 250;
+    static const constexpr int32_t max_inst_cnt_for_fullunroll_ = 301;
 
     Instruction *getCopyInstruction(Instruction *inst, BasicBlock *basicblock, const std::string &new_name);
 
