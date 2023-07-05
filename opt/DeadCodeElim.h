@@ -9,10 +9,12 @@
 #include <unordered_set>
 #include "PassManager.h"
 #include "CallGraphAnalysis.h"
+#include "GlobalAnalysis.h"
 
 class Value;
 class Instruction;
 class IrDumper;
+class UserAnalysis;
 
 class DeadCodeElim: public Pass {
 public:
@@ -30,6 +32,8 @@ private:
     void removeDeadInsts();
 
     bool hasSideEffect(Instruction *inst);
+
+    std::unique_ptr<UserAnalysis> user_analysis_;
 
     std::unique_ptr<CallGraphAnalysis> call_graph_analysis_;
 

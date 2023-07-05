@@ -12,7 +12,7 @@
 #include "DeadCodeElim.h"
 #include "DataflowAnalysis.h"
 
-DeadCodeElim::DeadCodeElim(Module *module): Pass(module), call_graph_analysis_(std::make_unique<CallGraphAnalysis>(module)) {}
+DeadCodeElim::DeadCodeElim(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()), call_graph_analysis_(std::make_unique<CallGraphAnalysis>(module)) {}
 
 void DeadCodeElim::removeDeadInsts() {
     auto &bbs = curr_func_->getBlocks();
@@ -45,12 +45,14 @@ void DeadCodeElim::runOnFunction() {
     useful_insts_.clear();
     dead_insts_.clear();
 
-    LivenessAnalysis liveness_analysis(curr_func_);
-    liveness_analysis.analysis();
+    // LivenessAnalysis liveness_analysis(curr_func_);
+    // printf("run on dead code elim on function %s\n", curr_func_->getName().c_str());
+    /*liveness_analysis.analysis();
     auto live_out = liveness_analysis.getOutSet();
-    auto live_in = liveness_analysis.getInSet();
+    auto live_in = liveness_analysis.getInSet();*/
+    user_analysis_->analysis(curr_func_);
 
-    for (auto &bb: curr_func_->getBlocks()) {
+    /*for (auto &bb: curr_func_->getBlocks()) {
         auto live = live_out[bb.get()];
         auto &insts_list = bb->getInstructionList();
 
@@ -78,6 +80,15 @@ void DeadCodeElim::runOnFunction() {
             }
             for (auto use: uses) {
                 live.insert(use);
+            }
+        }
+    }*/
+
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        for (auto &inst_uptr: bb_uptr->getInstructionList()) {
+            auto inst = inst_uptr.get();
+            if (user_analysis_->getUserInsts(inst).empty() && !hasSideEffect(inst)) {
+                dead_insts_.insert(inst_uptr.get());
             }
         }
     }
