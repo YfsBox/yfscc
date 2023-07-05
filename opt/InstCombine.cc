@@ -213,7 +213,7 @@ void InstCombine::runOnFunction() {
                 combine_value_cnt_[binary_inst->getLeft()] = 1;
                 combine_value_cnt_[binary_inst->getRight()] = 1;
                 common_value = work_insts_nonconst_map_[binary_inst];
-                printf("the common value is %s for binary inst %s\n", common_value->getName().c_str(), binary_inst->getName().c_str());
+                // printf("the common value is %s for binary inst %s\n", common_value->getName().c_str(), binary_inst->getName().c_str());
                 assert(common_value);
                 combineNonConst(binary_inst);
 

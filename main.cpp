@@ -145,9 +145,11 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&simplify_phiinsts);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&svn2);
+        pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&branch_opt);
         pass_manager.addPass(&dead_bb_elim);
-        // pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&dead_code_elim1);
 
     }
     pass_manager.run();

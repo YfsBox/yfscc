@@ -1022,9 +1022,12 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
             can_be_swap = true;
             binary_inst_op = basic_type == BasicType::INT_BTYPE ? BinaryInst::IMul: BinaryInst::FMul;
             break;
-        case InstructionType::DivType:
-            binary_inst_op = basic_type == BasicType::INT_BTYPE ? BinaryInst::IDiv: BinaryInst::FDiv;
+        case InstructionType::DivType: {
+            binary_inst_op = basic_type == BasicType::INT_BTYPE ? BinaryInst::IDiv : BinaryInst::FDiv;
+            // 如果右边是常量，就使用除常数优化的方法
+
             break;
+        }
         case InstructionType::ModType: {
             auto div_dst = createVirtualReg(MachineOperand::Int);
             auto mul_dst = createVirtualReg(MachineOperand::Int);

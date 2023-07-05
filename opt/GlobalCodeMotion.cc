@@ -116,7 +116,7 @@ void GlobalCodeMotion::scheduleEarly(Instruction *inst) {
         }
     }
 
-    printf("the early block of %s is %s\n", inst->getName().c_str(), inst_block_map_[inst]->getName().c_str());
+    // printf("the early block of %s is %s\n", inst->getName().c_str(), inst_block_map_[inst]->getName().c_str());
 }
 
 void GlobalCodeMotion::moveInsts() {
