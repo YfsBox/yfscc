@@ -16,6 +16,7 @@
 class Instruction;
 class BasicBlock;
 class UserAnalysis;
+class CallGraphAnalysis;
 
 class GlobalCodeMotion: public Pass {       // 一般紧接着在Svn的后面处理
 public:
@@ -48,6 +49,8 @@ private:
     BasicBlock *root_block_in_currfunc_;
 
     std::unique_ptr<UserAnalysis> user_analysis_;
+
+    std::unique_ptr<CallGraphAnalysis> callgraph_analysis_;
 
     std::unique_ptr<ComputeLoops> compute_loops_;
 

@@ -6,14 +6,18 @@
 #include "ComputeLoops.h"
 #include "ComputeDominators.h"
 #include "GlobalAnalysis.h"
+#include "CallGraphAnalysis.h"
 #include "../ir/Instruction.h"
 #include "../ir/BasicBlock.h"
 #include "../ir/IrDumper.h"
+#include "../ir/Module.h"
+#include "../ir/GlobalVariable.h"
 
 GlobalCodeMotion::GlobalCodeMotion(Module *module): Pass(module),
     has_compute_loop_(false),
     root_block_in_currfunc_(nullptr),
     user_analysis_(std::make_unique<UserAnalysis>()),
+    callgraph_analysis_(std::make_unique<CallGraphAnalysis>(module_)),
     compute_loops_(std::make_unique<ComputeLoops>(module)),
     compute_doms_(nullptr) {
 
@@ -22,9 +26,9 @@ GlobalCodeMotion::GlobalCodeMotion(Module *module): Pass(module),
 bool GlobalCodeMotion::isPinned(const Value *value) {
     if (auto inst = dynamic_cast<const Instruction *>(value); inst) {
         auto inst_type = inst->getInstType();
-        return inst_type == PhiType || inst_type == RetType
+        return inst_type == PhiType || inst_type == RetType || inst_type == SetCondType
                || inst_type == BrType || inst_type == LoadType
-               || inst_type == StoreType || inst_type == CallType
+               || inst_type == StoreType || (inst_type == CallType && callgraph_analysis_->hasSideEffect(dynamic_cast<const CallInstruction *>(inst)->getFunction()))
                || inst_type == MemSetType;
     }
     return value->getValueType() == ArgumentValue;
@@ -53,6 +57,7 @@ void GlobalCodeMotion::runOnFunction() {
     // printf("begin schedule early\n");
     root_block_in_currfunc_ = curr_func_->getBlocks().front().get();
     user_analysis_->analysis(curr_func_);
+    callgraph_analysis_->analysis();
     collectPinnedValues();
 
     for (auto pinned_inst_value: pinned_values_) {
@@ -111,7 +116,7 @@ void GlobalCodeMotion::scheduleEarly(Instruction *inst) {
         }
     }
 
-    // printf("the early block of %s is %s\n", inst->getName().c_str(), inst_block_map_[inst]->getName().c_str());
+    printf("the early block of %s is %s\n", inst->getName().c_str(), inst_block_map_[inst]->getName().c_str());
 }
 
 void GlobalCodeMotion::moveInsts() {
@@ -169,8 +174,15 @@ void GlobalCodeMotion::moveInsts() {
 }
 
 void GlobalCodeMotion::collectPinnedValues() {
-    // put the args of current function as pinned
     auto enter_block = curr_func_->getBlocks().front().get();
+    // 将全局变量也设置为global
+    for (int i = 0; i < module_->getGlobalSize(); ++i) {
+        auto global = module_->getGlobalVariable(i);
+        pinned_values_.push_back(global);
+        inst_block_map_[global] = enter_block;
+    }
+
+    // put the args of current function as pinned
     for (int i = 0; i < curr_func_->getArgumentSize(); ++i) {
         auto arg = curr_func_->getArgument(i);
         pinned_values_.push_back(arg);

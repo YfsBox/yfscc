@@ -99,7 +99,7 @@ void UserAnalysis::analysis(Function *function) {
             auto inst = inst_uptr.get();
             for (int i = 0; i < inst->getOperandNum(); ++i) {
                 auto operand = inst->getOperand(i);
-                if (operand->getValueType() ==  InstructionValue || operand->getValueType() == ArgumentValue /*|| operand->getValueType() == GlobalVariableValue*/) {
+                if (operand->getValueType() ==  InstructionValue || operand->getValueType() == ArgumentValue || operand->getValueType() == GlobalVariableValue) {
                     user_map_[operand].insert(inst);
                 }
             }
