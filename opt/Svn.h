@@ -46,7 +46,11 @@ private:
     Instruction* lookupOrAdd(const ValueName &value_name, Instruction *inst);
 
     void allocateTable() {
-        binary_value_name_table_.emplace_back();
+        if (binary_value_name_table_.empty()) {
+            binary_value_name_table_.emplace_back();
+        } else {
+            binary_value_name_table_.push_back(binary_value_name_table_.back());
+        }
     }
 
     void deallocateTable() {
