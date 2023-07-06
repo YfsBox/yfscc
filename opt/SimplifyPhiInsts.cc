@@ -8,26 +8,12 @@
 #include "../ir/Value.h"
 #include "../ir/User.h"
 
-void SimplifyPhiInsts::collectUserSets() {
-    for (auto &bb_uptr: curr_func_->getBlocks()) {
-        auto &insts_list = bb_uptr->getInstructionList();
-        for (auto &inst_uptr: insts_list) {
-            auto inst = inst_uptr.get();
-            for (int i = 0; i < inst->getOperandNum(); ++i) {
-                auto operand = inst->getOperand(i);
-                if (operand->getValueType() ==  InstructionValue || operand->getValueType() == ArgumentValue) {
-                    user_insts_map_[operand].insert(inst);
-                }
-            }
-        }
-    }
-}
-
 
 void SimplifyPhiInsts::runOnFunction() {
-    collectUserSets();
+
     std::unordered_map<PhiInstruction *, Value *> phi_insts_map;
     std::unordered_set<PhiInstruction *> has_simplify_insts;
+    user_analysis_->analysis(curr_func_);
 
     bool has_changed = true;
 
@@ -45,7 +31,7 @@ void SimplifyPhiInsts::runOnFunction() {
                     if (phi_inst->getSize() == 1) {
                         auto value_bb = phi_inst->getValueBlock(0);
                         bool need_simplify = true;
-                        for (auto user_inst: user_insts_map_[phi_inst]) {
+                        for (auto user_inst: user_analysis_->getUserInsts(phi_inst)) {
                             if (user_inst != value_bb.first) {
                                 user_inst->replaceWithValue(phi_inst, value_bb.first);
                                 user_inst->replaceWithValue(phi_inst, value_bb.second);

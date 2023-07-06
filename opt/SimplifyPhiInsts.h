@@ -6,8 +6,10 @@
 #define YFSCC_SIMPLIFYPHIINSTS_H
 
 #include "PassManager.h"
+#include "GlobalAnalysis.h"
 #include <unordered_map>
 #include <unordered_set>
+#include <memory>
 
 class Value;
 class PhiInstruction;
@@ -18,7 +20,7 @@ public:
 
     using InstsSet = std::unordered_set<Instruction *>;
 
-    explicit SimplifyPhiInsts(Module *module): Pass(module) {}
+    explicit SimplifyPhiInsts(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()) {}
 
     ~SimplifyPhiInsts() = default;
 
@@ -28,9 +30,7 @@ protected:
 
 private:
 
-    void collectUserSets();
-
-    std::unordered_map<Value *, InstsSet> user_insts_map_;
+    std::unique_ptr<UserAnalysis> user_analysis_;
 
     std::unordered_map<PhiInstruction *, Value *> replace_insts_map_;
 
