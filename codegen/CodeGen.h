@@ -160,6 +160,8 @@ private:
 
     MachineOperand *value2MachineOperandForPhi(Value *value, MachineBasicBlock *basic_block, std::vector<MachineInst *> *move_insts);
 
+    MachineOperand *codeGenForDivConst(BinaryOpInstruction *binst, Value *left, Value *right);
+
     int virtual_reg_id_;
 
     int stack_offset_;

@@ -241,6 +241,9 @@ void MachineDumper::dump(const BinaryInst *inst) {
         case BinaryInst::BinaryOp::IAsr:
             fout_ << "asr";
             break;
+        case BinaryInst::BinaryOp::ISMMul:
+            fout_ << "smmul";
+            break;
         default:
             break;
     }

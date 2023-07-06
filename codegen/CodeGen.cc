@@ -10,12 +10,95 @@
 #include "../ir/Instruction.h"
 #include "../common/Utils.h"
 
+struct ms {
+    int m_;
+    int s_;
+};
+
+struct mulInfo {
+    int s_val_;
+    int msb_;
+    int c_1_;
+};
+
 static inline int32_t getHigh(int32_t value) {
     return (value >> 16) & 0xffff;
 }
 
 static inline int32_t getLow(int32_t value) {
     return value & 0xffff;
+}
+
+static ms magic(int d) {
+    int p;
+    unsigned ad, anc, delta, q1, r1, q2, r2, t;
+    const unsigned two31 = 0x80000000;
+    ms mag;
+
+    ad = abs(d);
+    t = two31 + ((unsigned)d >> 31);
+    anc = t - 1 - t % ad;
+    p = 31;
+    q1 = two31 / anc;
+    r1 = two31 - anc * q1;
+    q2 = two31 / ad;
+    r2 = two31 - ad * q2;
+    do {
+        p = p + 1;
+        q1 *= 2;
+        r1 *= 2;
+        if (r1 >= anc) {
+            q1++;
+            r1 -= anc;
+        }
+        q2 *= 2;
+        r2 *= 2;
+        if (r2 >= ad) {
+            q2++;
+            r2 -= ad;
+        }
+        delta = ad - r2;
+    } while (q1 < delta || (q1 == delta && r1 == 0));
+    mag.m_ = q2 + 1;
+    if (d < 0)
+        mag.m_ = -mag.m_;
+    mag.s_ = p - 32;
+    return mag;
+}
+
+mulInfo can_optmul(int a) {
+    mulInfo info;
+    info.s_val_ = 0;
+    info.msb_ = 0;
+    info.c_1_ = 0;
+    if (a == 0)
+        return info;
+    else {
+        if (a < 0)
+            a = -a;
+        int get_c_1 = 1;
+        int n = 30;
+        while (n--) {
+            if (a & get_c_1)
+                info.c_1_++;
+            get_c_1 <<= 1;
+        }
+        int get_msb = 0x40000000;
+        n = 31;
+        while (n--) {
+            if (a & get_msb) {
+                info.msb_ = n;
+                break;
+            }
+            get_msb >>= 1;
+        }
+        get_c_1 = 1;
+        while (!(a & get_c_1)) {
+            info.s_val_++;
+            get_c_1 <<= 1;
+        }
+        return info;
+    }
 }
 
 static inline MachineOperand::ValueType basicType2ValueType(BasicType basic_type) {
@@ -695,6 +778,51 @@ MachineOperand *CodeGen::value2MachineOperandForPhi(Value *value, MachineBasicBl
     return ret_operand;
 }
 
+MachineOperand* CodeGen::codeGenForDivConst(BinaryOpInstruction *binst, Value *left, Value *right) {
+    auto const_right_value = dynamic_cast<ConstantVar *>(right);
+    auto const_int_value = const_right_value->getIValue();
+
+    ms magic_number = magic(const_int_value);
+    auto mov_imm_value = getImmOperandInBinary(magic_number.m_, curr_machine_basic_block_);
+
+    auto smmul_dst = createVirtualReg(VirtualReg::Int);
+    auto smmul_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISMMul, smmul_dst,
+                                     value2MachineOperand(left, false), mov_imm_value);
+    // auto load_inst = new LoadInst(curr_machine_basic_block_, smmul_rhs, getImmOperandInBinary(magic_number.m_, curr_machine_basic_block_));
+    // addMachineInst(load_inst);
+    addMachineInst(smmul_inst);
+
+    auto smmul_next = smmul_inst->getDst();
+    if (const_int_value > 0 && magic_number.m_ < 0) {
+        auto bi_add_dst = createVirtualReg(MachineOperand::Int);
+        auto bi_add = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, bi_add_dst, smmul_inst->getDst(), smmul_inst->getLeft());
+        addMachineInst(bi_add);
+        smmul_next = bi_add->getDst();
+    }
+    if (const_int_value < 0 && magic_number.m_ > 0) {
+        auto bi_sub_dst = createVirtualReg(MachineOperand::Int);
+        auto bi_sub = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, bi_sub_dst, smmul_inst->getDst(), smmul_inst->getLeft());
+        addMachineInst(bi_sub);
+        smmul_next = bi_sub->getDst();
+    }
+
+    MachineOperand *before_add;
+    before_add = smmul_next;
+
+    if (magic_number.s_ > 0) {
+        auto asr_dst = createVirtualReg(MachineOperand::Int);
+        auto bi_asr = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAsr, asr_dst, smmul_next,
+                                     getImmOperandInBinary(magic_number.s_, curr_machine_basic_block_));
+        addMachineInst(bi_asr);
+        before_add = bi_asr->getDst();
+    }
+    auto result_dst = createVirtualReg(MachineOperand::Int, binst);
+    auto result_add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, result_dst, before_add, before_add, 31);
+    addMachineInst(result_add_inst);
+
+    return result_dst;
+}
+
 
 
 MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, bool *is_float) {
@@ -1025,27 +1153,49 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
         case InstructionType::DivType: {
             binary_inst_op = basic_type == BasicType::INT_BTYPE ? BinaryInst::IDiv : BinaryInst::FDiv;
             // 如果右边是常量，就使用除常数优化的方法
-
+            if (right_value->getValueType() == ConstantValue && basic_type == BasicType::INT_BTYPE) {
+                // printf("div const opt on inst %s\n", binst->getName().c_str());
+                codeGenForDivConst(binst, left_value, right_value);
+                return;
+            }
             break;
         }
         case InstructionType::ModType: {
-            auto div_dst = createVirtualReg(MachineOperand::Int);
-            auto mul_dst = createVirtualReg(MachineOperand::Int);
-            auto sub_dst = createVirtualReg(MachineOperand::Int, binst);
+            if (basic_type == INT_BTYPE && right_value->getValueType() == ConstantValue) {     // 模常数优化
+                auto const_right_value = dynamic_cast<ConstantVar *>(right_value);
+                auto const_value = const_right_value->getIValue();
+                auto div_result = codeGenForDivConst(binst, left_value, right_value);
+                mulInfo optmul = can_optmul(const_value);
 
-            MachineOperand *lhs = value2MachineOperand(left_value, false);
-            assert(lhs);
-            MachineOperand *rhs = value2MachineOperand(right_value, false);
-            assert(rhs);
+                auto mul_dst = createVirtualReg(MachineOperand::Int);
+                auto mul_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IMul, mul_dst, div_result,
+                                             value2MachineOperand(const_right_value, false));
+                addMachineInst(mul_inst);
 
-            auto div_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IDiv, div_dst, lhs, rhs);
-            addMachineInst(div_inst);
+                auto mod_result = createVirtualReg(MachineOperand::Int, binst);
+                auto mod_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, mod_result,
+                                               value2MachineOperand(binst->getLeft(), false), mul_dst);
 
-            auto mul_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IMul, mul_dst, div_dst, rhs);
-            addMachineInst(mul_inst);
+                addMachineInst(mod_inst);
+            } else {
+                auto div_dst = createVirtualReg(MachineOperand::Int);
+                auto mul_dst = createVirtualReg(MachineOperand::Int);
+                auto sub_dst = createVirtualReg(MachineOperand::Int, binst);
 
-            auto sub_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, sub_dst, lhs, mul_dst);
-            addMachineInst(sub_inst);
+                MachineOperand *lhs = value2MachineOperand(left_value, false);
+                assert(lhs);
+                MachineOperand *rhs = value2MachineOperand(right_value, false);
+                assert(rhs);
+
+                auto div_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IDiv, div_dst, lhs, rhs);
+                addMachineInst(div_inst);
+
+                auto mul_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IMul, mul_dst, div_dst, rhs);
+                addMachineInst(mul_inst);
+
+                auto sub_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, sub_dst, lhs, mul_dst);
+                addMachineInst(sub_inst);
+            }
             return;
         }
         case InstructionType::LshrType: {

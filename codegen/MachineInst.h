@@ -191,6 +191,7 @@ public:
         IAdd,
         ISub,
         IMul,
+        ISMMul,
         IDiv,
         FAdd,
         FSub,
