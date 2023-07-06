@@ -41,6 +41,8 @@ Svn::ValueName Svn::getValueName(Instruction *inst) {
             auto actual = call_inst_value->getActual(i);
             valuename += "_" + actual->getName();
         }
+    } else if (auto load_inst_value = dynamic_cast<const LoadInstruction *>(inst); load_inst_value) {
+        valuename = "LD_" + load_inst_value->getPtr()->getName();
     }
     return valuename;
 }
@@ -58,7 +60,7 @@ Svn::ValueName Svn::getOperandName(Value *value) {
 }
 
 Instruction* Svn::lookupOrAdd(const ValueName &value_name, Instruction *inst) {
-    if (inst->getInstType() == GEPType || dynamic_cast<BinaryOpInstruction *>(inst) || dynamic_cast<UnaryOpInstruction *>(inst) || dynamic_cast<CallInstruction *>(inst)) {
+    if (inst->getInstType() == GEPType || dynamic_cast<BinaryOpInstruction *>(inst) || dynamic_cast<UnaryOpInstruction *>(inst) || dynamic_cast<CallInstruction *>(inst) || dynamic_cast<LoadInstruction *>(inst)) {
         auto &curr_table = binary_value_name_table_.back();
         if (curr_table.count(value_name)) {
             return curr_table[value_name];
@@ -94,7 +96,11 @@ void Svn::lvn(BasicBlock *basicblock) {
         if (auto call_inst = dynamic_cast<CallInstruction *>(inst); call_inst) {
             can_number_call = !callgraph_analysis_->hasSideEffect(call_inst->getFunction());
         }
-        if (dynamic_cast<BinaryOpInstruction *>(inst) || dynamic_cast<GEPInstruction *>(inst) || dynamic_cast<UnaryOpInstruction *>(inst) || can_number_call) {
+        bool load_ptr = false;
+        if (auto load_inst = dynamic_cast<LoadInstruction *>(inst); load_inst) {
+            load_ptr = load_inst->isFromSecondaryPtr();
+        }
+        if (dynamic_cast<BinaryOpInstruction *>(inst) || dynamic_cast<GEPInstruction *>(inst) || dynamic_cast<UnaryOpInstruction *>(inst) || can_number_call || load_ptr) {
             auto value_name = getValueName(inst);
             // printf("the value name is %s\n", value_name.c_str());
             auto lookup_inst = lookupOrAdd(value_name, inst);
