@@ -8,6 +8,8 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
+#include <memory>
+#include "GlobalAnalysis.h"
 #include "PassManager.h"
 #include "../ir/BasicBlock.h"
 #include "../ir/Instruction.h"

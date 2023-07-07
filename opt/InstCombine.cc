@@ -199,6 +199,9 @@ void InstCombine::runOnFunction() {
         combineWithConst(inst);
     }
 
+    auto user_analysis = std::make_unique<UserAnalysis>();
+    user_analysis->analysis(curr_func_);
+
     for (auto &bb: curr_func_->getBlocks()) {
         auto &insts_list = bb->getInstructionList();
         inserted_inst_.clear();
@@ -220,6 +223,7 @@ void InstCombine::runOnFunction() {
                 if (combine_value_cnt_[common_value] > 2) {
                     std::string inserted_inst_name = "inst_com" + binary_inst->getName();
                     ConstantVar *mul_cnt;
+                    combine_value_cnt_[common_value]++;
                     if (binary_inst->getBasicType() == INT_BTYPE) {
                         mul_cnt = new ConstantVar(combine_value_cnt_[common_value]);
                         inserted_inst_[binary_inst] = new BinaryOpInstruction(MulType, INT_BTYPE, bb.get(),
@@ -231,10 +235,13 @@ void InstCombine::runOnFunction() {
                                                                               common_value, mul_cnt,
                                                                               inserted_inst_name);
                     }
-                    if (binary_inst->getLeft() == common_value) {
+                    /*if (binary_inst->getLeft() == common_value) {
                         binary_inst->replaceLeft(inserted_inst_[binary_inst]);
                     } else {
                         binary_inst->replaceRight(inserted_inst_[binary_inst]);
+                    }*/
+                    for (auto user_inst: user_analysis->getUserInsts(binary_inst)) {
+                        user_inst->replaceWithValue(binary_inst, inserted_inst_[binary_inst]);
                     }
                 }
             }
