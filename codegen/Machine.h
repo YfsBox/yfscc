@@ -166,6 +166,10 @@ public:
         return basic_blocks_;
     }
 
+    std::vector<MachineBasicBlockPtr> &getMachineBasicBlockNoConst() {
+        return basic_blocks_;
+    }
+
     void addBasicBlock(MachineBasicBlock *basic_block);
 
 

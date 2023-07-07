@@ -24,6 +24,7 @@
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
 #include "codegen/RegsAllocator.h"
+#include "codegen/BackendPass.h"
 
 
 extern int yyparse();
@@ -163,7 +164,15 @@ int main(int argc, char **argv) {
     /*MachineDumper vmcdumper(codegen.getMCModule(), target_file + ".v");
     vmcdumper.dump();*/
 
-    RegsAllocator::regsAllocate(codegen.getMCModule(), &codegen);
+    auto mc_module = codegen.getMCModule();
+    RegsAllocator::regsAllocate(mc_module, &codegen);
+
+    BackendPassManager backendpass_manager(mc_module);
+    ReDundantLoadElim load_elim(mc_module);
+    if (enable_opt) {
+        backendpass_manager.addPass(&load_elim);
+    }
+    backendpass_manager.run();
 
     MachineDumper mcdumper(codegen.getMCModule(), target_file);
     mcdumper.dump();

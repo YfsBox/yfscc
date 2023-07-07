@@ -65,6 +65,7 @@ set(BACKEND_SRC
         codegen/RegsAllocator.cc
         codegen/MachineDumper.cc
         codegen/MachineInst.cc
+        codegen/BackendPass.cc
 )
 
 add_library(frontend ${FRONTEND_SRC})
