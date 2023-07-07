@@ -8,6 +8,7 @@
 #include "../ir/Constant.h"
 #include "../ir/Value.h"
 #include "../ir/IrDumper.h"
+#include "GlobalAnalysis.h"
 
 void AlgebraicSimplify::runOnFunction() {
     removeInsts();
@@ -91,6 +92,9 @@ void AlgebraicSimplify::removeInsts() {
 }
 
 void AlgebraicSimplify::replaceWithSimpleInst() {
+    std::unordered_map<Value *, Value *> replaced_map;
+    UserAnalysis user_analysis;
+    user_analysis.analysis(curr_func_);
     for (auto &bb: curr_func_->getBlocks()) {
         for (auto &inst_uptr: bb->getInstructionList()) {
             if (auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst_uptr.get()); binary_inst) {
@@ -118,21 +122,58 @@ void AlgebraicSimplify::replaceWithSimpleInst() {
                         inst_uptr->setInstType(LshrType);
                     }
 
-                } else if (binary_inst->getInstType() == DivType && rhs->getValueType() == ConstantValue) {
-                    ConstantVar *const_var = dynamic_cast<ConstantVar *>(rhs);
-                    assert(const_var);
-                    int32_t const_var_value = const_var->getIValue();
-                    if (isPowerOfTwo(const_var_value)) {
-                        pcnt = static_cast<int32_t>(std::log2(const_var_value));
-                        auto shift_var = new ConstantVar(pcnt);
-                        inst_uptr->replaceWithValue(const_var, shift_var);
-                        inst_uptr->setInstType(RshrType);
-                        // printf("%d replace by %d in inst %s for div\n", const_var_value, pcnt, inst_uptr->getName().c_str());
+                } else if (binary_inst->getInstType() == DivType) {
+                    bool has_changed_shift = false;
+                    if (rhs->getValueType() == ConstantValue) {
+                        ConstantVar *const_var = dynamic_cast<ConstantVar *>(rhs);
+                        assert(const_var);
+                        int32_t const_var_value = const_var->getIValue();
+                        if (isPowerOfTwo(const_var_value)) {
+                            pcnt = static_cast<int32_t>(std::log2(const_var_value));
+                            auto shift_var = new ConstantVar(pcnt);
+                            inst_uptr->replaceWithValue(const_var, shift_var);
+                            inst_uptr->setInstType(RshrType);
+                            has_changed_shift = true;
+                            // printf("%d replace by %d in inst %s for div\n", const_var_value, pcnt, inst_uptr->getName().c_str());
+                        }
+                    }
+                    if (auto lhs_inst = dynamic_cast<BinaryOpInstruction *>(lhs); lhs_inst && lhs_inst->getInstType() == MulType && !has_changed_shift) {
+                        auto lhs_lhs_value = lhs_inst->getLeft();
+                        auto lhs_rhs_value = lhs_inst->getRight();
+                        auto const_rhs_value = dynamic_cast<ConstantVar *>(rhs);
+                        if (rhs->getValueType() == ConstantValue) {
+                            if (auto const_lhs_lhs = dynamic_cast<ConstantVar *>(lhs_lhs_value); const_lhs_lhs && const_lhs_lhs->getIValue() == const_rhs_value->getIValue()) {
+                                // printf("binary inst %s replaced by %s\n", binary_inst->getName().c_str(), lhs_rhs_value->getName().c_str());
+                                replaced_map[binary_inst] = lhs_rhs_value;
+                            } else if (auto const_lhs_rhs = dynamic_cast<ConstantVar *>(lhs_rhs_value); const_lhs_rhs && const_lhs_rhs->getIValue() == const_rhs_value->getIValue()) {
+                                // printf("binary inst %s replaced by %s\n", binary_inst->getName().c_str(), lhs_lhs_value->getName().c_str());
+                                replaced_map[binary_inst] = lhs_lhs_value;
+                            }
+                        } else {
+                            if (lhs_lhs_value == rhs) {
+                                // printf("binary inst %s replaced by %s\n", binary_inst->getName().c_str(), lhs_rhs_value->getName().c_str());
+                                replaced_map[binary_inst] = lhs_rhs_value;
+                            } else if (lhs_rhs_value == rhs) {
+                                // printf("binary inst %s replaced by %s\n", binary_inst->getName().c_str(), lhs_lhs_value->getName().c_str());
+                                replaced_map[binary_inst] = lhs_lhs_value;
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        auto &insts_list = bb_uptr->getInstructionList();
+        for (auto &inst_uptr: insts_list) {
+            auto inst = inst_uptr.get();
+            if (replaced_map.find(inst) != replaced_map.end()) {
+                for (auto user: user_analysis.getUserInsts(inst)) {
+                    user->replaceWithValue(inst, replaced_map[inst]);
+                }
+            }
+        }
+    }
 
 }
