@@ -8,26 +8,35 @@
 #include "../ir/IrDumper.h"
 
 void MemoryAnalysis::visitBasicBlock(BasicBlock *basicblock) {
+    // printf("the curr block is %s, and memversion size is %d\n", basicblock->getName().c_str(), memversion_table_.back().size());
     auto &insts_list = basicblock->getInstructionList();
+    auto end_index = memversion_table_.size() - 1;
     for (auto &inst_uptr: insts_list) {
         if (auto store_inst = dynamic_cast<StoreInstruction *>(inst_uptr.get()); store_inst) {  // 更新version
             auto store_addr = store_inst->getPtr();
             removes_insts_.insert(store_inst);
-            auto &curr_table = memversion_table_.back();
-            curr_table[store_addr] = store_inst;
+            // printf("mem version table on %s has value %s\n", store_addr->getName().c_str(), store_inst->getValue()->getName().c_str());
+            memversion_table_[end_index][store_addr] = store_inst;
         }
         if (auto load_inst = dynamic_cast<LoadInstruction *>(inst_uptr.get()); load_inst) {
             auto load_ptr = load_inst->getPtr();
             auto &curr_table = memversion_table_.back();
-            if (curr_table.find(load_ptr) != curr_table.end() && curr_table[load_ptr] != nullptr) {        // 已经存在了，也就是需要进行替换的
-                replace_load_insts_[load_inst] = curr_table[load_ptr]->getValue();
+            if (curr_table.find(load_ptr) != curr_table.end() && curr_table[load_ptr] != nullptr) {// 已经存在了，也就是需要进行替换的
+                // printf("load inst %s replaced by %s\n", load_inst->getName().c_str(), curr_table[load_ptr]->getValue()->getName().c_str());
+                if (curr_table[load_ptr]->getInstType() == StoreType) {
+                    replace_load_insts_[load_inst] = dynamic_cast<StoreInstruction *>(curr_table[load_ptr])->getValue();
+                } else {
+                    replace_load_insts_[load_inst] = curr_table[load_ptr];
+                }
+            } else {
+                memversion_table_[end_index][load_inst->getPtr()] = load_inst;
             }
         }
         if (auto call_inst = dynamic_cast<CallInstruction *>(inst_uptr.get()); call_inst) {
              auto &curr_table = memversion_table_.back();
              for (auto &[addr, memvalue]: curr_table) {
                  removes_insts_.erase(memvalue);
-                 curr_table[addr] = nullptr;
+                 memversion_table_[end_index][addr] = nullptr;
              }
         }
     }

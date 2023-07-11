@@ -20,7 +20,7 @@ class StoreInstruction;
 class MemoryAnalysis: public Pass {
 public:
 
-    using MemVersionTable = std::unordered_map<Value *, StoreInstruction *>;
+    using MemVersionTable = std::unordered_map<Value *, Instruction *>;
 
     explicit MemoryAnalysis(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()) {}
 
