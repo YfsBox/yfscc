@@ -298,7 +298,7 @@ void FunctionInline::collectCaninlineFunctions() {
 }
 
 void FunctionInline::initForFunction() {
-    inline_point_cnt_ = 0;
+    // inline_point_cnt_ = 0;
     call_cnt_map_.clear();
     call_insts_for_inline_.clear();
     insert_point_nextit_map_.clear();
@@ -421,6 +421,7 @@ void FunctionInline::computeCallCnt() {
 void FunctionInline::collectCallPoint() {
 
     auto &blocks_list = curr_func_->getBlocks();
+    std::unordered_set<Function *> call_function_inlined;
     for (auto bb_it = blocks_list.begin(); bb_it != blocks_list.end(); ++bb_it) {
         bool has_inlined_in_bb = false;
         auto &bb = *bb_it;
@@ -432,9 +433,10 @@ void FunctionInline::collectCallPoint() {
                 continue;
             }
 
-            if (call_cnt_map_[call_inst->getFunction()] == 1 && canBeInline(call_inst->getFunction()) && !has_inlined_in_bb /*&& call_inst->getParent()->getWhileLoopDepth() > 0*/) {
+            if (call_cnt_map_[call_inst->getFunction()] <= 2 && !call_function_inlined.count(call_inst->getFunction()) && canBeInline(call_inst->getFunction()) && !has_inlined_in_bb /*&& call_inst->getParent()->getWhileLoopDepth() > 0*/) {
+                call_function_inlined.insert(call_inst->getFunction());
                 call_insts_for_inline_.insert(call_inst);
-                // printf("the function %s can be inlined in function %s\n", call_inst->getFunction()->getName().c_str(), curr_func_->getName().c_str());
+                // printf("the function %s can be inlined with cnt %d\n", call_inst->getFunction()->getName().c_str(), call_cnt_map_[call_inst->getFunction()]);
                 insert_point_nextit_map_[bb.get()] = bb_it;
                 has_inlined_in_bb = true;
             }
@@ -455,10 +457,9 @@ void FunctionInline::runOnFunction() {
     computeCallCnt();
     collectCallPoint();
     inlineOnFunction();
+    // printf("finish inline function......\n");
 
-    for (auto &bb: curr_func_->getBlocks()) {
-        bb->clearSuccessors();
-        bb->clearPresuccessors();
-    }
-    curr_func_->bindBasicBlocks();
+    curr_func_->rebuildCfg();
+
+    // ir_dumper_->dump(module_);
 }
