@@ -33,13 +33,13 @@ void SplitGEPInsts::findAndSplit() {
                     last_base = new_gep_inst;
                 }
 
-                ir_dumper_->dump(gep_inst);
+                /*ir_dumper_->dump(gep_inst);
                 printf("be split as here\n");
                 for (int i = 0; i < split_insts_map_[gep_inst].size(); ++i) {
                     ir_dumper_->dump(split_insts_map_[gep_inst][i]);
                 }
 
-                insert_point_map_[gep_inst] = inst_it;
+                insert_point_map_[gep_inst] = inst_it;*/
             }
         }
     }
