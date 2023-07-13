@@ -206,6 +206,12 @@ void ComputeLoops::computeLoopDepths() {
                 body->setWhileLoopDepth(basicblock_loopdepth_map_[body]);
             }
         }
+
+        auto loop_enter = loopinfos[i]->enter_block_;
+        if (loops_depth_[loop.get()] > basicblock_loopdepth_map_[loop_enter]) {
+            basicblock_loopdepth_map_[loop_enter] = loops_depth_[loop.get()];
+            loop_enter->setWhileLoopDepth(loops_depth_[loop.get()]);
+        }
     }
 }
 
