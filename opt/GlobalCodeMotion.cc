@@ -156,6 +156,7 @@ void GlobalCodeMotion::moveInsts() {
     for (auto &[basicblock, insts_list]: move_insts_map_) {
         auto &basicblock_insts_list = basicblock->getInstructionList();
         auto insert_it = basicblock_insts_list.begin();
+        std::unordered_set<Instruction *> late_insert_insts;
         for (; insert_it != basicblock_insts_list.end(); ++insert_it) {
             auto curr_inst = insert_it->get();
             if (curr_inst->getInstType() != PhiType) {
@@ -163,11 +164,36 @@ void GlobalCodeMotion::moveInsts() {
             }
         }
 
+        for (auto &inst: basicblock_insts_list) {
+            auto user_set = user_analysis_->getUserInsts(inst.get());
+            for (auto insert_inst: insts_list) {
+                if (user_set.count(insert_inst)) {
+                    late_insert_insts.insert(insert_inst);
+                }
+            }
+        }
+
         for (auto inst: insts_list) {
-            basicblock->insertInstruction(insert_it, inst);
+            if (!late_insert_insts.count(inst)) {
+                basicblock->insertInstruction(insert_it, inst);
+            }
             // printf("the inst size is %d\n", basicblock->getInstructionList().size());
         }
 
+        for (; insert_it != basicblock_insts_list.end(); ++insert_it) {
+            auto curr_inst = insert_it->get();
+            if (curr_inst->getInstType() == BrType) {
+                break;
+            }
+        }
+
+
+        for (auto inst: insts_list) {
+            if (late_insert_insts.count(inst)) {
+                basicblock->insertInstruction(insert_it, inst);
+            }
+            // printf("the inst size is %d\n", basicblock->getInstructionList().size());
+        }
         // ir_dumper_->dump(basicblock);
     }
 
