@@ -63,7 +63,7 @@ private:
 
     BasicBlock *curr_inlined_exit_basicblock_;
 
-    std::unordered_map<Function *, int> call_cnt_map_;
+    std::unordered_map<BasicBlock *, std::unordered_map<Function *, int>> call_cnt_map_;
 
     std::unique_ptr<CallGraphAnalysis> call_graph_analysis_;
 

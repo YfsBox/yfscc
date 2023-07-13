@@ -408,7 +408,7 @@ void FunctionInline::computeCallCnt() {
             auto inst = inst_uptr.get();
             if (auto call_inst = dynamic_cast<CallInstruction *>(inst); call_inst) {
                 auto call_func = call_inst->getFunction();
-                call_cnt_map_[call_func]++;
+                call_cnt_map_[bb.get()][call_func]++;
             }
         }
     }
@@ -433,7 +433,7 @@ void FunctionInline::collectCallPoint() {
                 continue;
             }
 
-            if (call_cnt_map_[call_inst->getFunction()] <= 1 && !call_function_inlined.count(call_inst->getFunction()) && canBeInline(call_inst->getFunction()) && !has_inlined_in_bb /*&& call_inst->getParent()->getWhileLoopDepth() > 0*/) {
+            if (call_cnt_map_[bb.get()][call_inst->getFunction()] <= 1 && !call_function_inlined.count(call_inst->getFunction()) && canBeInline(call_inst->getFunction()) && !has_inlined_in_bb /*&& call_inst->getParent()->getWhileLoopDepth() > 0*/) {
                 call_function_inlined.insert(call_inst->getFunction());
                 call_insts_for_inline_.insert(call_inst);
                 // printf("the function %s can be inlined with cnt %d\n", call_inst->getFunction()->getName().c_str(), call_cnt_map_[call_inst->getFunction()]);
