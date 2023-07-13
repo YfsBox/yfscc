@@ -56,6 +56,7 @@ set(IROPT_SRC
         opt/SimplifyPhiInsts.cc
         opt/GlobalValueNumber.cc
         opt/MemoryAnalysis.cc
+        opt/SplitGEPInsts.cc
 )
 
 set(BACKEND_SRC

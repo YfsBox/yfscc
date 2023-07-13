@@ -20,6 +20,7 @@
 #include "opt/SimplifyPhiInsts.h"
 #include "opt/GlobalValueNumber.h"
 #include "opt/MemoryAnalysis.h"
+#include "opt/SplitGEPInsts.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -93,6 +94,7 @@ int main(int argc, char **argv) {
     AlgebraicSimplify algebric_simplify(ir_module);
     SimplifyPhiInsts simplify_phiinsts(ir_module);
     MemoryAnalysis mem_analysis(ir_module);
+    SplitGEPInsts split_geps(ir_module);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
@@ -107,13 +109,14 @@ int main(int argc, char **argv) {
         gcm2.ir_dumper_ = new IrDumper(std::cout);
         mem_analysis.ir_dumper_ = new IrDumper(std::cout);
         gvn.ir_dumper_ = new IrDumper(std::cout);
+        split_geps.ir_dumper_ = new IrDumper(std::cout);
 
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&mem2reg);
 
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&function_inline);
-        pass_manager.addPass(&function_inline);
+        // pass_manager.addPass(&function_inline);
         pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&gvn);
         pass_manager.addPass(&svn2);
@@ -121,6 +124,8 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&gcm1);
 
         pass_manager.addPass(&dead_code_elim1);
+
+        pass_manager.addPass(&split_geps);
 
         pass_manager.addPass(&const_propagation);
         pass_manager.addPass(&dead_bb_elim);
