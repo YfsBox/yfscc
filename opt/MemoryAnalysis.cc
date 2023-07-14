@@ -85,7 +85,7 @@ void MemoryAnalysis::simplifyStoreSecondaryPtr() {
         for (auto &inst_uptr: insts_list) {
             auto inst = inst_uptr.get();
             if (auto store_inst = dynamic_cast<StoreInstruction *>(inst); store_inst && store_inst->getValue()->isPtr()) {
-                printf("the store %s to %s set in map\n", store_inst->getValue()->getName().c_str(), store_inst->getPtr()->getName().c_str());
+                // printf("the store %s to %s set in map\n", store_inst->getValue()->getName().c_str(), store_inst->getPtr()->getName().c_str());
                 store_ptr_map[store_inst->getPtr()] = store_inst->getValue();
             }
         }
@@ -97,7 +97,7 @@ void MemoryAnalysis::simplifyStoreSecondaryPtr() {
         for (auto &inst_uptr: insts_list) {
             auto inst = inst_uptr.get();
             if (auto load_inst = dynamic_cast<LoadInstruction *>(inst); load_inst && store_ptr_map.find(load_inst->getPtr()) != store_ptr_map.end()) {
-                printf("load %s replaced with %s\n", load_inst->getName().c_str(), store_ptr_map[load_inst->getPtr()]->getName().c_str());
+                // printf("load %s replaced with %s\n", load_inst->getName().c_str(), store_ptr_map[load_inst->getPtr()]->getName().c_str());
                 for (auto user_inst : user_analysis_->getUserInsts(load_inst)) {
                     user_inst->replaceWithValue(load_inst, store_ptr_map[load_inst->getPtr()]);
                 }
