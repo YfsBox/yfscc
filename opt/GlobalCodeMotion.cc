@@ -26,7 +26,7 @@ GlobalCodeMotion::GlobalCodeMotion(Module *module): Pass(module),
 bool GlobalCodeMotion::isPinned(const Value *value) {
     if (auto inst = dynamic_cast<const Instruction *>(value); inst) {
         auto inst_type = inst->getInstType();
-        return inst_type == PhiType || inst_type == RetType || inst_type == SetCondType
+        return inst_type == PhiType || inst_type == RetType || inst_type == SetCondType || inst_type == AllocaType
                || inst_type == BrType || inst_type == LoadType
                || inst_type == StoreType || (inst_type == CallType && callgraph_analysis_->hasSideEffect(dynamic_cast<const CallInstruction *>(inst)->getFunction()))
                || inst_type == MemSetType;
@@ -173,6 +173,17 @@ void GlobalCodeMotion::moveInsts() {
             }
         }
 
+        bool late_insert = false;
+        for (auto insert_inst: insts_list) {
+            if (late_insert_insts.count(insert_inst)) {
+                late_insert = true;
+            }
+            if (late_insert) {
+                late_insert_insts.insert(insert_inst);
+            }
+        }
+
+
         for (auto inst: insts_list) {
             if (!late_insert_insts.count(inst)) {
                 basicblock->insertInstruction(insert_it, inst);
@@ -287,11 +298,13 @@ void GlobalCodeMotion::scheduleLate(Instruction *inst) {
         // 选择一个block，此时block map中的block仍然是在early调度中的结果, lca可以视为范围中dom深度最浅的，而early中计算的则是depth最小的节点，在该范围内迭代。
         BasicBlock *best = lca;
         // printf("select a node between %s and %s for node %s in function %s\n", lca->getName().c_str(), inst_block_map_[inst]->getName().c_str(), inst->getName().c_str(), curr_func_->getName().c_str());
-        while (lca != inst_block_map_[inst]) {
+        while (true) {
             if (compute_loops_->getBasicBlockLoopDepth(lca) < compute_loops_->getBasicBlockLoopDepth(best)) {
                 best = lca;
             }
-            // printf("lca is %s and instlockmap is %s\n", lca->getName().c_str(), inst_block_map_[inst]->getName().c_str());
+            if (lca == inst_block_map_[inst]) {
+                break;
+            }
             lca = compute_doms_->getImmDomsMap(lca);
         }
         // printf("the best node is %s\n", best->getName().c_str());
