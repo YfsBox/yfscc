@@ -21,6 +21,7 @@
 #include "opt/GlobalValueNumber.h"
 #include "opt/MemoryAnalysis.h"
 #include "opt/SplitGEPInsts.h"
+#include "opt/CrazyWork.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -95,6 +96,7 @@ int main(int argc, char **argv) {
     SimplifyPhiInsts simplify_phiinsts(ir_module);
     MemoryAnalysis mem_analysis(ir_module);
     SplitGEPInsts split_geps(ir_module);
+    CrazyWork crazy_work(ir_module);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
@@ -163,9 +165,15 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&simplify_phiinsts);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&gcm2);
 
         pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&algebric_simplify);
+        pass_manager.addPass(&dead_code_elim1);
+
+        pass_manager.addPass(&crazy_work);
+        pass_manager.addPass(&branch_opt);
+        pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&dead_code_elim1);
 
     }
