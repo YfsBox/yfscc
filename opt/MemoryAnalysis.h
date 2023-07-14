@@ -38,6 +38,8 @@ private:
 
     void removeAndReplace();
 
+    void simplifyStoreSecondaryPtr();
+
     void allocateTable() {
         if (!memversion_table_.empty()) {
             memversion_table_.emplace_back(memversion_table_.back());
