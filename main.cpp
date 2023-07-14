@@ -180,7 +180,7 @@ int main(int argc, char **argv) {
     pass_manager.run();
     // irbuilder.dump();
 
-    CodeGen codegen(irbuilder.getIrModule());
+    CodeGen codegen(irbuilder.getIrModule(), enable_opt);
     codegen.codeGenerate();
 
     /*MachineDumper vmcdumper(codegen.getMCModule(), target_file + ".v");

@@ -51,7 +51,7 @@ public:
 
     using Value2MachineRegMap = std::unordered_map<Value *, MachineOperand *>;
 
-    CodeGen(Module *ir_module);
+    CodeGen(Module *ir_module, bool enable_opt);
 
     ~CodeGen() = default;
 
@@ -161,6 +161,8 @@ private:
     MachineOperand *value2MachineOperandForPhi(Value *value, MachineBasicBlock *basic_block, std::vector<MachineInst *> *move_insts);
 
     MachineOperand *codeGenForDivConst(BinaryOpInstruction *binst, Value *left, Value *right);
+
+    bool enable_opt_;
 
     int virtual_reg_id_;
 

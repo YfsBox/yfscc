@@ -118,7 +118,8 @@ static void getDimensionBasesSize(const std::vector<int32_t> &dimension_number, 
     dimension_bases[0] = product;
 }
 
-CodeGen::CodeGen(Module *ir_module):
+CodeGen::CodeGen(Module *ir_module, bool enable_opt):
+    enable_opt_(enable_opt),
     virtual_reg_id_(-1),
     stack_offset_(0),
     sp_reg_(nullptr),
@@ -531,7 +532,7 @@ void CodeGen::visit(GEPInstruction *inst) {
 
             auto mul_src_operand = constant2VirtualReg(addbase_offset * 4, true, curr_machine_basic_block_);
 
-            if (auto mul_src_imm = dynamic_cast<ImmNumber *>(mul_src_operand); mul_src_imm && is_power_oftwo(mul_src_imm->getIValue())) {
+            if (auto mul_src_imm = dynamic_cast<ImmNumber *>(mul_src_operand); mul_src_imm && enable_opt_ && is_power_oftwo(mul_src_imm->getIValue())) {
                 auto power_cnt = static_cast<int32_t>(std::log2(mul_src_imm->getIValue()));
                 // printf("the imm is %d\n", dynamic_cast<ImmNumber *>(mul_src_imm)->getIValue());
                 auto base_add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, dst_base_reg, dst_base_reg, const_index_reg, power_cnt, true);
