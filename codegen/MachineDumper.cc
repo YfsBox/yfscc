@@ -254,7 +254,11 @@ void MachineDumper::dump(const BinaryInst *inst) {
     fout_ << ", ";
     dump(inst->getRight());
     if (inst->getRhsLsr()) {
-        fout_ << " , lsr #" << inst->getRhsLsr();
+        if (!inst->isLsl()) {
+            fout_ << ", lsr #" << inst->getRhsLsr();
+        } else {
+            fout_ << ", lsl #" << inst->getRhsLsr();
+        }
     }
     fout_ << "\n";
 }

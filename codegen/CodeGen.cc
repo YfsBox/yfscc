@@ -1,6 +1,7 @@
 //
 // Created by 杨丰硕 on 2023/5/2.
 //
+#include <cmath>
 #include "CodeGen.h"
 #include "MachineOperand.h"
 #include "../ir/Module.h"
@@ -505,6 +506,10 @@ void CodeGen::visit(GEPInstruction *inst) {
     std::vector<int32_t> array_base_offsets;
     getDimensionBasesSize(array_dimension, array_base_offsets);
 
+    auto is_power_oftwo = [](int32_t num) {
+        return num > 0 && (num & (num - 1)) == 0;
+    };
+
     for (int i = 0; i < index_size; ++i) {
         auto index = inst->getIndexValue(i);
         int32_t addbase_offset = array_base_offsets[i];
@@ -523,14 +528,26 @@ void CodeGen::visit(GEPInstruction *inst) {
             if (tmp_mul_dst == nullptr) {
                 tmp_mul_dst = createVirtualReg(MachineOperand::Int);
             }
-            auto mov_to_mul_dst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, constant2VirtualReg(addbase_offset * 4, true, curr_machine_basic_block_), tmp_mul_dst);
-            addMachineInst(mov_to_mul_dst);
 
-            auto mul_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IMul, tmp_mul_dst, tmp_mul_dst, const_index_reg);
-            addMachineInst(mul_inst);
+            auto mul_src_operand = constant2VirtualReg(addbase_offset * 4, true, curr_machine_basic_block_);
 
-            auto base_add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, dst_base_reg, dst_base_reg, tmp_mul_dst);
-            addMachineInst(base_add_inst);
+            if (auto mul_src_imm = dynamic_cast<ImmNumber *>(mul_src_operand); mul_src_imm && is_power_oftwo(mul_src_imm->getIValue())) {
+                auto power_cnt = static_cast<int32_t>(std::log2(mul_src_imm->getIValue()));
+                // printf("the imm is %d\n", dynamic_cast<ImmNumber *>(mul_src_imm)->getIValue());
+                auto base_add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, dst_base_reg, dst_base_reg, const_index_reg, power_cnt, true);
+
+                addMachineInst(base_add_inst);
+            } else {
+                auto mov_to_mul_dst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, mul_src_operand, tmp_mul_dst);
+                addMachineInst(mov_to_mul_dst);
+
+                auto mul_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IMul, tmp_mul_dst, tmp_mul_dst, const_index_reg);
+                addMachineInst(mul_inst);
+
+                auto base_add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, dst_base_reg, dst_base_reg, tmp_mul_dst);
+                addMachineInst(base_add_inst);
+
+            }
         }
     }
 

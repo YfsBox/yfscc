@@ -205,7 +205,7 @@ public:
         IRsb,
     };
 
-    BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *lhs, MachineOperand *rhs, int rhs_lsr = 0);
+    BinaryInst(MachineBasicBlock *parent, BinaryOp op, MachineOperand *dst, MachineOperand *lhs, MachineOperand *rhs, int rhs_lsr = 0, bool is_lsl = false);
 
     ~BinaryInst();
 
@@ -244,8 +244,13 @@ public:
         return with_rhs_lsr_;
     }
 
+    bool isLsl() const {
+        return is_lsl_;
+    }
+
 private:
     int with_rhs_lsr_;          // add  r0, r0, r1, lsr #22
+    bool is_lsl_;
     BinaryOp binary_op_type_;
     OperandPtr dst_;
     OperandPtr lhs_;
