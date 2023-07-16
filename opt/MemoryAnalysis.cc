@@ -79,14 +79,21 @@ void MemoryAnalysis::simplifyStoreSecondaryPtr() {
     // 首先收集Store指令
 
     std::unordered_map<Value *, Value *> store_ptr_map;
+    std::unordered_set<Instruction *> dead_store_insts;
+
+    // printf("begin simplify secondry ptr\n");
 
     for (auto &bb_uptr: curr_func_->getBlocks()) {
         auto &insts_list = bb_uptr->getInstructionList();
         for (auto &inst_uptr: insts_list) {
             auto inst = inst_uptr.get();
-            if (auto store_inst = dynamic_cast<StoreInstruction *>(inst); store_inst && store_inst->getValue()->isPtr()) {
-                // printf("the store %s to %s set in map\n", store_inst->getValue()->getName().c_str(), store_inst->getPtr()->getName().c_str());
-                store_ptr_map[store_inst->getPtr()] = store_inst->getValue();
+            if (auto store_inst = dynamic_cast<StoreInstruction *>(inst); store_inst && dynamic_cast<AllocaInstruction *>(store_inst->getPtr())) {
+                auto alloca_ptr = dynamic_cast<AllocaInstruction *>(store_inst->getPtr());
+                if (alloca_ptr->isPtrPtr()) {
+                    // printf("the store %s to %s set in map\n", store_inst->getValue()->getName().c_str(), store_inst->getPtr()->getName().c_str());
+                    store_ptr_map[store_inst->getPtr()] = store_inst->getValue();
+                    dead_store_insts.insert(store_inst);
+                }
             }
         }
     }
@@ -106,6 +113,21 @@ void MemoryAnalysis::simplifyStoreSecondaryPtr() {
     }
 
     // 将load的结果进行替换
+
+    /*for (auto &bb_uptr: curr_func_->getBlocks()) {
+        auto &insts_list = bb_uptr->getInstructionList();
+        for (auto inst_it = insts_list.begin(); inst_it != insts_list.end(); ) {
+            auto inst = inst_it->get();
+            if (dead_store_insts.count(inst)) {
+                auto store_inst = dynamic_cast<StoreInstruction *>(inst);
+                printf("store %s to %s inst delete in function %s\n", store_inst->getValue()->getName().c_str(),
+                       store_inst->getPtr()->getName().c_str(), curr_func_->getName().c_str());
+                inst_it = insts_list.erase(inst_it);
+            } else {
+                ++inst_it;
+            }
+        }
+    }*/
 
 }
 
