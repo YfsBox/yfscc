@@ -21,6 +21,10 @@ protected:
 
     void global2Const();
 
+    void global2Reg();
+
+    void crazyInline();
+
     void runOnFunction() override;
 
 private:
