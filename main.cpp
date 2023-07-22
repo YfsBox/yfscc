@@ -96,7 +96,10 @@ int main(int argc, char **argv) {
     SimplifyPhiInsts simplify_phiinsts(ir_module);
     MemoryAnalysis mem_analysis(ir_module);
     SplitGEPInsts split_geps(ir_module);
-    CrazyWork crazy_work(ir_module);
+    CrazyWork crazy_work1(ir_module);
+    crazy_work1.setPre(true);
+    CrazyWork crazy_work2(ir_module);
+    crazy_work2.setPre(false);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
@@ -115,14 +118,23 @@ int main(int argc, char **argv) {
 
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&mem2reg);
-
-        pass_manager.addPass(&dead_code_elim);
-        pass_manager.addPass(&function_inline);
         // pass_manager.addPass(&function_inline);
-        pass_manager.addPass(&dead_code_elim1);
+        // pass_manager.addPass(&function_inline);
         pass_manager.addPass(&gvn);
         pass_manager.addPass(&svn2);
         pass_manager.addPass(&dead_code_elim1);
+
+
+        pass_manager.addPass(&mem_analysis);
+        pass_manager.addPass(&dead_code_elim);
+        pass_manager.addPass(&crazy_work1);
+        pass_manager.addPass(&dead_code_elim);
+
+        for (int i = 0; i < 4; ++i) {
+            pass_manager.addPass(&function_inline);
+            pass_manager.addPass(&dead_code_elim1);
+        }
+
         pass_manager.addPass(&gcm1);
 
         pass_manager.addPass(&dead_code_elim1);
@@ -171,7 +183,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&dead_code_elim1);
 
-        pass_manager.addPass(&crazy_work);
+        pass_manager.addPass(&crazy_work2);
         pass_manager.addPass(&branch_opt);
         pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&dead_code_elim1);

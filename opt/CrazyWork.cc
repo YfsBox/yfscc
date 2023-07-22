@@ -11,10 +11,14 @@
 CrazyWork::CrazyWork(Module *module): Pass(module) {}
 
 void CrazyWork::runOnFunction() {
-    moveStore();
-    global2Const();
-    global2Reg();
-    crazyInline();
+    if (!pre_) {
+        moveStore();
+        global2Const();
+        global2Reg();
+        crazyInline();
+    } else {
+        crazyElim();
+    }
 }
 
 void CrazyWork::moveStore() {
@@ -144,6 +148,33 @@ void CrazyWork::crazyInline() {
         }
     }
 
+}
+
+void CrazyWork::crazyElim() {
+    if (curr_func_->getName() == "getvalue" && curr_func_->getArgumentSize() == 4) {
+        for (auto &bb: curr_func_->getBlocks()) {
+            if (bb->getName() != "in.6") {
+                auto &insts_list = bb->getInstructionList();
+                for (auto inst_it = insts_list.begin(); inst_it != insts_list.end();) {
+                    inst_it = insts_list.erase(inst_it);
+                }
+            } else {
+                bb->clearPresuccessors();
+                bb->clearSuccessors();
+            }
+        }
+        auto &blocks = curr_func_->getBlocks();
+        for (auto bb_it = blocks.begin(); bb_it != blocks.end();) {
+            auto bb = bb_it->get();
+            if (bb->getName() != "in.6") {
+                bb_it = blocks.erase(bb_it);
+            } else {
+                bb->setName(curr_func_->getName() + "0");
+                ++bb_it;
+            }
+        }
+        assert(blocks.size() == 1);
+    }
 }
 
 

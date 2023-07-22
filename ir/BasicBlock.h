@@ -132,6 +132,10 @@ public:
         instructions_.push_front(std::unique_ptr<Instruction>(dynamic_cast<Instruction *>(instruction)));
     }
 
+    void setName(const std::string &name) {
+        name_ = name;
+    }
+
     void insertInstruction(InstructionListIt inst_it, Instruction *inst);
 
 private:

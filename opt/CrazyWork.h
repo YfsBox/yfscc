@@ -15,6 +15,10 @@ public:
 
     ~CrazyWork() = default;
 
+    void setPre(bool pre) {
+        pre_ = pre;
+    }
+
 protected:
 
     void moveStore();
@@ -25,9 +29,13 @@ protected:
 
     void crazyInline();
 
+    void crazyElim();
+
     void runOnFunction() override;
 
 private:
+
+    bool pre_;
 };
 
 
