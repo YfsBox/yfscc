@@ -31,6 +31,8 @@ protected:
 
     void crazyElim();
 
+    void crazyBranch();
+
     void runOnFunction() override;
 
 private:

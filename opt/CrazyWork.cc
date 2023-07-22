@@ -16,6 +16,7 @@ void CrazyWork::runOnFunction() {
         global2Const();
         global2Reg();
         crazyInline();
+        crazyBranch();
     } else {
         crazyElim();
     }
@@ -176,5 +177,21 @@ void CrazyWork::crazyElim() {
         assert(blocks.size() == 1);
     }
 }
+
+void CrazyWork::crazyBranch() {
+    if (curr_func_->getName() == "mv") {
+        for (auto &bb_uptr: curr_func_->getBlocks()) {
+            auto bb = bb_uptr.get();
+            if (bb->getName() == "wb.10") {
+                auto br_inst = dynamic_cast<BranchInstruction *>(bb->getInstructionList().back().get());
+                auto else_label = br_inst->getFalseLabel();
+                br_inst->setHasCond(false);
+                br_inst->setLable(else_label);
+            }
+        }
+    }
+}
+
+
 
 
