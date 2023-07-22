@@ -32,7 +32,7 @@ void MemoryAnalysis::visitBasicBlock(BasicBlock *basicblock) {
                 memversion_table_[end_index][load_inst->getPtr()] = load_inst;
             }
         }
-        if (auto call_inst = dynamic_cast<CallInstruction *>(inst_uptr.get()); call_inst) {
+        if (auto call_inst = dynamic_cast<CallInstruction *>(inst_uptr.get()); call_inst && call_graph_analysis_->hasSideEffect(call_inst->getFunction())) {
              auto &curr_table = memversion_table_.back();
              for (auto &[addr, memvalue]: curr_table) {
                  removes_insts_.erase(memvalue);
@@ -167,6 +167,7 @@ void MemoryAnalysis::runOnFunction() {
     memversion_table_.clear();
 
     user_analysis_->analysis(curr_func_);
+    call_graph_analysis_->analysis();
 
     auto enter_block = curr_func_->getBlocks().begin()->get();
     work_list_.push_back(enter_block);

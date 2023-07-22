@@ -11,18 +11,20 @@
 #include <memory>
 #include "PassManager.h"
 #include "GlobalAnalysis.h"
+#include "CallGraphAnalysis.h"
 
 class Value;
 class BasicBlock;
 class Instruction;
 class StoreInstruction;
+class CallGraphAnalysis;
 
 class MemoryAnalysis: public Pass {
 public:
 
     using MemVersionTable = std::unordered_map<Value *, Instruction *>;
 
-    explicit MemoryAnalysis(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()) {}
+    explicit MemoryAnalysis(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()), call_graph_analysis_(std::make_unique<CallGraphAnalysis>(module_)) {}
 
     ~MemoryAnalysis() = default;
 
@@ -53,6 +55,8 @@ private:
     }
 
     std::unique_ptr<UserAnalysis> user_analysis_;
+
+    std::unique_ptr<CallGraphAnalysis> call_graph_analysis_;
 
     std::unordered_map<Value *, Value *> replace_load_insts_;
 
