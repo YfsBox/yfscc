@@ -160,16 +160,18 @@ void LoopUnrolling::copyOneBasicBlockForFullUnroll(const std::list<Instruction *
         if (inst->getInstType() == BrType) {
             continue;
         }
-        auto *iterate_inst = dynamic_cast<BinaryOpInstruction *>(unrolling_info.iterator_inst);
-        assert(iterate_inst);
         Instruction *copy_inst = nullptr;
         std::string new_inst_name = inst->getName() + ".lu" + std::to_string(unroll_index);
-        auto use_vars = inst->getUses();
            // 其他情况下直接拷贝
         copy_inst = getCopyInstruction(inst, basicblock, new_inst_name);
 
         assert(copy_inst);
         copy_insts_map_[inst] = copy_inst;
+    }
+
+    for (auto &[phi_inst, iterate_inst]: unrolling_info.loopinfo_->iterator_var_phi_insts_) {
+        last_iterate_var_map_[phi_inst] = copy_insts_map_[iterate_inst];
+        printf("the phi inst %s has iterator %s\n", phi_inst->getName().c_str(), last_iterate_var_map_[phi_inst]->getName().c_str());
     }
 }
 
@@ -242,6 +244,28 @@ void LoopUnrolling::replaceVarInNextBlock(const LoopUnrollingInfo &unrollingInfo
     }
 }
 
+void LoopUnrolling::insertCopyInsts(const std::list<Instruction *> &origin_insts, BasicBlock *target_block, BasicBlock::InstructionListIt *insert_it) {
+    assert(origin_insts.size() > 0);
+    std::vector<Instruction *> inserted_insts;
+    inserted_insts.reserve(origin_insts.size());
+    for (auto inst: origin_insts) {
+        auto copy_inst = dynamic_cast<Instruction *>(copy_insts_map_[inst]);
+        if (copy_inst) {
+            inserted_insts.push_back(copy_inst);
+        }
+    }
+
+    if (insert_it) {
+        for (auto insert_inst: inserted_insts) {
+            target_block->insertInstruction(*insert_it, insert_inst);
+        }
+    } else {
+        for (auto insert_inst: inserted_insts) {
+            target_block->addInstruction(insert_inst);
+        }
+    }
+}
+
 void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
     if (loopinfo->has_ret_or_break_) {
         return;
@@ -286,26 +310,8 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
             setLastIterateVarMap(unrolling_info.loopinfo_);
             for (int i = 1; i < unrolling_info.cal_iteratorions_cnt_; ++i) {
                 copy_insts_map_.clear();
-                std::list<Instruction *> unroll_insts;
-                copy_insts_map_[main_index_phi_var] = curr_condition_var_;
                 copyOneBasicBlockForFullUnroll(origin_insts, body_basicblock, i, unrolling_info);
-                for (auto &[phi_inst, iterate_inst]: unrolling_info.loopinfo_->iterator_var_phi_insts_) {
-                    last_iterate_var_map_[phi_inst] = copy_insts_map_[iterate_inst];
-                }
-
-                std::vector<Instruction *> inserted_insts;
-                inserted_insts.reserve(body_basicblock->getInstructionSize());
-                for (auto &inst_uptr: body_basicblock->getInstructionList()) {
-                    auto inst = inst_uptr.get();
-                    auto copy_inst = dynamic_cast<Instruction *>(copy_insts_map_[inst]);
-                    if (copy_inst) {
-                        inserted_insts.push_back(copy_inst);
-                    }
-                }
-
-                for (auto insert_inst: inserted_insts) {
-                    body_basicblock->insertInstruction(branch_inst_it, insert_inst);
-                }
+                insertCopyInsts(origin_insts, body_basicblock, &branch_inst_it);
             }
             replaceVarInNextBlock(unrolling_info, body_basicblock);
             replaceWithConstForFullUnroll(unrolling_info);
@@ -366,12 +372,159 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
             replaceVarInNextBlock(unrolling_info, pre_bb_for_next);
             replaceWithConstForFullUnroll(unrolling_info);
         }
-    } else if (isNotFixedIterations(loopinfo)) {
+    } else if (unrolling_info.limit_value_) {        // 限制为+1，或者-1的
+        // 首先修改原循环的条件，以及stride，展开四部时，一般只需要条件修改为-3，并且把拷贝出来的部分插入就可以了
+        printf("the loop enter block is %s, and the limit value is %s\n",
+               unrolling_info.loopinfo_->enter_block_->getName().c_str(), unrolling_info.limit_value_->getName().c_str());
+        // 需要加一个限制，那就是比较符号的限制
+        if (loopinfo->loop_body_.size() == 1) {
+            // 根据原本循环的方式拷贝得到一个小循环，小循环
+            std::unordered_set<BasicBlock *> tail_loop;
+
+            // 在原有循环的基础上进行加四，展开
+            auto body_basicblock = *loopinfo->loop_body_.begin();
+            // 设置末尾的跳转语句，从而切换到next
+            auto body_branch_inst = dynamic_cast<BranchInstruction *>(body_basicblock->getInstructionList().back().get());
+            assert(body_branch_inst);
+
+            // 获取末尾branch的迭代器，用来插入循环展开的指令
+            auto branch_inst_it = body_basicblock->getInstructionList().end();
+            branch_inst_it--;
+
+            assert(branch_inst_it->get() == body_branch_inst);
+            // 收集原是的循环的指令
+            std::list<Instruction *> origin_insts;
+            for (auto &inst_uptr: body_basicblock->getInstructionList()) {
+                origin_insts.push_back(inst_uptr.get());
+            }
+            std::list<Instruction *> enter_origin_insts;
+            for (auto &inst_uptr: loopinfo->enter_block_->getInstructionList()) {
+                enter_origin_insts.push_back(inst_uptr.get());
+            }
+            setLastIterateVarMap(unrolling_info.loopinfo_);
+
+            for (int i = 1; i < 4; ++i) {
+                copy_insts_map_.clear();
+                copyOneBasicBlockForFullUnroll(origin_insts, body_basicblock, i, unrolling_info);
+                insertCopyInsts(origin_insts, body_basicblock, &branch_inst_it);
+            }
+            auto tail_start_block = new BasicBlock(curr_func_, loopinfo->enter_block_->getName() + ".ul");
+            auto tail_body_block = new BasicBlock(curr_func_, body_basicblock->getName() + ".ul");
+            // 设置enter block中的phi指令
+
+            auto &enter_block_insts = loopinfo->enter_block_->getInstructionList();
+            auto inst_it = enter_block_insts.begin();
+            auto new_limit_value = new BinaryOpInstruction(SubType, BasicType::INT_BTYPE, loopinfo->enter_block_, unrolling_info.limit_value_, new ConstantVar(3), unrolling_info.limit_value_->getName() + ".ul");
+            BranchInstruction *enter_br_inst = nullptr;
+            SetCondInstruction *enter_setcond_inst = nullptr;
+            for (; inst_it != enter_block_insts.end(); ++inst_it) {
+                auto inst = inst_it->get();
+                if (inst->getInstType() == PhiType) {
+                    auto phi_inst = dynamic_cast<PhiInstruction *>(inst);
+                    for (int i = 0; i < phi_inst->getSize(); ++i) {
+                        auto vb_pair = phi_inst->getValueBlock(i);
+                        if (vb_pair.second == body_basicblock) {
+                            phi_inst->replaceWithValue(vb_pair.first, copy_insts_map_[vb_pair.first]);
+                        }
+                    }
+                } else if (inst->getInstType() == SetCondType) {
+                    enter_setcond_inst = dynamic_cast<SetCondInstruction *>(inst);
+                    inst->replaceWithValue(unrolling_info.limit_value_, new_limit_value);
+                    break;
+                }
+            }
+            // enter_br_inst->replaceWithValue(next_block_value, tail_start_block);
+            loopinfo->enter_block_->insertInstruction(inst_it++, new_limit_value);
+            enter_br_inst = dynamic_cast<BranchInstruction *>(inst_it->get());
+            auto next_block_value = enter_br_inst->getTrueLabel() == body_basicblock ? enter_br_inst->getFalseLabel(): enter_br_inst->getTrueLabel();
+            enter_br_inst->replaceWithValue(next_block_value, tail_start_block);
+            // 还需要调整branch
+            copy_insts_map_[body_basicblock] = tail_body_block;
+            copy_insts_map_[loopinfo->enter_block_] = tail_start_block;
+            // 在主循环后边插入之前拷贝的部分
+
+            for (auto enter_origin_inst: enter_origin_insts) {
+                ir_dumper_->dump(enter_origin_inst);
+            }
+            last_iterate_var_map_.clear();
+            copyOneBasicBlockForFullUnroll(enter_origin_insts, tail_start_block, 0, unrolling_info);
+            insertCopyInsts(enter_origin_insts, tail_start_block, nullptr);
+            // auto tail_enter_br_inst = new BranchInstruction();
+            // 加入enter br inst
+            auto origin_enter_br_inst = dynamic_cast<BranchInstruction *>(enter_origin_insts.back());
+            assert(origin_enter_br_inst);
+            auto tail_enter_br_inst = new BranchInstruction(tail_start_block,
+                                                            copy_insts_map_[origin_enter_br_inst->getCond()],
+                                                            copy_insts_map_[origin_enter_br_inst->getTrueLabel()],
+                                                            next_block_value);
+            tail_start_block->setBranchInst(tail_enter_br_inst);
+            tail_start_block->addInstruction(tail_enter_br_inst);
+            assert(!tail_start_block->getInstructionList().empty());
+
+            ComputeLoops::LoopInfoPtr tmp_loop_info = std::make_shared<ComputeLoops::LoopInfo>();
+            tmp_loop_info->enter_block_ = tail_start_block;
+            tmp_loop_info->exit_block_ = tail_body_block;
+            tmp_loop_info->setInteratorVarPhiInsts();
+
+            last_iterate_var_map_.clear();
+            setLastIterateVarMap(tmp_loop_info);
+
+            for (auto &[phi_inst, var]: tmp_loop_info->iterator_var_phi_insts_) {
+                // printf("%s and %s\n", phi_inst->getName().c_str(), var->getName().c_str());
+                last_iterate_var_map_[phi_inst] = phi_inst;
+                copy_insts_map_[phi_inst] = phi_inst;
+            }
+
+            copyOneBasicBlockForFullUnroll(origin_insts, tail_body_block, 0, unrolling_info);
+            insertCopyInsts(origin_insts, tail_body_block, nullptr);
+            auto tail_body_br_inst = new BranchInstruction(tail_body_block, tail_start_block);
+            tail_body_block->setBranchInst(tail_body_br_inst);
+            tail_body_block->addInstruction(tail_body_br_inst);
+            assert(!tail_body_block->getInstructionList().empty());
+            // 调整tail start中的phi以及br指令
+            std::unordered_map<PhiInstruction *, PhiInstruction *> enter_phi_copy_map;
+            for (auto &[value, copy_value]: copy_insts_map_) {
+                if (auto phi_inst = dynamic_cast<PhiInstruction *>(value); phi_inst && phi_inst->getParent() == loopinfo->enter_block_) {
+                    enter_phi_copy_map[dynamic_cast<PhiInstruction *>(copy_value)] = phi_inst;
+                    printf("phi inst copy value %s and %s\n", copy_value->getName().c_str(), phi_inst->getName().c_str());
+                }
+            }
 
 
+            for (auto &iter_pair: tmp_loop_info->iterator_var_phi_insts_) {
+                auto origin_phi_inst = enter_phi_copy_map[iter_pair.first];
+                for (int i = 0; i < iter_pair.first->getSize(); ++i) {
+                    auto value_bb = iter_pair.first->getValueBlock(i);
+                    if (value_bb.second != tail_body_block) {
+                        iter_pair.first->replaceWithValue(value_bb.second, loopinfo->enter_block_);
+                        iter_pair.first->replaceWithValue(value_bb.first, origin_phi_inst);
+                    } else {
+                        iter_pair.first->replaceWithValue(value_bb.first, last_iterate_var_map_[origin_phi_inst]);
+                    }
+                }
+            }
 
+            // 获取tail start中的set cond指令
+            auto tail_enter_setcond_inst = dynamic_cast<SetCondInstruction *>(copy_insts_map_[enter_setcond_inst]);
+            tail_enter_setcond_inst->replaceWithValue(new_limit_value, unrolling_info.limit_value_);
+
+            ir_dumper_->dump(tail_start_block);
+            ir_dumper_->dump(tail_body_block);
+
+            // 寻找basic block的插入点
+            auto blocks_insert_it = curr_func_->getBlocks().begin();
+            for (; blocks_insert_it != curr_func_->getBlocks().end(); ++blocks_insert_it) {
+                auto block = blocks_insert_it->get();
+                printf("the block is %s\n", block->getName().c_str());
+                if (block == body_basicblock) {
+                    break;
+                }
+            }
+            blocks_insert_it++;
+            curr_func_->insertBlock(blocks_insert_it, tail_start_block);
+            curr_func_->insertBlock(blocks_insert_it, tail_body_block);
+        }
     }
-
 
 }
 
@@ -380,25 +533,49 @@ bool LoopUnrolling::isFixedIterations(const ComputeLoops::LoopInfoPtr &loopinfo,
     auto cmp_lhs = cmp_inst->getLeft();
     auto cmp_rhs = cmp_inst->getRight();
     auto phi_value_inst = loopinfo->getCondVarPhiInst();
-    if (phi_value_inst->getSize() != 2) {
+    if (phi_value_inst && phi_value_inst->getSize() != 2) {
+        // printf("phi value size is %d\n", phi_value_inst->getSize());
         return false;
     }
     int32_t loop_limit_value;
     int32_t init_value;
 
     Value *value_from_body = nullptr;
+    Value *loop_limit_value_nonconst = nullptr;
     BasicBlock *bb_from_body = nullptr;
+    // printf("the cmp inst is %s, and lhs is %s, rhs is %s\n", cmp_inst->getName().c_str(), cmp_lhs->getName().c_str(), cmp_rhs->getName().c_str());
     if (cmp_lhs->getValueType() == ConstantValue) {
         auto lhs_const_value = dynamic_cast<ConstantVar *>(cmp_lhs);
         loop_limit_value = lhs_const_value->getIValue();
-    } else {
+    } else if (cmp_rhs->getValueType() == ConstantValue) {
         auto rhs_const_value = dynamic_cast<ConstantVar *>(cmp_rhs);
         loop_limit_value = rhs_const_value->getIValue();
+    } else {
+        // 一个是循环内部，一个是循环外部的
+        if (cmp_lhs->getValueType() == InstructionValue && cmp_rhs->getValueType() == InstructionValue) {
+            auto cmp_lhs_inst = dynamic_cast<Instruction *>(cmp_lhs);
+            auto cmp_rhs_inst = dynamic_cast<Instruction *>(cmp_rhs);
+
+            auto lhs_in_loop = loopinfo->isInLoop(cmp_lhs_inst->getParent());
+            auto rhs_in_loop = loopinfo->isInLoop(cmp_rhs_inst->getParent());
+
+            if (lhs_in_loop && !rhs_in_loop) {
+                loop_limit_value_nonconst = cmp_rhs;
+            } else if (!lhs_in_loop && rhs_in_loop) {
+                loop_limit_value_nonconst = cmp_lhs;
+            }
+
+        } else if (cmp_lhs->getValueType() == InstructionValue) {
+            loop_limit_value_nonconst = cmp_rhs;
+        } else if (cmp_rhs->getValueType() == InstructionValue) {
+            loop_limit_value_nonconst = cmp_lhs;
+        }
     }
 
     auto phi_bb_value_pair0 = phi_value_inst->getValueBlock(0);
     auto phi_bb_value_pair1 = phi_value_inst->getValueBlock(1);
 
+    // printf("check the phi inst %s init value\n", phi_value_inst->getName().c_str());
     if (phi_bb_value_pair0.first->getValueType() == ConstantValue) {
         init_value = dynamic_cast<ConstantVar *>(phi_bb_value_pair0.first)->getIValue();
         value_from_body = phi_bb_value_pair1.first;
@@ -408,6 +585,7 @@ bool LoopUnrolling::isFixedIterations(const ComputeLoops::LoopInfoPtr &loopinfo,
         value_from_body = phi_bb_value_pair0.first;
         bb_from_body = phi_bb_value_pair0.second;
     } else {
+        // printf("the init value is not const for phi inst %s\n", phi_value_inst->getName().c_str());
         return false;
     }           // 如果两边都没有这样的常量值，也就是说明循环的次数无法在编译期间确定
 
@@ -444,13 +622,19 @@ bool LoopUnrolling::isFixedIterations(const ComputeLoops::LoopInfoPtr &loopinfo,
 
     unrolling_info.init_value_ = init_value;
     unrolling_info.limit_ = loop_limit_value;
+    unrolling_info.limit_value_ = loop_limit_value_nonconst;
     unrolling_info.stride_ = stride_cnt;
     unrolling_info.iterator_inst = binary_inst;
 
     auto cmp_type = cmp_inst->getCmpType();
-    unrolling_info.cal_iteratorions_cnt_ = std::abs((loop_limit_value - init_value) / stride_cnt);
-    if (cmp_type == SetCondInstruction::SetLE || cmp_type == SetCondInstruction::SetGE) {
-        unrolling_info.cal_iteratorions_cnt_++;
+
+    if (!unrolling_info.limit_value_) {
+        unrolling_info.cal_iteratorions_cnt_ = std::abs((loop_limit_value - init_value) / stride_cnt);
+        if (cmp_type == SetCondInstruction::SetLE || cmp_type == SetCondInstruction::SetGE) {
+            unrolling_info.cal_iteratorions_cnt_++;
+        }
+    } else {
+        return false;
     }
 
     return true;
@@ -498,5 +682,6 @@ void LoopUnrolling::runOnFunction() {
     }
 
     curr_func_->rebuildCfg();
+    printf("loop unrolling ok\n");
 
 }

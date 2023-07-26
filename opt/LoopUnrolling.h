@@ -28,7 +28,7 @@ private:
 
     struct LoopUnrollingInfo {
 
-        explicit LoopUnrollingInfo(const ComputeLoops::LoopInfoPtr &loopinfo): loopinfo_(loopinfo), iterator_inst(nullptr) {}
+        explicit LoopUnrollingInfo(const ComputeLoops::LoopInfoPtr &loopinfo): loopinfo_(loopinfo), iterator_inst(nullptr), limit_value_(nullptr) {}
 
         ~LoopUnrollingInfo() = default;
 
@@ -37,6 +37,8 @@ private:
         Instruction *iterator_inst;
 
         int32_t limit_;
+
+        Value *limit_value_;
 
         int32_t stride_;
 
@@ -67,6 +69,8 @@ private:
     bool isNotFixedIterations(const ComputeLoops::LoopInfoPtr &loopinfo) const;
 
     void setCopyUnfinished(const std::vector<BasicBlock *> &new_basicblocks);
+
+    void insertCopyInsts(const std::list<Instruction *> &origin_insts, BasicBlock *target_block, BasicBlock::InstructionListIt *insert_it = nullptr);
 
     void unroll(ComputeLoops::LoopInfoPtr &loopinfo);
 
