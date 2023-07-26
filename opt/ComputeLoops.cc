@@ -22,10 +22,25 @@ PhiInstruction *ComputeLoops::LoopInfo::getCondVarPhiInst() {
     auto lhs = setcond_inst->getLeft();
     auto rhs = setcond_inst->getRight();
 
-    if (lhs->getValueType() == ConstantValue && dynamic_cast<PhiInstruction *>(rhs)) {
+    auto lhs_phi_inst = dynamic_cast<PhiInstruction *>(lhs);
+    auto rhs_phi_inst = dynamic_cast<PhiInstruction *>(rhs);
+
+    if (lhs->getValueType() == ConstantValue && rhs_phi_inst) {
         return dynamic_cast<PhiInstruction *>(rhs);
-    } else if (dynamic_cast<PhiInstruction *>(lhs) && rhs->getValueType() == ConstantValue) {
+    } else if (lhs_phi_inst && rhs->getValueType() == ConstantValue) {
         return dynamic_cast<PhiInstruction *>(lhs);
+    } else {
+        if (lhs_phi_inst) {
+            auto rhs_inst = dynamic_cast<Instruction *>(rhs);
+            if ((rhs_inst && !isInLoop(rhs_inst->getParent())) || !rhs_inst) {
+                return lhs_phi_inst;
+            }
+        } else if (rhs_phi_inst) {
+            auto lhs_inst = dynamic_cast<Instruction *>(lhs);
+            if ((lhs_inst && !isInLoop(lhs_inst->getParent())) || !lhs_inst) {
+                return rhs_phi_inst;
+            }
+        }
     }
 
     return nullptr;
