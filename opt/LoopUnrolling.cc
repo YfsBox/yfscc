@@ -200,6 +200,9 @@ void LoopUnrolling::copyBodyBasicblocksForFullUnroll(const LoopUnrollingInfo &un
             curr_copy_body_bb->addInstruction(copy_inst);
         }
     }
+    for (auto &[phi_inst, iterate_inst]: unroll_info.loopinfo_->iterator_var_phi_insts_) {
+        last_iterate_var_map_[phi_inst] = copy_insts_map_[iterate_inst];
+    }
 }
 
 void LoopUnrolling::setLastIterateVarMap(const ComputeLoops::LoopInfoPtr &loopinfo) {
@@ -348,9 +351,6 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
                 std::vector<BasicBlock *> tmp_new_basicblocks;
                 copy_insts_map_.clear();
                 copyBodyBasicblocksForFullUnroll(unrolling_info, i, tmp_new_basicblocks);
-                for (auto &[phi_inst, iterate_inst]: unrolling_info.loopinfo_->iterator_var_phi_insts_) {
-                    last_iterate_var_map_[phi_inst] = copy_insts_map_[iterate_inst];
-                }
                 auto copyed_br_next_inst = dynamic_cast<BranchInstruction *>(getCopyValue(branch_next_inst));
                 br_next_bb_insts.push_back(dynamic_cast<BranchInstruction *>(copyed_br_next_inst));
                 enter_basicblocks.push_back(dynamic_cast<BasicBlock *>(getCopyValue(body_enter)));
