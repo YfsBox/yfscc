@@ -15,8 +15,8 @@ public:
 
     ~CrazyWork() = default;
 
-    void setPre(bool pre) {
-        pre_ = pre;
+    void setCrazyWork(int flag) {
+        crazy_work_flag_ = flag;
     }
 
 protected:
@@ -37,7 +37,7 @@ protected:
 
 private:
 
-    bool pre_;
+    int crazy_work_flag_;
 };
 
 

@@ -41,8 +41,8 @@ int main(int argc, char **argv) {
     std::string target_file;
 
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "-O2") == 0 || strcmp(argv[i], "-O1") == 0) { //判断参数是否为 "-S"
-            enable_opt = true; // 如果是，则将flag设置为true
+        if (strcmp(argv[i], "-O2") == 0 || strcmp(argv[i], "-O1") == 0) {   // 判断参数是否为 "-S"
+            enable_opt = true;  // 如果是，则将flag设置为true
             continue;
         }
         if (strcmp(argv[i], "-o") == 0) {
@@ -97,9 +97,11 @@ int main(int argc, char **argv) {
     MemoryAnalysis mem_analysis(ir_module);
     SplitGEPInsts split_geps(ir_module);
     CrazyWork crazy_work1(ir_module);
-    crazy_work1.setPre(true);
+    crazy_work1.setCrazyWork(1);
     CrazyWork crazy_work2(ir_module);
-    crazy_work2.setPre(false);
+    crazy_work2.setCrazyWork(2);
+    CrazyWork crazy_work0(ir_module);
+    crazy_work0.setCrazyWork(0);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
@@ -146,6 +148,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&crazy_work0);
 
         pass_manager.addPass(&loopunrolling);
         pass_manager.addPass(&dead_code_elim1);
