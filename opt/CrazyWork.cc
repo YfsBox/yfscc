@@ -13,11 +13,12 @@ CrazyWork::CrazyWork(Module *module): Pass(module) {}
 void CrazyWork::runOnFunction() {
     if (!pre_) {
         moveStore();
-        global2Const();
         global2Reg();
+        global2Const();
         crazyInline();
-        crazyBranch();
+        // crazyBranch();
     } else {
+        crazyBranch();
         crazyElim();
     }
 }
