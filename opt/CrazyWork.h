@@ -33,6 +33,8 @@ protected:
 
     void crazyBranch();
 
+    void crazySimplify();
+
     void runOnFunction() override;
 
 private:

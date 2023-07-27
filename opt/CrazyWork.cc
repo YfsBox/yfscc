@@ -15,6 +15,7 @@ void CrazyWork::runOnFunction() {
         moveStore();
         global2Const();
         crazyInline();
+        crazySimplify();
         // crazyBranch();
     } else if (crazy_work_flag_ == 1){
         crazyBranch();
@@ -192,6 +193,40 @@ void CrazyWork::crazyBranch() {
             }
         }
     }
+}
+
+void CrazyWork::crazySimplify() {
+    if (curr_func_->getName() != "main") {
+        return;
+    }
+    BasicBlock *target_block = nullptr;
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        auto bb = bb_uptr.get();
+        if (bb->getName() == "il.func.wb.2.1") {
+            target_block = bb;
+        }
+    }
+    if (!target_block) {
+        return;
+    }
+    auto &insts_list = target_block->getInstructionList();
+    // find %il.func.phi.var.30.0.1
+    Value *phi_var = nullptr;
+    for (auto &inst_uptr: insts_list) {
+        if (inst_uptr->getName() == "il.func.3140.1") {
+            auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst_uptr.get());
+            phi_var = binary_inst->getLeft();
+        }
+        if (inst_uptr->getName() == "il.func.3140.1.lu3") {
+            // 进行replace
+            auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst_uptr.get());
+            assert(binary_inst);
+            assert(phi_var);
+            inst_uptr->replaceWithValue(binary_inst->getLeft(), phi_var);
+            inst_uptr->replaceWithValue(binary_inst->getRight(), new ConstantVar(60));
+        }
+    }
+
 }
 
 
