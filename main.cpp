@@ -190,7 +190,7 @@ int main(int argc, char **argv) {
 
     }
     pass_manager.run();
-    irbuilder.dump();
+    // irbuilder.dump();
 
     CodeGen codegen(irbuilder.getIrModule(), enable_opt);
     codegen.codeGenerate();

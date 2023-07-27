@@ -171,7 +171,6 @@ void LoopUnrolling::copyOneBasicBlockForFullUnroll(const std::list<Instruction *
 
     for (auto &[phi_inst, iterate_inst]: unrolling_info.loopinfo_->iterator_var_phi_insts_) {
         last_iterate_var_map_[phi_inst] = copy_insts_map_[iterate_inst];
-        printf("the phi inst %s has iterator %s\n", phi_inst->getName().c_str(), last_iterate_var_map_[phi_inst]->getName().c_str());
     }
 }
 
@@ -374,8 +373,6 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
         }
     } else if (unrolling_info.limit_value_) {        // 限制为+1，或者-1的
         // 首先修改原循环的条件，以及stride，展开四部时，一般只需要条件修改为-3，并且把拷贝出来的部分插入就可以了
-        printf("the loop enter block is %s, and the limit value is %s\n",
-               unrolling_info.loopinfo_->enter_block_->getName().c_str(), unrolling_info.limit_value_->getName().c_str());
         // 需要加一个限制，那就是比较符号的限制
         if (loopinfo->loop_body_.size() == 1) {
             // 根据原本循环的方式拷贝得到一个小循环，小循环
@@ -442,10 +439,6 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
             copy_insts_map_[body_basicblock] = tail_body_block;
             copy_insts_map_[loopinfo->enter_block_] = tail_start_block;
             // 在主循环后边插入之前拷贝的部分
-
-            for (auto enter_origin_inst: enter_origin_insts) {
-                ir_dumper_->dump(enter_origin_inst);
-            }
             last_iterate_var_map_.clear();
             copyOneBasicBlockForFullUnroll(enter_origin_insts, tail_start_block, 0, unrolling_info);
             insertCopyInsts(enter_origin_insts, tail_start_block, nullptr);
@@ -486,7 +479,6 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
             for (auto &[value, copy_value]: copy_insts_map_) {
                 if (auto phi_inst = dynamic_cast<PhiInstruction *>(value); phi_inst && phi_inst->getParent() == loopinfo->enter_block_) {
                     enter_phi_copy_map[dynamic_cast<PhiInstruction *>(copy_value)] = phi_inst;
-                    printf("phi inst copy value %s and %s\n", copy_value->getName().c_str(), phi_inst->getName().c_str());
                 }
             }
 
@@ -508,14 +500,10 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
             auto tail_enter_setcond_inst = dynamic_cast<SetCondInstruction *>(copy_insts_map_[enter_setcond_inst]);
             tail_enter_setcond_inst->replaceWithValue(new_limit_value, unrolling_info.limit_value_);
 
-            ir_dumper_->dump(tail_start_block);
-            ir_dumper_->dump(tail_body_block);
-
             // 寻找basic block的插入点
             auto blocks_insert_it = curr_func_->getBlocks().begin();
             for (; blocks_insert_it != curr_func_->getBlocks().end(); ++blocks_insert_it) {
                 auto block = blocks_insert_it->get();
-                printf("the block is %s\n", block->getName().c_str());
                 if (block == body_basicblock) {
                     break;
                 }
@@ -523,6 +511,27 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
             blocks_insert_it++;
             curr_func_->insertBlock(blocks_insert_it, tail_start_block);
             curr_func_->insertBlock(blocks_insert_it, tail_body_block);
+            // 对于循环外部引用了while中phi的地方
+            std::unordered_map<PhiInstruction *, Value *> replace_phi_map;
+            for (auto &[value, copy_value]: copy_insts_map_) {
+                auto phi_value = dynamic_cast<PhiInstruction *>(value);
+                if (phi_value && value != copy_value) {
+                    replace_phi_map[phi_value] = copy_value;
+                }
+            }
+
+            for (auto &bb_uptr: curr_func_->getBlocks()) {
+                auto bb = bb_uptr.get();
+                if (bb == loopinfo->enter_block_ || bb == body_basicblock || bb == tail_start_block || bb == tail_body_block) {
+                    continue;
+                }
+                auto &insts_list = bb_uptr->getInstructionList();
+                for (auto &inst: insts_list) {
+                    for (auto &[phi_inst, value]: replace_phi_map) {
+                        inst->replaceWithValue(phi_inst, value);
+                    }
+                }
+            }
         }
     }
 
@@ -674,14 +683,10 @@ void LoopUnrolling::runOnFunction() {
     auto &loop_infos = compute_loops_->getDeepestLoops(curr_func_);
     for (auto &loop_info: loop_infos) {
         // printf("the enter bb is %s, and exit bb is %s, the body bb cnt is %d\n", loop_info->enter_block_->getName().c_str(), loop_info->exit_block_->getName().c_str(), loop_info->loop_body_.size());
-        for (auto body_bb: loop_info->loop_body_) {
-            // printf("the body bb is %s\n", body_bb->getName().c_str());
-        }
         assert(loop_info);
         unroll(loop_info);
     }
 
     curr_func_->rebuildCfg();
-    printf("loop unrolling ok\n");
 
 }
