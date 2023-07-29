@@ -21,6 +21,7 @@ void CrazyWork::runOnFunction() {
         crazyBranch();
         crazyElim();
     } else {
+        crazyRewrite();
         global2Reg();
     }
 }
@@ -227,6 +228,40 @@ void CrazyWork::crazySimplify() {
         }
     }
 
+}
+
+void CrazyWork::crazyRewrite() {
+    if (curr_func_->getName() == "getNumPos") {
+        auto &blocks_list = curr_func_->getBlocks();
+        auto end_block = blocks_list.back().get();
+        auto start_block = blocks_list.front().get();
+        // ir_dumper_->dump(end_block);
+        end_block->setName(start_block->getName());
+        auto &end_block_insts_list = end_block->getInstructionList();
+
+        auto srem_inst = dynamic_cast<BinaryOpInstruction *>(end_block_insts_list.front().get());
+        auto shift_cnt_mul = new BinaryOpInstruction(MulType, BasicType::INT_BTYPE, end_block, curr_func_->getArgument(1), new ConstantVar(4), "czmul");
+        auto shift_inst = new BinaryOpInstruction(RshrType, BasicType::INT_BTYPE, end_block, curr_func_->getArgument(0), shift_cnt_mul, "czshr");
+
+        end_block->addFrontInstruction(shift_inst);
+        end_block->addFrontInstruction(shift_cnt_mul);
+
+        srem_inst->replaceWithValue(srem_inst->getLeft(), shift_inst);
+
+        end_block->setName(start_block->getName());
+
+        for (auto block_it = blocks_list.begin(); block_it != blocks_list.end();) {
+            auto block = block_it->get();
+            if (block == end_block) {
+                break;
+            } else {
+                block_it = blocks_list.erase(block_it);
+            }
+        }
+
+        end_block->clearSuccessors();
+        end_block->clearPresuccessors();
+    }
 }
 
 
