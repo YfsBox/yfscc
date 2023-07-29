@@ -35,6 +35,8 @@ protected:
 
     void crazySimplify();
 
+    void crazyRewrite();
+
     void runOnFunction() override;
 
 private:
