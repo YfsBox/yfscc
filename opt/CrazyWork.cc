@@ -18,10 +18,10 @@ void CrazyWork::runOnFunction() {
         crazySimplify();
         // crazyBranch();
     } else if (crazy_work_flag_ == 1){
+        crazyRewrite();
         crazyBranch();
         crazyElim();
     } else {
-        crazyRewrite();
         global2Reg();
     }
 }
