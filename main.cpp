@@ -132,7 +132,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&crazy_work1);
         pass_manager.addPass(&dead_code_elim);
 
-        for (int i = 0; i < 4; ++i) {
+        for (int i = 0; i < 5; ++i) {
             pass_manager.addPass(&function_inline);
             pass_manager.addPass(&dead_code_elim1);
         }
