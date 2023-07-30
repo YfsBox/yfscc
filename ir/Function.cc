@@ -6,6 +6,7 @@
 
 Function::Function(BasicType ret_type, Module *module, const std::string &name):
     Value(FunctionValue, false, false, name),
+    is_dead_(false),
     parent_(module),
     ret_type_(ret_type){
 

@@ -74,7 +74,16 @@ public:
 
     void rebuildCfg();
 
+    void setDead(bool dead) {
+        is_dead_ = dead;
+    }
+
+    bool isDead() const {
+        return is_dead_;
+    }
+
 private:
+    bool is_dead_;
     Module *parent_;
     BasicType ret_type_;
     std::vector<ArgumentPtr> arguments_;
