@@ -32,6 +32,10 @@ public:
         return lib_function_set_.count(function);
     }
 
+    FunctionSet &getCalleeSet(Function *function) {
+        return callee_sets_[function];
+    }
+
     void analysis();
 
 private:
