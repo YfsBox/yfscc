@@ -91,11 +91,9 @@ void CrazyWork::global2Reg() {
         for (auto &inst_uptr: insts_list) {
             auto inst = inst_uptr.get();
             if (auto store_inst = dynamic_cast<StoreInstruction *>(inst); store_inst && store_inst->getPtr()->getName() == "loopCount") {
-                printf("set loop cnt\n");
                 loop_cnt = store_inst->getValue();
             }
             if (auto load_inst = dynamic_cast<LoadInstruction *>(inst); load_inst && load_inst->getPtr()->getName() == "loopCount") {
-                printf("replace loop cnt\n");
                 load_inst->replaceAllUseWith(loop_cnt);
             }
         }
