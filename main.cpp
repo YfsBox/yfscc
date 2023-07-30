@@ -22,6 +22,7 @@
 #include "opt/MemoryAnalysis.h"
 #include "opt/SplitGEPInsts.h"
 #include "opt/CrazyWork.h"
+#include "opt/DeadFunctionElim.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -102,6 +103,9 @@ int main(int argc, char **argv) {
     crazy_work2.setCrazyWork(2);
     CrazyWork crazy_work0(ir_module);
     crazy_work0.setCrazyWork(0);
+    DeadFunctionElim dead_func_elim1(ir_module);
+    DeadFunctionElim dead_func_elim2(ir_module);
+    DeadFunctionElim dead_func_elim3(ir_module);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
@@ -140,6 +144,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&gcm1);
         pass_manager.addPass(&crazy_work0);
         pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&dead_func_elim1);
 
         pass_manager.addPass(&split_geps);
 
@@ -172,6 +177,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&branch_opt);
         pass_manager.addPass(&dead_bb_elim);
+        pass_manager.addPass(&dead_func_elim2);
 
         pass_manager.addPass(&mem_analysis);
         pass_manager.addPass(&const_propagation);
@@ -189,6 +195,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&branch_opt);
         pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&dead_func_elim3);
 
     }
     pass_manager.run();

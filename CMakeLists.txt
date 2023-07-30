@@ -58,6 +58,7 @@ set(IROPT_SRC
         opt/MemoryAnalysis.cc
         opt/SplitGEPInsts.cc
         opt/CrazyWork.cc
+        opt/DeadFunctionElim.cc
 )
 
 set(BACKEND_SRC

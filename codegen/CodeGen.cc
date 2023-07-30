@@ -275,7 +275,11 @@ void CodeGen::visit(Module *module) {
 
     auto function_size = module->getFuncSize();
     for (int i = 0; i < function_size; ++i) {
-        visit(module->getFunction(i));
+        auto funciton = module->getFunction(i);
+        if (funciton->isDead()) {
+            continue;
+        }
+        visit(funciton);
         module_->addMachineFunction(curr_machine_function_);
     }
 }
