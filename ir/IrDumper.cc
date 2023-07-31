@@ -276,6 +276,9 @@ void IrDumper::dump(Module *module) {
     }
     out_ << "\n";
     for (const auto &function: module->functions_) {
+        if (function->isDead()) {
+            continue;
+        }
         dump(function.get());
         out_ << '\n';
     }
