@@ -1163,10 +1163,16 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
     switch (binary_op) {
         case InstructionType::AddType:
             can_be_swap = true;
+            if (auto const_rhs = dynamic_cast<ConstantVar *>(right_value); const_rhs && value_type == MachineOperand::Int) {
+                rhs_can_be_imm = canImmInBinary(const_rhs->getIValue());
+            }
             binary_inst_op = basic_type == BasicType::INT_BTYPE ? BinaryInst::IAdd: BinaryInst::FAdd;
             break;
         case InstructionType::SubType:
             binary_inst_op = basic_type == BasicType::INT_BTYPE ? BinaryInst::ISub: BinaryInst::FSub;
+            if (auto const_rhs = dynamic_cast<ConstantVar *>(right_value); const_rhs && value_type == MachineOperand::Int) {
+                rhs_can_be_imm = canImmInBinary(const_rhs->getIValue());
+            }
             break;
         case InstructionType::MulType:
             can_be_swap = true;
