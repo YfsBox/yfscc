@@ -903,6 +903,65 @@ MachineOperand *CodeGen::value2MachineOperand(Value *value, bool can_be_imm, boo
 }
 
 void CodeGen::addMoveForPhiInst() {
+    std::unordered_map<BasicBlock *, std::unordered_set<PhiInstruction *>> block_phi_map;
+    std::unordered_map<Value *, MachineOperand *> tmp_copy_map;
+    // 收集block_phi_map
+    for (auto &[phi_inst, vreg]: phi2vreg_map_) {
+        block_phi_map[phi_inst->getParent()].insert(phi_inst);
+    }
+    // 分析phi指令中的参数，判断同一块是否出现相互use的情况，这种情况需要多创建一个临时的拷贝
+    for (auto &[block, phi_insts]: block_phi_map) {
+        for (auto &phi_inst: phi_insts) {
+            for (int i = 0; i < phi_inst->getSize(); ++i) {
+                auto vbb_pair = phi_inst->getValueBlock(i);
+                if (auto value_phi_inst = dynamic_cast<PhiInstruction *>(vbb_pair.first); value_phi_inst && phi_insts.count(value_phi_inst)) {
+                    MachineOperand::ValueType value_type = phi_inst->getBasicType() == INT_BTYPE ? MachineOperand::Int : MachineOperand::Float;
+                    tmp_copy_map[value_phi_inst] = createVirtualReg(value_type);
+                }
+            }
+        }
+    }
+    // 根据tmp_copy_map插入mov指令
+    for (auto &block_uptr: curr_machine_function_->getMachineBasicBlock()) {
+        auto mc_bb = block_uptr.get();
+        auto bb = module_->getBasicBlock(mc_bb);
+        auto &insts_list = mc_bb->getInstructionListNonConst();
+
+        curr_machine_basic_block_ = mc_bb;
+        std::unordered_map<MachineInst *, std::vector<MachineInst *>> insert_before;
+        std::unordered_map<MachineInst *, MachineBasicBlock::MachineInstListIt> insert_it;
+
+        for (auto it = insts_list.begin(); it != insts_list.end(); ++it) {
+            auto mc_inst = it->get();
+            if (auto br_inst = dynamic_cast<BranchInst *>(mc_inst); br_inst && br_inst->getBranchType() != BranchInst::Bl) {
+                std::vector<MachineInst *> insert_insts;
+                for (auto &phi_inst: block_phi_map[bb]) {
+                    if (tmp_copy_map.count(phi_inst)) {
+                        MoveInst *move_inst = nullptr;
+                        MachineOperand *value_src = value2MachineOperandForPhi(phi_inst, mc_bb, &insert_insts);
+                        if (phi_inst->getBasicType() == INT_BTYPE) {
+                            move_inst = new MoveInst(mc_bb, MoveInst::I2I, value_src, tmp_copy_map[phi_inst]);
+                        } else {
+                            move_inst = new MoveInst(mc_bb, MoveInst::F2F, value_src, tmp_copy_map[phi_inst]);
+                        }
+                        insert_insts.push_back(move_inst);
+                    }
+                }
+                insert_before[mc_inst] = insert_insts;
+                insert_it.insert({mc_inst, it});
+            }
+        }
+
+        for (auto [inserted, insts]: insert_before) {
+            auto find_inserted_it = insert_it.find(inserted);
+            assert(find_inserted_it != insert_it.end());
+            for (auto inst: insts) {
+                mc_bb->insertInstructionBefore(find_inserted_it->second, inst);
+            }
+        }
+    }
+
+
     for (auto &[phi_inst, vreg]: phi2vreg_map_) {
         int phi_size = phi_inst->getSize();
         for (int i = 0; i < phi_size; ++i) {
@@ -919,22 +978,21 @@ void CodeGen::addMoveForPhiInst() {
             for (auto it = inst_list.begin(); it != inst_list.end(); ++it) {
                 auto mc_inst = it->get();
                 if (auto br_inst = dynamic_cast<BranchInst *>(mc_inst); br_inst && br_inst->getBranchType() != BranchInst::Bl) {
-                    VirtualReg *dst;
-                    MoveInst *mov1, *mov2;
+                    MoveInst *mov1;
                     std::vector<MachineInst *> insert_insts;
-                    MachineOperand *value_src = value2MachineOperandForPhi(value, mc_bb, &insert_insts);
+                    MachineOperand *value_src = nullptr;
+                    if (!tmp_copy_map.count(value)) {
+                        value_src = value2MachineOperandForPhi(value, mc_bb, &insert_insts);
+                    } else {
+                        value_src = tmp_copy_map[value];
+                    }
                     // assert(value_src);
                     if (phi_inst->getBasicType() == INT_BTYPE) {
-                        dst = createVirtualReg(VirtualReg::Int);
-                        mov1 = new MoveInst(mc_bb, MoveInst::I2I, value_src, dst);
-                        mov2 = new MoveInst(mc_bb, MoveInst::I2I, dst, vreg);
+                        mov1 = new MoveInst(mc_bb, MoveInst::I2I, value_src, vreg);
                     } else {
-                        dst = createVirtualReg(VirtualReg::Float);
-                        mov1 = new MoveInst(mc_bb, MoveInst::F2F, value_src, dst);
-                        mov2 = new MoveInst(mc_bb, MoveInst::F2F, dst, vreg);
+                        mov1 = new MoveInst(mc_bb, MoveInst::F2F, value_src, vreg);
                     }
                     insert_insts.push_back(mov1);
-                    insert_insts.push_back(mov2);
                     insert_before[mc_inst] = insert_insts;
                     insert_it.insert({mc_inst, it});
                 }
@@ -1120,7 +1178,7 @@ void CodeGen::visit(UnaryOpInstruction *uinst) {        // 一元操作
         if (auto set_cond_inst = dynamic_cast<SetCondInstruction *>(uinst->getValue())) {
             value = getCmpReusltInOperand(set_cond_inst);
         } else {
-                value = value2MachineOperand(uinst->getValue(), true,&is_float);
+                value = value2MachineOperand(uinst->getValue(), true, &is_float);
         }
 
         auto dst_reg = createVirtualReg(MachineOperand::Int);
@@ -1207,7 +1265,7 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
                 addMachineInst(mod_inst);
             } else {
                 auto div_dst = createVirtualReg(MachineOperand::Int);
-                auto mul_dst = createVirtualReg(MachineOperand::Int);
+                // auto mul_dst = createVirtualReg(MachineOperand::Int);
                 auto sub_dst = createVirtualReg(MachineOperand::Int, binst);
 
                 MachineOperand *lhs = value2MachineOperand(left_value, false);
@@ -1218,10 +1276,10 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
                 auto div_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IDiv, div_dst, lhs, rhs);
                 addMachineInst(div_inst);
 
-                auto mul_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IMul, mul_dst, div_dst, rhs);
+                auto mul_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IMul, sub_dst, div_dst, rhs);
                 addMachineInst(mul_inst);
 
-                auto sub_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, sub_dst, lhs, mul_dst);
+                auto sub_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::ISub, sub_dst, lhs, sub_dst);
                 addMachineInst(sub_inst);
             }
             return;
@@ -1240,17 +1298,17 @@ void CodeGen::visit(BinaryOpInstruction *binst) {       // 二元操作
             // assert(rhs_const);
             if (rhs_const) {
                 auto asr1_dst = createVirtualReg(MachineOperand::Int);
-                auto add_dst = createVirtualReg(MachineOperand::Int);
+                // auto add_dst = createVirtualReg(MachineOperand::Int);
                 auto asr2_dst = createVirtualReg(MachineOperand::Int, binst);
 
 
                 auto asr1_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAsr, asr1_dst, lhs_vreg, new ImmNumber(31));
                 addMachineInst(asr1_inst);
 
-                auto add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, add_dst, lhs_vreg, asr1_dst, 32 - rhs_const->getIValue());
+                auto add_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAdd, asr2_dst, lhs_vreg, asr1_dst, 32 - rhs_const->getIValue());
                 addMachineInst(add_inst);
 
-                auto asr2_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAsr, asr2_dst, add_dst, new ImmNumber(rhs_const->getIValue()));
+                auto asr2_inst = new BinaryInst(curr_machine_basic_block_, BinaryInst::IAsr, asr2_dst, asr2_dst, new ImmNumber(rhs_const->getIValue()));
                 addMachineInst(asr2_inst);
             } else {
                 auto asr_dst = createVirtualReg(MachineOperand::Int, binst);
@@ -1284,15 +1342,14 @@ void CodeGen::visit(PhiInstruction *inst) {
     VirtualReg *phi_vreg, *dst_vreg;
     MoveInst *mov_inst;
     if (inst->getBasicType() == INT_BTYPE) {
-        phi_vreg = createVirtualReg(VirtualReg::Int);
         dst_vreg = createVirtualReg(VirtualReg::Int, inst);
-        mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, phi_vreg, dst_vreg);
+        // mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::I2I, phi_vreg, dst_vreg);
     } else {
-        phi_vreg = createVirtualReg(VirtualReg::Float);
         dst_vreg = createVirtualReg(VirtualReg::Float, inst);
-        mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, phi_vreg, dst_vreg);
+        // mov_inst = new MoveInst(curr_machine_basic_block_, MoveInst::F2F, phi_vreg, dst_vreg);
     }
-    phi2vreg_map_[inst] = phi_vreg;
-    addMachineInst(mov_inst);
+    // phi2vreg_map_[inst] = phi_vreg;
+    phi2vreg_map_[inst] = dst_vreg;
+    // addMachineInst(mov_inst);
 }
 
