@@ -53,6 +53,8 @@ public:
 
     void analysis(Function *function);
 
+    void replaceAllUseWith(Value *value, Value *replaced_value);
+
 private:
 
     Function *curr_func_;

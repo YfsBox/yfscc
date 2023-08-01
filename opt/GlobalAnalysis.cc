@@ -106,3 +106,9 @@ void UserAnalysis::analysis(Function *function) {
         }
     }
 }
+
+void UserAnalysis::replaceAllUseWith(Value *value, Value *replaced_value) {
+    for (auto user: getUserInsts(value)) {
+        user->replaceWithValue(value, replaced_value);
+    }
+}
