@@ -779,7 +779,8 @@ void ColoringRegsAllocator::rewriteProgram() {
                 if (defs.count(spill_node)) {
                     bool use_ip_base = false;
                     std::vector<MachineInst *> moves_offset_insts;
-                    auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base);
+                    auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base,
+                                                                       false, true);
                     auto store_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
                     // printf("the new vreg is %d, insert before vreg%d inst\n", store_vreg->getRegId(), dynamic_cast<VirtualReg *>(spill_node)->getRegId());
                     assert(offset_reg);
@@ -803,7 +804,8 @@ void ColoringRegsAllocator::rewriteProgram() {
                 if (uses.count(spill_node)) {
                     bool use_ip_base = false;
                     std::vector<MachineInst *> moves_offset_insts;
-                    auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base);
+                    auto offset_reg = code_gen_->getImmOperandInBinary(- curr_function_->getStackSize() - spilled_stack_size_, bb.get(), &moves_offset_insts, allocate_float_, &use_ip_base,
+                                                                       false, true);
                     auto load_vreg = code_gen_->createVirtualReg(curr_function_, value_type);
                     // printf("the new vreg is %d, insert before vreg%d inst\n", load_vreg->getRegId(),  dynamic_cast<VirtualReg *>(spill_node)->getRegId());
 

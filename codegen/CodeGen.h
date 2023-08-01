@@ -107,7 +107,7 @@ public:
         return module_.get();
     }
 
-    MachineOperand *getImmOperandInBinary(int32_t value, MachineBasicBlock *bb, std::vector<MachineInst *> *moves = nullptr, bool is_float = false, bool *use_ip_base = nullptr, bool is_simple_ralloc = false);
+    MachineOperand *getImmOperandInBinary(int32_t value, MachineBasicBlock *bb, std::vector<MachineInst *> *moves = nullptr, bool is_float = false, bool *use_ip_base = nullptr, bool is_simple_ralloc = false, bool is_for_sp = false);
 
     void addInstAboutStack(MachineFunction *function, int32_t offset, std::unordered_set<MachineReg::Reg> *regs = nullptr);
 

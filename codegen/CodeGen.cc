@@ -348,15 +348,20 @@ void CodeGen::visit(Constant *constant) {
     setCurrMachineOperand(const_reg);
 }
 
-MachineOperand *CodeGen::getImmOperandInBinary(int32_t value, MachineBasicBlock *bb, std::vector<MachineInst *> *moves, bool is_float, bool *use_ip_base, bool is_simple_ralloc) {
+MachineOperand *CodeGen::getImmOperandInBinary(int32_t value, MachineBasicBlock *bb, std::vector<MachineInst *> *moves, bool is_float, bool *use_ip_base, bool is_simple_ralloc, bool is_for_sp) {
     MachineOperand *result = nullptr;
     if (canImmInBinary(value)) {
         result = new ImmNumber(value);
     } else {
         if (is_simple_ralloc) {
-            result= module_->getMachineReg(MachineReg::lr);
+            result = module_->getMachineReg(MachineReg::lr);
         } else {
-            result= module_->getMachineReg(MachineReg::ip);
+            if (is_for_sp) {
+                result = module_->getMachineReg(MachineReg::ip);
+            } else {
+                result = createVirtualReg(MachineOperand::Int);
+            }
+            // result = createVirtualReg(MachineOperand::Int);
         }
 
         auto mov1_inst = new MoveInst(bb, MoveInst::L2I, new ImmNumber(getLow(value)), result);
@@ -475,7 +480,11 @@ void CodeGen::visit(Function *function) {
 void CodeGen::addInstAboutStack(MachineFunction *function, int32_t offset, std::unordered_set<MachineReg::Reg> *regs) {
     std::vector<MachineInst *> moves;
     auto enter_block = function->getEnterBasicBlock();
-    enter_block->addFrontInstruction(new BinaryInst(enter_block, BinaryInst::ISub, sp_reg_, sp_reg_, getImmOperandInBinary(offset, enter_block, &moves)));
+    enter_block->addFrontInstruction(new BinaryInst(enter_block, BinaryInst::ISub, sp_reg_, sp_reg_, getImmOperandInBinary(offset, enter_block, &moves,
+                                                                                                                           false,
+                                                                                                                           nullptr,
+                                                                                                                           false,
+                                                                                                                           true)));
     assert(moves.size() == 2 || moves.empty());
     if (!moves.empty()) {
         enter_block->addFrontInstruction(moves[1]);
@@ -485,7 +494,12 @@ void CodeGen::addInstAboutStack(MachineFunction *function, int32_t offset, std::
     addPushInst(enter_block, regs);
     for (int i = 0; i < function->getExitBasicBlockSize(); ++i) {
         auto exit_basicblock = function->getExitBasicBlock(i);
-        exit_basicblock->addInstruction(new BinaryInst(exit_basicblock, BinaryInst::IAdd, sp_reg_, sp_reg_, getImmOperandInBinary(offset, exit_basicblock)));
+        exit_basicblock->addInstruction(new BinaryInst(exit_basicblock, BinaryInst::IAdd, sp_reg_, sp_reg_, getImmOperandInBinary(offset, exit_basicblock,
+                                                                                                                                  nullptr,
+                                                                                                                                  false,
+                                                                                                                                  nullptr,
+                                                                                                                                  false,
+                                                                                                                                  true)));
         exit_basicblock->addInstruction(new MoveInst(exit_basicblock, fp_reg_, sp_reg_));
         addPopInst(exit_basicblock, regs);
         auto bx_inst = new BranchInst(exit_basicblock, lr_reg_, BranchInst::BrNoCond, BranchInst::Bx);
