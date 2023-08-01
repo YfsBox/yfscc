@@ -280,6 +280,10 @@ public:
 
     void setHasCond(bool has_cond) {
         is_cond_ = has_cond;
+        if (!has_cond && getOperandNum() == 3) {
+            operands_.pop_back();
+            operands_.pop_back();
+        }
     }
 
     void setTrueLabel(Value *value) {
