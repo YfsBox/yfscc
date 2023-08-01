@@ -30,6 +30,8 @@ protected:
 
 private:
 
+    void removeUnReachedValue();
+
     std::unique_ptr<UserAnalysis> user_analysis_;
 
     std::unordered_map<PhiInstruction *, Value *> replace_insts_map_;
