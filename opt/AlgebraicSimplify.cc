@@ -23,6 +23,9 @@ bool AlgebraicSimplify::isPowerOfTwo(int32_t num) {
 }
 
 void AlgebraicSimplify::removeInsts() {
+    UserAnalysis user_analysis;
+    user_analysis.analysis(curr_func_);
+
     for (auto &bb_uptr: curr_func_->getBlocks()) {
         for (auto &inst_uptr: bb_uptr->getInstructionList()) {
             auto inst = inst_uptr.get();
@@ -81,7 +84,7 @@ void AlgebraicSimplify::removeInsts() {
         for (auto inst_it = bb_insts_list.begin(); inst_it != bb_insts_list.end();) {
             auto inst = inst_it->get();
             if (wait_delete_insts_.count(inst)) {
-                inst->replaceAllUseWith(wait_delete_insts_[inst]);
+                user_analysis.replaceAllUseWith(inst, wait_delete_insts_[inst]);
                 inst_it = bb_insts_list.erase(inst_it);
             } else {
                 inst_it++;

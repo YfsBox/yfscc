@@ -4,6 +4,7 @@
 
 #include "Svn.h"
 #include "CallGraphAnalysis.h"
+#include "GlobalAnalysis.h"
 #include "../ir/BasicBlock.h"
 #include "../ir/Instruction.h"
 #include "../ir/Constant.h"
@@ -113,12 +114,14 @@ void Svn::lvn(BasicBlock *basicblock) {
 
 
 void Svn::replaceValues() {
+    UserAnalysis user_analysis;
+    user_analysis.analysis(curr_func_);
     for (auto &bb: curr_func_->getBlocks()) {
         auto &insts_list = bb->getInstructionList();
         for (auto &inst_uptr: insts_list) {
             auto inst = inst_uptr.get();
             if (replaced_map_.count(inst)) {
-                inst->replaceAllUseWith(replaced_map_[inst]);
+                user_analysis.replaceAllUseWith(inst, replaced_map_[inst]);
             }
         }
     }
