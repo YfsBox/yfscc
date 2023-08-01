@@ -140,19 +140,6 @@ void BlocksMergePass::mergeBlock(MachineBasicBlock *mc_block) {
         predecessor->insertInstruction(pre_insts_it, insert_inst);
     }
     // 移除predecessor中的br
-    // pre_insts_it++;
-    // pre_insts_list.erase(pre_insts_it);
-    /*for (pre_insts_it = pre_insts_list.begin(); pre_insts_it != pre_insts_list.end(); ++pre_insts_it) {
-        auto pre_inst = pre_insts_it->get();
-        if (isBranchInst(pre_inst)) {
-            auto br_inst_target = dynamic_cast<BranchInst *>(pre_inst)->getOperand();
-            auto br_inst_target_label = dynamic_cast<Label *>(br_inst_target);
-            if (name_block_map_[br_inst_target_label->getName()] == mc_block) {
-                pre_insts_list.erase(pre_insts_it);
-                break;
-            }
-        }
-    }*/
     pre_insts_list.pop_back();
 }
 
