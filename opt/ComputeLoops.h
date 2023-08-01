@@ -46,6 +46,8 @@ public:
 
         std::set<BasicBlock *> sub_loops_;
 
+        std::map<PhiInstruction *, Value *> init_var_phi_insts_;
+
         std::map<PhiInstruction *, Value *> iterator_var_phi_insts_;
 
         Instruction *getSetCondInst();
