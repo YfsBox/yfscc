@@ -14,13 +14,13 @@ void CrazyWork::runOnFunction() {
     if (crazy_work_flag_ == 2) {
         moveStore();
         global2Const();
-        crazyInline();
         crazySimplify();
         // crazyBranch();
     } else if (crazy_work_flag_ == 1){
         crazyRewrite();
         crazyBranch();
         crazyElim();
+        crazyInline();
     } else {
         global2Reg();
     }
