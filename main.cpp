@@ -165,6 +165,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);
+        pass_manager.addPass(&simplify_phiinsts);
         pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&gcm2);
         pass_manager.addPass(&mem_analysis);
@@ -204,18 +205,21 @@ int main(int argc, char **argv) {
     CodeGen codegen(irbuilder.getIrModule(), enable_opt);
     codegen.codeGenerate();
 
-    /*MachineDumper vmcdumper(codegen.getMCModule(), target_file + ".v");
-    vmcdumper.dump();*/
-
     auto mc_module = codegen.getMCModule();
+
+    BlocksMergePass block_merge(mc_module);
+    BackendPassManager pre_backendpass_manager(mc_module);
+    if (enable_opt) {
+        pre_backendpass_manager.addPass(&block_merge);
+    }
+    pre_backendpass_manager.run();
+
     RegsAllocator::regsAllocate(mc_module, &codegen);
 
     BackendPassManager backendpass_manager(mc_module);
     ReDundantLoadElim load_elim(mc_module);
-    BlocksMergePass block_merge(mc_module);
     if (enable_opt) {
         backendpass_manager.addPass(&load_elim);
-        backendpass_manager.addPass(&block_merge);
     }
     backendpass_manager.run();
 
