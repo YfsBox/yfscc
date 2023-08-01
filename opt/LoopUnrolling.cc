@@ -200,14 +200,23 @@ void LoopUnrolling::copyBodyBasicblocksForFullUnroll(const LoopUnrollingInfo &un
             curr_copy_body_bb->addInstruction(copy_inst);
         }
     }
+    auto saved_last_iterate_map = last_iterate_var_map_;
     for (auto &[phi_inst, iterate_inst]: unroll_info.loopinfo_->iterator_var_phi_insts_) {
-        last_iterate_var_map_[phi_inst] = copy_insts_map_[iterate_inst];
+        if (copy_insts_map_[iterate_inst]) {
+            last_iterate_var_map_[phi_inst] = copy_insts_map_[iterate_inst];
+        } else {
+            last_iterate_var_map_[phi_inst] = saved_last_iterate_map[iterate_inst];
+        }
     }
 }
 
 void LoopUnrolling::setLastIterateVarMap(const ComputeLoops::LoopInfoPtr &loopinfo) {
     for (auto &[phi_inst, iterator_var]: loopinfo->iterator_var_phi_insts_) {
-        last_iterate_var_map_[phi_inst] = iterator_var;
+        if (auto iter_phi_inst = dynamic_cast<PhiInstruction *>(iterator_var); loopinfo->init_var_phi_insts_.count(iter_phi_inst)) {
+            last_iterate_var_map_[phi_inst] = loopinfo->init_var_phi_insts_[iter_phi_inst];
+        } else {
+            last_iterate_var_map_[phi_inst] = iterator_var;
+        }
     }
 }
 
@@ -318,7 +327,7 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
             replaceVarInNextBlock(unrolling_info, body_basicblock);
             replaceWithConstForFullUnroll(unrolling_info);
 
-        } else if (loopinfo->loop_body_.size() <= 5){            // 如果有多个基本块，那么就需要额外拷贝基本块了。
+        } else if (loopinfo->loop_body_.size() <= 30){            // 如果有多个基本块，那么就需要额外拷贝基本块了。
             auto branch_inst = dynamic_cast<BranchInstruction *>(loopinfo->enter_block_->getInstructionList().back().get());
             BasicBlock *body_enter = nullptr, *next_bb = nullptr;
             auto true_label_bb = dynamic_cast<BasicBlock *>(branch_inst->getTrueLabel());
