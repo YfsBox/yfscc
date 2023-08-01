@@ -212,8 +212,10 @@ int main(int argc, char **argv) {
 
     BackendPassManager backendpass_manager(mc_module);
     ReDundantLoadElim load_elim(mc_module);
+    BlocksMergePass block_merge(mc_module);
     if (enable_opt) {
         backendpass_manager.addPass(&load_elim);
+        backendpass_manager.addPass(&block_merge);
     }
     backendpass_manager.run();
 

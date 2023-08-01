@@ -77,6 +77,51 @@ private:
 
 };
 
+class BlocksMergePass: public BackendPass {
+public:
+
+    using McBlocksSet = std::unordered_set<MachineBasicBlock *>;
+
+    using McInstSet = std::unordered_set<MachineInst *>;
+
+    explicit BlocksMergePass(MachineModule *module);
+
+    ~BlocksMergePass() = default;
+
+protected:
+
+    void runOnFunction() override;
+
+private:
+
+    void init();
+
+    void buildCfgs();
+
+    bool isBranchInst(MachineInst *mc_inst);
+
+    bool canBeMerged(MachineBasicBlock *mc_block);
+
+    void mergeBlock(MachineBasicBlock *mc_block);
+
+    void mergeBlocks();
+
+    void simplifyBranch();
+
+    void collectBranchInsts();
+
+    void clearEmptyBlocks();
+
+    std::unordered_map<MachineBasicBlock *, McInstSet> bb_br_insts_map_;
+
+    std::unordered_map<std::string, MachineBasicBlock *> name_block_map_;
+
+    std::unordered_map<MachineBasicBlock *, McBlocksSet> successors_map_;
+
+    std::unordered_map<MachineBasicBlock *, McBlocksSet> predecessors_map_;
+
+};
+
 
 
 #endif //YFSCC_BACKENDPASS_H

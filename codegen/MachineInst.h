@@ -351,6 +351,10 @@ public:
         return br_operand_;
     }
 
+    void setOperand(MachineOperand *operand) {
+        br_operand_ = operand;
+    }
+
     void replaceDefs(MachineOperand *old_operand, MachineOperand *new_operand) override {}
 
     void replaceUses(MachineOperand *old_operand, MachineOperand *new_operand) override {}
