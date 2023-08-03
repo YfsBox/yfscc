@@ -193,7 +193,7 @@ void GlobalCodeMotion::moveInsts() {
 
         for (; insert_it != basicblock_insts_list.end(); ++insert_it) {
             auto curr_inst = insert_it->get();
-            if (curr_inst->getInstType() == BrType) {
+            if (curr_inst->getInstType() == BrType || curr_inst->getInstType() == SetCondType) {
                 break;
             }
         }
