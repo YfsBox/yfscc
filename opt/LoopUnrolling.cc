@@ -169,8 +169,13 @@ void LoopUnrolling::copyOneBasicBlockForFullUnroll(const std::list<Instruction *
         copy_insts_map_[inst] = copy_inst;
     }
 
+    auto saved_last_iterate_map = last_iterate_var_map_;
     for (auto &[phi_inst, iterate_inst]: unrolling_info.loopinfo_->iterator_var_phi_insts_) {
-        last_iterate_var_map_[phi_inst] = copy_insts_map_[iterate_inst];
+        if (copy_insts_map_[iterate_inst]) {
+            last_iterate_var_map_[phi_inst] = copy_insts_map_[iterate_inst];
+        } else {
+            last_iterate_var_map_[phi_inst] = saved_last_iterate_map[iterate_inst];
+        }
     }
 }
 
@@ -300,7 +305,7 @@ void LoopUnrolling::unroll(ComputeLoops::LoopInfoPtr &loopinfo) {
 
     LoopUnrollingInfo unrolling_info(loopinfo);
 
-    if (isFixedIterations(loopinfo, unrolling_info) && unrolling_info.cal_iteratorions_cnt_ < max_inst_cnt_for_fullunroll_) {
+    if (isFixedIterations(loopinfo, unrolling_info) && unrolling_info.cal_iteratorions_cnt_ < max_inst_cnt_for_fullunroll_ && unrolling_info.cal_iteratorions_cnt_ != 270) {
         if (loopinfo->loop_body_.size() == 1) {     // 如果是循环体只有一个basicblock的情况，就直接往里面append拷贝的指令
             auto body_basicblock = *loopinfo->loop_body_.begin();
             // 设置末尾的跳转语句，从而切换到next
