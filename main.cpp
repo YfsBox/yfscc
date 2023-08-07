@@ -23,6 +23,7 @@
 #include "opt/SplitGEPInsts.h"
 #include "opt/CrazyWork.h"
 #include "opt/DeadFunctionElim.h"
+#include "opt/EndRename.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -77,6 +78,7 @@ int main(int argc, char **argv) {
     pass_manager.addPass(&const_propagation);
 
     BranchOptimizer branch_opt(ir_module);
+    pass_manager.addPass(&branch_opt);
 
     DeadBlockElim dead_bb_elim(ir_module);
     pass_manager.addPass(&dead_bb_elim);
@@ -199,6 +201,9 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&dead_func_elim3);
 
     }
+    EndRename rename(ir_module);
+    pass_manager.addPass(&rename);
+
     pass_manager.run();
     // irbuilder.dump();
 
@@ -218,8 +223,11 @@ int main(int argc, char **argv) {
 
     BackendPassManager backendpass_manager(mc_module);
     ReDundantLoadElim load_elim(mc_module);
+    SimplifyBackendBranch simplify_backend_branch(mc_module);
+
     if (enable_opt) {
         backendpass_manager.addPass(&load_elim);
+        backendpass_manager.addPass(&simplify_backend_branch);
     }
     backendpass_manager.run();
 
