@@ -1173,7 +1173,12 @@ void CodeGen::visit(SetCondInstruction *inst) {     // 一般紧接着就是跳�
 
     auto lhs = value2MachineOperand(lhs_value, false);
     assert(lhs);
-    auto rhs = value2MachineOperand(rhs_value, false);
+    bool can_rhs_imm = false;
+    if (auto const_rhs = dynamic_cast<ConstantVar *>(rhs_value); const_rhs && !const_rhs->isFloat()) {
+        auto const_rhs_value = const_rhs->getIValue();
+        can_rhs_imm = (const_rhs_value >= -128 && const_rhs_value <= 127);
+    }
+    auto rhs = value2MachineOperand(rhs_value, can_rhs_imm);
     assert(rhs);
 
     cmp_inst->setLhs(lhs);
@@ -1193,7 +1198,7 @@ void CodeGen::visit(UnaryOpInstruction *uinst) {        // 一元操作
         if (auto set_cond_inst = dynamic_cast<SetCondInstruction *>(uinst->getValue())) {
             value = getCmpReusltInOperand(set_cond_inst);
         } else {
-                value = value2MachineOperand(uinst->getValue(), true, &is_float);
+            value = value2MachineOperand(uinst->getValue(), true, &is_float);
         }
 
         auto dst_reg = createVirtualReg(MachineOperand::Int);
