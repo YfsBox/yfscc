@@ -76,6 +76,10 @@ public:
         user_map_.erase(user);
     }
 
+    void reName(const std::string &name) {
+        name_ = name;
+    }
+
 protected:
     bool is_bool_type_;
     bool is_ptr_;
