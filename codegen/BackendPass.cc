@@ -7,6 +7,30 @@
 #include "MachineDumper.h"
 #include <cassert>
 
+static bool isBranchInst(MachineInst *mc_inst) {
+    auto br_inst = dynamic_cast<BranchInst *>(mc_inst);
+    return br_inst && br_inst->getBranchType() != BranchInst::Bl && br_inst->getBranchType() != BranchInst::Bx;
+}
+
+static BranchInst::BranchCond getReCond(BranchInst::BranchCond cond) {
+    switch (cond) {
+        case BranchInst::BrEq:
+            return BranchInst::BrNe;
+        case BranchInst::BrNe:
+            return BranchInst::BrEq;
+        case BranchInst::BrGe:
+            return BranchInst::BrLt;
+        case BranchInst::BrLt:
+            return BranchInst::BrGe;
+        case BranchInst::BrGt:
+            return BranchInst::BrLe;
+        case BranchInst::BrLe:
+            return BranchInst::BrGt;
+        default:
+            return BranchInst::BrNoCond;
+    }
+}
+
 BackendPass::BackendPass(MachineModule *module): module_(module), curr_func_(nullptr) {}
 
 void BackendPass::run() {
@@ -167,11 +191,6 @@ void BlocksMergePass::mergeBlocks() {
     }
 }
 
-bool BlocksMergePass::isBranchInst(MachineInst *mc_inst) {
-    auto br_inst = dynamic_cast<BranchInst *>(mc_inst);
-    return br_inst && br_inst->getBranchType() != BranchInst::Bl && br_inst->getBranchType() != BranchInst::Bx;
-}
-
 void BlocksMergePass::collectBranchInsts() {
     for (auto &mc_block_uptr: curr_func_->getMachineBasicBlock()) {
         auto &mc_insts_list = mc_block_uptr->getInstructionListNonConst();
@@ -257,5 +276,59 @@ void BlocksMergePass::runOnFunction() {
     simplifyBranch();
     clearEmptyBlocks();
     mergeBlocks();
+}
+
+SimplifyBackendBranch::SimplifyBackendBranch(MachineModule *module): BackendPass(module) {}
+
+void SimplifyBackendBranch::runOnFunction() {
+    removed_insts_.clear();
+    block_branch_inst_map_.clear();
+    collectBranchInsts();
+    MachineBasicBlock *last_block = nullptr;
+    for (auto &bb_uptr: curr_func_->getMachineBasicBlock()) {
+        if (last_block && block_branch_inst_map_[last_block].size() == 2) {
+            auto br_set_it = block_branch_inst_map_[last_block].begin();
+            auto *br_with_cond = *br_set_it;
+            br_set_it++;
+            auto *br_without_cond = *br_set_it;
+            if (br_with_cond->getBranchCond() == BranchInst::BrNoCond) {
+                std::swap(br_with_cond, br_without_cond);
+            }
+            auto cond_target_label = dynamic_cast<Label *>(br_with_cond->getOperand());
+            if (cond_target_label->getName() == bb_uptr->getLabelName()) {
+                auto br_inst_cond = br_with_cond->getBranchCond();
+                removed_insts_.insert(br_with_cond);
+                br_without_cond->setBrCond(getReCond(br_inst_cond));
+            }
+        }
+        last_block = bb_uptr.get();
+    }
+
+    removeInsts();
+}
+
+void SimplifyBackendBranch::collectBranchInsts() {
+    for (auto &bb_uptr: curr_func_->getMachineBasicBlock()) {
+        auto &bb_insts = bb_uptr->getInstructionListNonConst();
+        for (auto &inst_uptr: bb_insts) {
+            auto inst = inst_uptr.get();
+            if (isBranchInst(inst)) {
+                block_branch_inst_map_[bb_uptr.get()].insert(dynamic_cast<BranchInst *>(inst));
+            }
+        }
+    }
+}
+
+void SimplifyBackendBranch::removeInsts() {
+    for (auto &bb_uptr: curr_func_->getMachineBasicBlockNoConst()) {
+        auto &bb_insts = bb_uptr->getInstructionListNonConst();
+        for (auto inst_it = bb_insts.begin(); inst_it != bb_insts.end();) {
+            if (removed_insts_.count(inst_it->get())) {
+                inst_it = bb_insts.erase(inst_it);
+            } else {
+                inst_it++;
+            }
+        }
+    }
 }
 

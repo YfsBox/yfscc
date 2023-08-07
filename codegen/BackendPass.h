@@ -98,8 +98,6 @@ private:
 
     void buildCfgs();
 
-    bool isBranchInst(MachineInst *mc_inst);
-
     bool canBeMerged(MachineBasicBlock *mc_block);
 
     void mergeBlock(MachineBasicBlock *mc_block);
@@ -120,6 +118,30 @@ private:
 
     std::unordered_map<MachineBasicBlock *, McBlocksSet> predecessors_map_;
 
+};
+
+class SimplifyBackendBranch: public BackendPass {
+public:
+
+    using BrMachineInsts = std::unordered_set<BranchInst *>;
+
+    explicit SimplifyBackendBranch(MachineModule *module);
+
+    ~SimplifyBackendBranch() = default;
+
+protected:
+
+    void runOnFunction() override;
+
+private:
+
+    void collectBranchInsts();
+
+    void removeInsts();
+
+    std::unordered_set<MachineInst *> removed_insts_;
+
+    std::unordered_map<MachineBasicBlock *, BrMachineInsts> block_branch_inst_map_;
 };
 
 
