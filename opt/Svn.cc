@@ -40,7 +40,17 @@ Svn::ValueName Svn::getValueName(Instruction *inst) {
         valuename = "CALL_" + call_inst_value->getFunction()->getName();
         for (int i = 0; i < call_inst_value->getActualSize(); ++i) {
             auto actual = call_inst_value->getActual(i);
-            valuename += "_" + actual->getName();
+            if (actual->getValueType() == ConstantValue) {
+                auto const_actual = dynamic_cast<ConstantVar *>(actual);
+                valuename += "_";
+                if (const_actual->getBasicType() == INT_BTYPE) {
+                    valuename += std::to_string(const_actual->getIValue());
+                } else {
+                    valuename += std::to_string(const_actual->getFValue());
+                }
+            } else {
+                valuename += "_" + actual->getName();
+            }
         }
     } else if (auto load_inst_value = dynamic_cast<const LoadInstruction *>(inst); load_inst_value) {
         valuename = "LD_" + load_inst_value->getPtr()->getName();
