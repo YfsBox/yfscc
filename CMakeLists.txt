@@ -59,6 +59,7 @@ set(IROPT_SRC
         opt/SplitGEPInsts.cc
         opt/CrazyWork.cc
         opt/DeadFunctionElim.cc
+        opt/EndRename.cc
 )
 
 set(BACKEND_SRC

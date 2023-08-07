@@ -117,7 +117,7 @@ public:
     }
 
     bool isEnterBasicBlock() const {
-        return name_ == owner_function_->getName() + "0";
+        return name_ == owner_function_->getName() + "0" || name_ == ".L0";
     }
 
     void setWhileLoopDepth(int32_t depth) {

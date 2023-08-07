@@ -285,7 +285,7 @@ void CodeGen::visit(Module *module) {
 }
 
 void CodeGen::visit(BasicBlock *block) {
-    curr_machine_basic_block_ = new MachineBasicBlock(curr_machine_function_, curr_machine_function_->getFunctionName() + "." + block->getName());
+    curr_machine_basic_block_ = new MachineBasicBlock(curr_machine_function_, curr_machine_function_->getFunctionName() + block->getName());
     curr_machine_basic_block_->setLoopDepth(block->getWhileLoopDepth());
     for (auto &inst: block->getInstructionList()) {
         visit(inst.get());
@@ -1112,8 +1112,8 @@ void CodeGen::visit(AllocaInstruction *inst) {      // 首先需要在栈上分�
 void CodeGen::visit(BranchInstruction *inst) {
     if (inst->isCondBranch()) {
         Label *branch1, *branch2;
-        branch1 = new Label(curr_machine_function_->getFunctionName() + "." + inst->getTrueLabel()->getName());
-        branch2 = new Label(curr_machine_function_->getFunctionName() + "." + inst->getFalseLabel()->getName());
+        branch1 = new Label(curr_machine_function_->getFunctionName() + inst->getTrueLabel()->getName());
+        branch2 = new Label(curr_machine_function_->getFunctionName() + inst->getFalseLabel()->getName());
 
         BranchInst *branch_inst1, *branch_inst2;
         branch_inst1 = new BranchInst(curr_machine_basic_block_, branch1);
@@ -1153,7 +1153,7 @@ void CodeGen::visit(BranchInstruction *inst) {
         addMachineInst(branch_inst1);
         addMachineInst(branch_inst2);
     } else {
-        Label *branch = new Label(curr_machine_function_->getFunctionName() + "." + inst->getLabel()->getName());
+        Label *branch = new Label(curr_machine_function_->getFunctionName() + inst->getLabel()->getName());
         auto branch_inst = new BranchInst(curr_machine_basic_block_, branch);
         addMachineInst(branch_inst);
     }
