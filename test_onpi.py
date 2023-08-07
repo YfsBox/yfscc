@@ -8,6 +8,7 @@ from colorama import init, Fore, Style
 test_file = "performance"
 all_test_number = 0
 passed_test_number = 0
+error_test_list = []
 
 def compare_files(file1, file2):
     with open(file1, 'r') as f1, open(file2, 'r') as f2:
