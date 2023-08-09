@@ -224,10 +224,12 @@ int main(int argc, char **argv) {
     BackendPassManager backendpass_manager(mc_module);
     ReDundantLoadElim load_elim(mc_module);
     SimplifyBackendBranch simplify_backend_branch(mc_module);
+    MergeInsts merge_insts(mc_module);
 
     if (enable_opt) {
         backendpass_manager.addPass(&load_elim);
         backendpass_manager.addPass(&simplify_backend_branch);
+        backendpass_manager.addPass(&merge_insts);
     }
     backendpass_manager.run();
 
