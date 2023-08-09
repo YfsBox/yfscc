@@ -248,6 +248,10 @@ public:
         return is_lsl_;
     }
 
+    void setLeft(MachineOperand *left) {
+        lhs_ = left;
+    }
+
 private:
     int with_rhs_lsr_;          // add  r0, r0, r1, lsr #22
     bool is_lsl_;
@@ -519,7 +523,32 @@ public:
         }
     }
 
+    bool hasLsl() const {
+        return lsl_ > 0;
+    }
+
+    int getLsl() const {
+        return lsl_;
+    }
+
+    void setLsl(int lsl) {
+        lsl_ = lsl;
+    }
+
+    void setBase(MachineOperand *base) {
+        base_ = base;
+    }
+
+    void setOffset(MachineOperand *offset) {
+        offset_ = offset;
+    }
+
+    void setDst(MachineOperand *dst) {
+        dst_ = dst;
+    }
+
 private:
+    int lsl_;
     MemIndexType index_type_;
     OperandPtr dst_;
     OperandPtr base_;

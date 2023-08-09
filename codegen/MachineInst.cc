@@ -292,6 +292,7 @@ StoreInst::~StoreInst() = default;
 
 LoadInst::LoadInst(MachineBasicBlock *parent, MachineOperand *dst, MachineOperand *base, MachineOperand *offset):
     MachineInst(Load, Undef, parent),
+    lsl_(-1),
     dst_(dst),
     base_(base),
     offset_(offset){
