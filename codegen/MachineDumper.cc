@@ -358,6 +358,9 @@ void MachineDumper::dump(const LoadInst *inst) {
         fout_ << ", ";
         dump(inst->getOffset());
     }
+    if (inst->hasLsl()) {
+        fout_ << ", lsl #" << inst->getLsl();
+    }
     fout_ << "]\n";
 }
 
