@@ -1010,6 +1010,7 @@ void CodeGen::addMoveForPhiInst() {
                     insert_insts.push_back(mov1);
                     insert_before[mc_inst] = insert_insts;
                     insert_it.insert({mc_inst, it});
+                    break;
                 }
             }
 
