@@ -45,44 +45,7 @@ void DeadCodeElim::runOnFunction() {
     useful_insts_.clear();
     dead_insts_.clear();
 
-    // LivenessAnalysis liveness_analysis(curr_func_);
-    // printf("run on dead code elim on function %s\n", curr_func_->getName().c_str());
-    /*liveness_analysis.analysis();
-    auto live_out = liveness_analysis.getOutSet();
-    auto live_in = liveness_analysis.getInSet();*/
     user_analysis_->analysis(curr_func_);
-
-    /*for (auto &bb: curr_func_->getBlocks()) {
-        auto live = live_out[bb.get()];
-        auto &insts_list = bb->getInstructionList();
-
-        for (auto rit = insts_list.rbegin(); rit != insts_list.rend(); ++rit) {
-            Instruction *inst = rit->get();
-
-            auto defs = inst->getDefs();
-            auto uses = inst->getUses();
-
-            if (!hasSideEffect(inst)) {
-                assert(defs.size() == 1);
-                if (!live.count(*defs.begin())) {
-                    dead_insts_.insert(inst);
-                }
-            } else if (inst->getInstType() == StoreType) {
-                auto store_inst = dynamic_cast<StoreInstruction *>(inst);
-                auto addr_inst = dynamic_cast<AllocaInstruction *>(store_inst->getPtr());
-                if (addr_inst && !live.count(addr_inst)) {
-                    dead_insts_.insert(inst);
-                }
-            }
-
-            for (auto def: defs) {
-                live.erase(def);
-            }
-            for (auto use: uses) {
-                live.insert(use);
-            }
-        }
-    }*/
 
     for (auto &bb_uptr: curr_func_->getBlocks()) {
         for (auto &inst_uptr: bb_uptr->getInstructionList()) {
@@ -97,5 +60,4 @@ void DeadCodeElim::runOnFunction() {
         removeDeadInsts();
         runOnFunction();
     }
-    // removeDeadInsts();
 }
