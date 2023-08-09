@@ -126,6 +126,10 @@ public:
         return parent_;
     }
 
+    bool isEmpty() const {
+        return instructions_.empty();
+    }
+
 private:
     int32_t loop_depth_;
 
