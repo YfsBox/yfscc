@@ -403,7 +403,6 @@ void MergeInsts::runOnFunction() {
                                 }
                             }
                         } else {
-                            printf("remove mov for add inst\n");
                             need_remove_insts.insert(mov_inst);
                             add_inst->setLeft(mov_src);
                         }
