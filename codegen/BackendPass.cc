@@ -31,6 +31,15 @@ static BranchInst::BranchCond getReCond(BranchInst::BranchCond cond) {
     }
 }
 
+static MachineReg::Reg getReg(MachineOperand *operand) {
+    if (auto vreg = dynamic_cast<VirtualReg *>(operand); vreg) {
+        return vreg->getColoredReg();
+    } else if (auto mreg = dynamic_cast<MachineReg *>(operand); mreg) {
+        return mreg->getReg();
+    }
+    return MachineReg::undef;
+}
+
 BackendPass::BackendPass(MachineModule *module): module_(module), curr_func_(nullptr) {}
 
 void BackendPass::run() {
@@ -309,6 +318,9 @@ void SimplifyBackendBranch::runOnFunction() {
     last_block = nullptr;
     for (auto &bb_uptr: curr_func_->getMachineBasicBlock()) {
         auto curr_bb = bb_uptr.get();
+        if (curr_bb->isEmpty()) {
+            continue;
+        }
         if (last_block) {
             auto end_inst = last_block->getInstructionListNonConst().back().get();
             if (auto end_br_inst = dynamic_cast<BranchInst *>(end_inst); end_inst && block_branch_inst_map_[last_block].count(end_br_inst) && end_br_inst->getBranchCond() == BranchInst::BrNoCond) {
@@ -350,3 +362,68 @@ void SimplifyBackendBranch::removeInsts() {
     }
 }
 
+MergeInsts::MergeInsts(MachineModule *module): BackendPass(module) {}
+
+
+void MergeInsts::runOnFunction() {
+    MachineInst *last_inst = nullptr;
+    MachineInst *last_last_inst = nullptr;
+    std::unordered_set<MachineInst *> need_remove_insts;
+    for (auto &bb_uptr: curr_func_->getMachineBasicBlockNoConst()) {
+        auto curr_bb = bb_uptr.get();
+        last_inst = nullptr;
+        last_last_inst = nullptr;
+        for (auto &inst_uptr: curr_bb->getInstructionListNonConst()) {
+            if (last_inst && last_last_inst) {
+                auto load_inst = dynamic_cast<LoadInst *>(inst_uptr.get());
+                auto mov_inst = dynamic_cast<MoveInst *>(last_last_inst);
+                auto add_inst = dynamic_cast<BinaryInst *>(last_inst);
+                if (mov_inst && add_inst && add_inst->getBinaryOp() == BinaryInst::IAdd) {
+                    auto mov_dst = mov_inst->getDst();
+                    auto mov_src = mov_inst->getSrc();
+
+                    auto mov_dst_reg = getReg(mov_dst);
+                    auto add_dst_reg = getReg(add_inst->getDst());
+                    auto add_left_reg = getReg(add_inst->getLeft());
+
+                    if (mov_dst_reg == add_dst_reg && add_dst_reg == add_left_reg) {
+                        if (load_inst) {
+                            auto load_dst_reg = getReg(load_inst->getDst());
+                            auto load_base_reg = getReg(load_inst->getBase());
+
+                            if (mov_dst_reg == load_dst_reg && load_base_reg == load_dst_reg) {
+                                // 重新设置ldr并且将
+                                need_remove_insts.insert(mov_inst);
+                                need_remove_insts.insert(add_inst);
+
+                                load_inst->setBase(mov_src);
+                                load_inst->setOffset(add_inst->getRight());
+                                if (add_inst->isLsl()) {
+                                    load_inst->setLsl(add_inst->getRhsLsr());
+                                }
+                            }
+                        } else {
+                            printf("remove mov for add inst\n");
+                            need_remove_insts.insert(mov_inst);
+                            add_inst->setLeft(mov_src);
+                        }
+                    }
+                }
+            }
+            last_last_inst = last_inst;
+            last_inst = inst_uptr.get();
+        }
+    }
+
+    for (auto &bb_uptr: curr_func_->getMachineBasicBlockNoConst()) {
+        auto &bb_insts = bb_uptr->getInstructionListNonConst();
+        for (auto inst_it = bb_insts.begin(); inst_it != bb_insts.end();) {
+            if (need_remove_insts.count(inst_it->get())) {
+                inst_it = bb_insts.erase(inst_it);
+            } else {
+                inst_it++;
+            }
+        }
+    }
+
+}

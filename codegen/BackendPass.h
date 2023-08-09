@@ -144,6 +144,23 @@ private:
     std::unordered_map<MachineBasicBlock *, BrMachineInsts> block_branch_inst_map_;
 };
 
+// 使用于寄存器分配之前，用于移除如
+
+class MergeInsts: public BackendPass {
+public:
+
+    explicit MergeInsts(MachineModule *module);
+
+    ~MergeInsts() = default;
+
+protected:
+
+    void runOnFunction() override;
+
+private:
+
+};
+
 
 
 #endif //YFSCC_BACKENDPASS_H
