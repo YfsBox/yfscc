@@ -305,6 +305,24 @@ void SimplifyBackendBranch::runOnFunction() {
     }
 
     removeInsts();
+
+    last_block = nullptr;
+    for (auto &bb_uptr: curr_func_->getMachineBasicBlock()) {
+        auto curr_bb = bb_uptr.get();
+        if (last_block) {
+            auto end_inst = last_block->getInstructionListNonConst().back().get();
+            if (auto end_br_inst = dynamic_cast<BranchInst *>(end_inst); end_inst && block_branch_inst_map_[last_block].count(end_br_inst) && end_br_inst->getBranchCond() == BranchInst::BrNoCond) {
+                auto target_label = dynamic_cast<Label *>(end_br_inst->getOperand());
+                if (target_label->getName() == curr_bb->getLabelName()) {
+                    removed_insts_.insert(end_inst);
+                    // printf("remove end br inst with target %s in block %s end\n", target_label->getName().c_str(), end_inst->getParent()->getLabelName().c_str());
+                }
+            }
+        }
+        last_block = curr_bb;
+    }
+
+    removeInsts();
 }
 
 void SimplifyBackendBranch::collectBranchInsts() {
