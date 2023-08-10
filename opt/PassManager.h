@@ -6,6 +6,7 @@
 #define YFSCC_PASSMANAGER_H
 
 #include <vector>
+#include <iostream>
 
 class Module;
 class PassManager;
