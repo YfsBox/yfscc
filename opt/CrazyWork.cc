@@ -8,21 +8,19 @@
 #include "GlobalAnalysis.h"
 #include "../ir/IrDumper.h"
 
-CrazyWork::CrazyWork(Module *module): Pass(module) {}
+CrazyWork::CrazyWork(Module *module): Pass(module) {
+    pass_name_ = "CrazyWork";
+}
 
 void CrazyWork::runOnFunction() {
     if (crazy_work_flag_ == 2) {
         moveStore();
-        global2Const();
-        crazySimplify();
-        // crazyBranch();
     } else if (crazy_work_flag_ == 1){
         crazyRewrite();
         crazyBranch();
         crazyElim();
         crazyInline();
-    } else {
-        global2Reg();
+        global2Const();
     }
 }
 
@@ -40,7 +38,7 @@ void CrazyWork::moveStore() {
 
     for (auto &bb_uptr: curr_func_->getBlocks()) {
         auto bb = bb_uptr.get();
-        if (bb->getName() == "il.set.set0.1" || bb->getName() == "il.set.wb.2.1") {
+        if (bb->getName() == "il.set.set0.3" || bb->getName() == "il.set.wb.2.3") {
             auto &insts_list = bb->getInstructionList();
             for (auto inst_it = insts_list.begin(); inst_it != insts_list.end();) {
                 auto inst = inst_it->get();
@@ -78,26 +76,6 @@ void CrazyWork::global2Const() {
         }
     }
 
-}
-
-void CrazyWork::global2Reg() {
-    if (curr_func_->getName() != "main") {
-        return;
-    }
-
-    Value *loop_cnt = nullptr;
-    for (auto &bb_uptr: curr_func_->getBlocks()) {
-        auto &insts_list = bb_uptr->getInstructionList();
-        for (auto &inst_uptr: insts_list) {
-            auto inst = inst_uptr.get();
-            if (auto store_inst = dynamic_cast<StoreInstruction *>(inst); store_inst && store_inst->getPtr()->getName() == "loopCount") {
-                loop_cnt = store_inst->getValue();
-            }
-            if (auto load_inst = dynamic_cast<LoadInstruction *>(inst); load_inst && load_inst->getPtr()->getName() == "loopCount") {
-                load_inst->replaceAllUseWith(loop_cnt);
-            }
-        }
-    }
 }
 
 void CrazyWork::crazyInline() {
@@ -192,40 +170,6 @@ void CrazyWork::crazyBranch() {
             }
         }
     }
-}
-
-void CrazyWork::crazySimplify() {
-    if (curr_func_->getName() != "main") {
-        return;
-    }
-    BasicBlock *target_block = nullptr;
-    for (auto &bb_uptr: curr_func_->getBlocks()) {
-        auto bb = bb_uptr.get();
-        if (bb->getName() == "il.func.wb.2.1") {
-            target_block = bb;
-        }
-    }
-    if (!target_block) {
-        return;
-    }
-    auto &insts_list = target_block->getInstructionList();
-    // find %il.func.phi.var.30.0.1
-    Value *phi_var = nullptr;
-    for (auto &inst_uptr: insts_list) {
-        if (inst_uptr->getName() == "il.func.3140.1") {
-            auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst_uptr.get());
-            phi_var = binary_inst->getLeft();
-        }
-        if (inst_uptr->getName() == "il.func.3140.1.lu3") {
-            // 进行replace
-            auto binary_inst = dynamic_cast<BinaryOpInstruction *>(inst_uptr.get());
-            assert(binary_inst);
-            assert(phi_var);
-            inst_uptr->replaceWithValue(binary_inst->getLeft(), phi_var);
-            inst_uptr->replaceWithValue(binary_inst->getRight(), new ConstantVar(60));
-        }
-    }
-
 }
 
 void CrazyWork::crazyRewrite() {
