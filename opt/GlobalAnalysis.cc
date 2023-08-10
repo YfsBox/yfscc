@@ -27,7 +27,9 @@ void GlobalAnalysis::findGlobalOwnerByOneFunc() {
         auto user_map = global->getUserMap();
         for (auto user: user_map) {
             if (auto user_inst = dynamic_cast<Instruction *>(user); user_inst) {
-                use_func_set.insert(user_inst->getParent()->getFunction());
+                if (!user_inst->getParent()->getFunction()->isDead()) {
+                    use_func_set.insert(user_inst->getParent()->getFunction());
+                }
             }
         }
 
