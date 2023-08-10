@@ -72,6 +72,7 @@ int main(int argc, char **argv) {
     PassManager pass_manager(ir_module);
 
     GlobalAnalysis global_analysis(ir_module);
+    GlobalAnalysis global_analysis1(ir_module);
     pass_manager.addPass(&global_analysis);
 
     ConstantPropagation const_propagation(ir_module);
@@ -99,12 +100,13 @@ int main(int argc, char **argv) {
     SimplifyPhiInsts simplify_phiinsts(ir_module);
     MemoryAnalysis mem_analysis(ir_module);
     SplitGEPInsts split_geps(ir_module);
+    CrazyWork crazy_work0(ir_module);
+    crazy_work0.setCrazyWork(0);
     CrazyWork crazy_work1(ir_module);
     crazy_work1.setCrazyWork(1);
     CrazyWork crazy_work2(ir_module);
     crazy_work2.setCrazyWork(2);
-    CrazyWork crazy_work0(ir_module);
-    crazy_work0.setCrazyWork(0);
+    DeadFunctionElim dead_func_elim0(ir_module);
     DeadFunctionElim dead_func_elim1(ir_module);
     DeadFunctionElim dead_func_elim2(ir_module);
     DeadFunctionElim dead_func_elim3(ir_module);
@@ -124,14 +126,13 @@ int main(int argc, char **argv) {
         gvn.ir_dumper_ = new IrDumper(std::cout);
         split_geps.ir_dumper_ = new IrDumper(std::cout);
 
+        pass_manager.addPass(&crazy_work0);
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&mem2reg);
-        // pass_manager.addPass(&function_inline);
-        // pass_manager.addPass(&function_inline);
+
         pass_manager.addPass(&gvn);
         pass_manager.addPass(&svn2);
         pass_manager.addPass(&dead_code_elim1);
-
 
         pass_manager.addPass(&mem_analysis);
         pass_manager.addPass(&dead_code_elim);
@@ -142,12 +143,11 @@ int main(int argc, char **argv) {
             pass_manager.addPass(&function_inline);
             pass_manager.addPass(&dead_code_elim1);
         }
+
+        pass_manager.addPass(&dead_func_elim1);
         pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&gcm1);
-        pass_manager.addPass(&crazy_work0);
         pass_manager.addPass(&dead_code_elim1);
-        pass_manager.addPass(&dead_func_elim1);
-
         pass_manager.addPass(&split_geps);
 
         pass_manager.addPass(&const_propagation);
