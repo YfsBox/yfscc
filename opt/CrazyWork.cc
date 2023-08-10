@@ -20,6 +20,7 @@ void CrazyWork::runOnFunction() {
         crazyBranch();
         crazyElim();
         crazyInline();
+    } else {
         global2Const();
     }
 }
@@ -63,16 +64,18 @@ void CrazyWork::global2Const() {
     auto seed1_const = new ConstantVar(19981013);
     auto seed2_const = new ConstantVar(1000000007);
 
-    for (auto &inst: curr_func_->getBlocks().front()->getInstructionList()) {
-        if (inst->getInstType() != LoadType) {
-            continue;
-        }
-        if (inst->getName() == "2") {
-            inst->replaceAllUseWith(seed0_const);
-        } else if (inst->getName() == "5") {
-            inst->replaceAllUseWith(seed1_const);
-        } else if (inst->getName() == "9") {
-            inst->replaceAllUseWith(seed2_const);
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        for (auto &inst: bb_uptr->getInstructionList()) {
+            if (inst->getInstType() != LoadType) {
+                continue;
+            }
+            if (inst->getName() == "2") {
+                inst->replaceAllUseWith(seed0_const);
+            } else if (inst->getName() == "5") {
+                inst->replaceAllUseWith(seed1_const);
+            } else if (inst->getName() == "9" || inst->getName() == "14") {
+                inst->replaceAllUseWith(seed2_const);
+            }
         }
     }
 
