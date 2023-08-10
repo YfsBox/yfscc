@@ -236,6 +236,9 @@ void ComputeLoops::run() {
     for (int i = 0; i < module_->getFuncSize(); ++i) {
         auto function = module_->getFunction(i);
         // printf("the function is %s\n", function->getName().c_str());
+        if (function->isDead()) {
+            continue;
+        }
         if (function->getBlocks().size() < 1) {
             continue;
         }
