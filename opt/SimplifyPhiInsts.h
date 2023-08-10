@@ -20,7 +20,9 @@ public:
 
     using InstsSet = std::unordered_set<Instruction *>;
 
-    explicit SimplifyPhiInsts(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()) {}
+    explicit SimplifyPhiInsts(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()) {
+        pass_name_ = "SimplifyPhiInsts";
+    }
 
     ~SimplifyPhiInsts() = default;
 

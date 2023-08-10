@@ -11,7 +11,9 @@
 class EndRename: public Pass {
 public:
 
-    explicit EndRename(Module *module): Pass(module), basic_block_label_no_(-1), value_no_(-1) {}
+    explicit EndRename(Module *module): Pass(module), basic_block_label_no_(-1), value_no_(-1) {
+        pass_name_ = "EndRename";
+    }
 
     ~EndRename() = default;
 

@@ -14,7 +14,9 @@ class BranchInstruction;
 class BranchOptimizer: public Pass {
 public:
 
-    explicit BranchOptimizer(Module *module): Pass(module) {}
+    explicit BranchOptimizer(Module *module): Pass(module) {
+        pass_name_ = "BranchOptimizer";
+    }
 
     ~BranchOptimizer() = default;
 

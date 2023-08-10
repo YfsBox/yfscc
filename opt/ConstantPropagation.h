@@ -13,7 +13,9 @@ class Instruction;
 class ConstantPropagation: public Pass {
 public:
 
-    explicit ConstantPropagation(Module *module): Pass(module) {}
+    explicit ConstantPropagation(Module *module): Pass(module) {
+        pass_name_ = "ConstantPropagation";
+    }
 
     ~ConstantPropagation() = default;
 

@@ -8,7 +8,9 @@
 #include "../ir/Instruction.h"
 #include "../ir/BasicBlock.h"
 
-GlobalAnalysis::GlobalAnalysis(Module *module): Pass(module), has_init_(false) {}
+GlobalAnalysis::GlobalAnalysis(Module *module): Pass(module), has_init_(false) {
+    pass_name_ = "GlobalValueAnalysis";
+}
 
 void GlobalAnalysis::initWorkList() {
     for (int i = 0; i < module_->getGlobalSize(); ++i) {

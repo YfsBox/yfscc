@@ -36,6 +36,7 @@ FunctionInline::FunctionInline(Module *module):
         curr_caller_basicblock_(nullptr),
         curr_inlined_exit_basicblock_(nullptr),
         call_graph_analysis_(std::make_unique<CallGraphAnalysis>(module_)){
+    pass_name_ = "FunctionInline";
 }
 
 void FunctionInline::setForUnfinishedCopyValue(Function *inlined_func) {
@@ -433,7 +434,7 @@ void FunctionInline::collectCallPoint() {
                 continue;
             }
 
-            if (call_cnt_map_[bb.get()][call_inst->getFunction()] <= 1 && !call_function_inlined.count(call_inst->getFunction()) && canBeInline(call_inst->getFunction()) && !has_inlined_in_bb /*&& call_inst->getParent()->getWhileLoopDepth() > 0*/) {
+            if (call_cnt_map_[bb.get()][call_inst->getFunction()] <= 2 && !call_function_inlined.count(call_inst->getFunction()) && canBeInline(call_inst->getFunction()) && !has_inlined_in_bb /*&& call_inst->getParent()->getWhileLoopDepth() > 0*/) {
                 call_function_inlined.insert(call_inst->getFunction());
                 call_insts_for_inline_.insert(call_inst);
                 // printf("the function %s can be inlined with cnt %d\n", call_inst->getFunction()->getName().c_str(), call_cnt_map_[call_inst->getFunction()]);

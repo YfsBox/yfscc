@@ -21,7 +21,9 @@ class Value;
 class InstCombine: public Pass {
 public:
 
-    explicit InstCombine(Module *module): Pass(module), curr_insert_inst_(nullptr) {}
+    explicit InstCombine(Module *module): Pass(module), curr_insert_inst_(nullptr) {
+        pass_name_ = "InstCombine";
+    }
 
     ~InstCombine() = default;
 

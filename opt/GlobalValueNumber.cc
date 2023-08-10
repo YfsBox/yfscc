@@ -9,7 +9,9 @@
 #include "../ir/Constant.h"
 #include "../ir/GlobalVariable.h"
 
-GlobalValueNumber::GlobalValueNumber(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()) {}
+GlobalValueNumber::GlobalValueNumber(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()) {
+    pass_name_ = "GlobalValueNumber";
+}
 
 void GlobalValueNumber::runOnFunction() {
     replace_values_map_.clear();

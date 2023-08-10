@@ -26,7 +26,9 @@ public:
 
     using PhiInstSet = std::unordered_set<PhiInstruction *>;
 
-    explicit Mem2Reg(Module *module): Pass(module), compute_dominators_(nullptr) {}
+    explicit Mem2Reg(Module *module): Pass(module), compute_dominators_(nullptr) {
+        pass_name_ = "Mem2Reg";
+    }
 
     ~Mem2Reg() = default;
 

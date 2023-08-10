@@ -6,7 +6,9 @@
 #include "../ir/Instruction.h"
 #include "../ir/IrDumper.h"
 
-SplitGEPInsts::SplitGEPInsts(Module *module): Pass(module) {}
+SplitGEPInsts::SplitGEPInsts(Module *module): Pass(module) {
+    pass_name_ = "SplitGEPInsts";
+}
 
 void SplitGEPInsts::findAndSplit() {
     for (auto &bb_uptr: curr_func_->getBlocks()) {

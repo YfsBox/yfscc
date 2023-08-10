@@ -15,7 +15,9 @@ class Instruction;
 class AlgebraicSimplify: public Pass {
 public:
 
-    explicit AlgebraicSimplify(Module *module): Pass(module) {}
+    explicit AlgebraicSimplify(Module *module): Pass(module) {
+        pass_name_ = "AlgebraicSimplify";
+    }
 
     ~AlgebraicSimplify() = default;
 

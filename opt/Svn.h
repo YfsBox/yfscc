@@ -23,7 +23,9 @@ public:
 
     using ValueNameTable = std::unordered_map<ValueName, Instruction *>;
 
-    explicit Svn(Module *module): Pass(module), callgraph_analysis_(std::make_unique<CallGraphAnalysis>(module_)) {}
+    explicit Svn(Module *module): Pass(module), callgraph_analysis_(std::make_unique<CallGraphAnalysis>(module_)) {
+        pass_name_ = "Svn";
+    }
 
     ~Svn() = default;
 

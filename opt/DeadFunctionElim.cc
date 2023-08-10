@@ -11,7 +11,7 @@ DeadFunctionElim::DeadFunctionElim(Module *module):
     Pass(module),
     has_init_(false),
     call_graph_analysis_(std::make_unique<CallGraphAnalysis>(module)) {
-
+    pass_name_ = "DeadFunctionElim";
 }
 
 void DeadFunctionElim::init() {

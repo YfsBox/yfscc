@@ -8,7 +8,9 @@
 #include "../ir/Module.h"
 #include "../ir/BasicBlock.h"
 
-DeadBlockElim::DeadBlockElim(Module *module): Pass(module), enter_block_(nullptr) {}
+DeadBlockElim::DeadBlockElim(Module *module): Pass(module), enter_block_(nullptr) {
+    pass_name_ = "DeadBlockElim";
+}
 
 void DeadBlockElim::runOnFunction() {
     enter_block_ = curr_func_->getBlocks().front().get();

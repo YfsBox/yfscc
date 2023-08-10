@@ -20,7 +20,7 @@ GlobalCodeMotion::GlobalCodeMotion(Module *module): Pass(module),
     callgraph_analysis_(std::make_unique<CallGraphAnalysis>(module_)),
     compute_loops_(std::make_unique<ComputeLoops>(module)),
     compute_doms_(nullptr) {
-
+    pass_name_ = "GlobalCodeMotion";
 }
 
 bool GlobalCodeMotion::isPinned(const Value *value) {

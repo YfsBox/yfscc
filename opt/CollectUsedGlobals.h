@@ -9,7 +9,9 @@
 
 class CollectUsedGlobals: public Pass {
 public:
-    explicit CollectUsedGlobals(Module *module): Pass(module) {}
+    explicit CollectUsedGlobals(Module *module): Pass(module) {
+        pass_name_ = "CollectUsedGlobals";
+    }
 
     ~CollectUsedGlobals() = default;
 

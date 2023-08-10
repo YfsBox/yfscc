@@ -12,7 +12,9 @@
 #include "DeadCodeElim.h"
 #include "DataflowAnalysis.h"
 
-DeadCodeElim::DeadCodeElim(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()), call_graph_analysis_(std::make_unique<CallGraphAnalysis>(module)) {}
+DeadCodeElim::DeadCodeElim(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()), call_graph_analysis_(std::make_unique<CallGraphAnalysis>(module)) {
+    pass_name_ = "DeadCodeElim";
+}
 
 void DeadCodeElim::removeDeadInsts() {
     auto &bbs = curr_func_->getBlocks();

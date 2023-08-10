@@ -24,7 +24,9 @@ public:
 
     using MemVersionTable = std::unordered_map<Value *, Instruction *>;
 
-    explicit MemoryAnalysis(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()), call_graph_analysis_(std::make_unique<CallGraphAnalysis>(module_)) {}
+    explicit MemoryAnalysis(Module *module): Pass(module), user_analysis_(std::make_unique<UserAnalysis>()), call_graph_analysis_(std::make_unique<CallGraphAnalysis>(module_)) {
+        pass_name_ = "MemoryAnalysis";
+    }
 
     ~MemoryAnalysis() = default;
 

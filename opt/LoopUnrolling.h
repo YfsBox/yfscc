@@ -16,7 +16,9 @@ class BinaryOpInstruction;
 class LoopUnrolling: public Pass {
 public:
 
-    explicit LoopUnrolling(Module *module): Pass(module), has_compute_loop_(false), curr_condition_var_(nullptr), compute_loops_(nullptr) {}
+    explicit LoopUnrolling(Module *module): Pass(module), has_compute_loop_(false), curr_condition_var_(nullptr), compute_loops_(nullptr) {
+        pass_name_ = "LoopUnrolling";
+    }
 
     ~LoopUnrolling() = default;
 

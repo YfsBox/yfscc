@@ -32,6 +32,8 @@ protected:
     Module *module_;
 
     Function *curr_func_;
+
+    std::string pass_name_;
 };
 
 class PassManager {
