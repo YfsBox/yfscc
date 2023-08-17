@@ -161,6 +161,21 @@ private:
 
 };
 
+class MoveGlobals: public BackendPass {
+public:
+
+    explicit MoveGlobals(MachineModule *module);
+
+    ~MoveGlobals() = default;
+
+protected:
+
+    void runOnFunction() override;
+
+private:
+
+};
+
 
 
 #endif //YFSCC_BACKENDPASS_H

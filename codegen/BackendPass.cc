@@ -5,6 +5,8 @@
 #include "BackendPass.h"
 #include "Machine.h"
 #include "MachineDumper.h"
+#include "../ir/Module.h"
+#include "../ir/GlobalVariable.h"
 #include <cassert>
 
 static bool isBranchInst(MachineInst *mc_inst) {
@@ -423,6 +425,82 @@ void MergeInsts::runOnFunction() {
                 inst_it++;
             }
         }
+    }
+
+}
+
+MoveGlobals::MoveGlobals(MachineModule *module): BackendPass(module) {}
+
+void MoveGlobals::runOnFunction() {
+    // collect集合
+    using GlobalName = std::string;
+    std::unordered_map<GlobalName, std::unordered_set<VirtualReg *>> global_vregs;
+    std::unordered_map<VirtualReg *, std::pair<MoveInst *, MoveInst *>> global_movs_pair;
+
+    for (auto global: module_->getIRModule()->getGlobalSet()) {
+        global_vregs[global->getName()] = {};
+    }
+
+    for (auto &mc_bb_uptr: curr_func_->getMachineBasicBlock()) {
+        auto &mc_insts_list = mc_bb_uptr->getInstructionList();
+        for (auto &mc_inst_uptr: mc_insts_list) {
+            auto mc_inst = mc_inst_uptr.get();
+            if (auto mov_mc_inst = dynamic_cast<MoveInst *>(mc_inst); mov_mc_inst) {
+                auto src_label = dynamic_cast<Label *>(mov_mc_inst->getSrc());
+                if (src_label && global_vregs.count(src_label->getName())) {
+                    auto mov_dst_vreg = dynamic_cast<VirtualReg *>(mov_mc_inst->getDst());
+                    global_vregs[src_label->getName()].insert(mov_dst_vreg);
+                    if (mov_mc_inst->getMoveType() == MoveInst::L2I) {
+                        global_movs_pair[mov_dst_vreg].first = mov_mc_inst;
+                    } else {
+                        global_movs_pair[mov_dst_vreg].second = mov_mc_inst;
+                    }
+                }
+            }
+        }
+    }
+    // 替换
+    std::unordered_set<VirtualReg *> remove_vregs;
+    for (auto &mc_bb_uptr: curr_func_->getMachineBasicBlock()) {
+        auto &mc_insts_list = mc_bb_uptr->getInstructionList();
+        for (auto &mc_inst_uptr: mc_insts_list) {
+            // 将其中的use进行替换
+            auto use_vreg_set = MachineInst::getUses(mc_inst_uptr.get());
+            for (auto use_vreg: use_vreg_set) {
+                auto use_vreg_label = dynamic_cast<Label *>(use_vreg);
+                if (use_vreg_label && global_vregs.count(use_vreg_label->getName())) {
+                    mc_inst_uptr->replaceUses(use_vreg, *global_vregs[use_vreg_label->getName()].begin());
+                }
+            }
+        }
+    }
+    // 移除
+    std::list<std::unique_ptr<MachineInst>> move_insts;
+    for (auto &mc_bb_uptr: curr_func_->getMachineBasicBlockNoConst()) {
+        auto &mc_inst_list = mc_bb_uptr->getInstructionListNonConst();
+        for (auto mc_inst_it = mc_inst_list.begin(); mc_inst_it != mc_inst_list.end();) {
+            auto mc_inst = mc_inst_it->get();
+            if (auto mov_mc_inst = dynamic_cast<MoveInst *>(mc_inst); mov_mc_inst) {
+                auto src_label = dynamic_cast<Label *>(mov_mc_inst->getSrc());
+                auto dst_vreg = dynamic_cast<VirtualReg *>(mov_mc_inst->getDst());
+                if (dst_vreg && src_label && global_vregs.count(src_label->getName())) {
+                    if (*global_vregs[src_label->getName()].begin() == dst_vreg) {     // 如果是begin处的，也就是需要保留到开头的
+                        move_insts.push_front(std::move(*mc_inst_it));
+                    }
+                    mc_inst_it = mc_inst_list.erase(mc_inst_it);
+                } else {
+                    ++mc_inst_it;
+                }
+            } else {
+                ++mc_inst_it;
+            }
+
+        }
+    }
+    // 移动到开头
+    auto enter_block = curr_func_->getEnterBasicBlock();
+    for (auto &mov_inst: move_insts) {
+        enter_block->addFrontInstruction(std::move(mov_inst));
     }
 
 }
