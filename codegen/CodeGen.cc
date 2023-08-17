@@ -467,16 +467,16 @@ void CodeGen::visit(Function *function) {
         mov_inst->setParent(enter_basicblock);
         enter_basicblock->addFrontInstruction(mov_inst);
     }
-    for (auto rit = init_global_insts.rbegin(); rit != init_global_insts.rend(); ++rit) {
+    /*for (auto rit = init_global_insts.rbegin(); rit != init_global_insts.rend(); ++rit) {
         auto inst = *rit;
         inst->setParent(enter_basicblock);
         enter_basicblock->addFrontInstruction(inst);
-    }
+    }*/
 
     curr_machine_function_->setStackSize(stack_offset_);
     addMoveForPhiInst();
 }
-
+// 该函数将会被寄存器分配模块调用，因为只有处理完了寄存器分配，具体需要分配的sp偏移才可以确定，包括开头和末尾的push、pop语句
 void CodeGen::addInstAboutStack(MachineFunction *function, int32_t offset, std::unordered_set<MachineReg::Reg> *regs) {
     std::vector<MachineInst *> moves;
     auto enter_block = function->getEnterBasicBlock();
