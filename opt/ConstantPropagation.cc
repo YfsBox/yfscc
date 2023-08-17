@@ -56,28 +56,34 @@ void ConstantPropagation::foldForCondJump() {
                     auto rhs_const = dynamic_cast<ConstantVar *>(setcond_rhs);
                     auto true_label = br_inst->getTrueLabel();
                     auto false_label = br_inst->getFalseLabel();
+
+
+                    double lhs_const_value = lhs_const->isFloat() ? lhs_const->getFValue() : static_cast<double>(lhs_const->getIValue());
+                    double rhs_const_value = rhs_const->isFloat() ? rhs_const->getFValue() : static_cast<double>(rhs_const->getIValue());
+
                     switch (cond_type) {
                         case SetCondInstruction::SetEQ:
-                            cond_result = lhs_const->getIValue() == rhs_const->getIValue();
+                            cond_result = lhs_const_value == rhs_const_value;
                             break;
                         case SetCondInstruction::SetGT:
-                            cond_result = lhs_const->getIValue() > rhs_const->getIValue();
+                            cond_result = lhs_const_value > rhs_const_value;
                             break;
                         case SetCondInstruction::SetLT:
-                            cond_result = lhs_const->getIValue() < rhs_const->getIValue();
+                            cond_result = lhs_const_value < rhs_const_value;
                             break;
                         case SetCondInstruction::SetLE:
-                            cond_result = lhs_const->getIValue() <= rhs_const->getIValue();
+                            cond_result = lhs_const_value <= rhs_const_value;
                             break;
                         case SetCondInstruction::SetGE:
-                            cond_result = lhs_const->getIValue() >= rhs_const->getIValue();
+                            cond_result = lhs_const_value >= rhs_const_value;
                             break;
                         case SetCondInstruction::SetNE:
-                            cond_result = lhs_const->getIValue() != rhs_const->getIValue();
+                            cond_result = lhs_const_value != rhs_const_value;
                             break;
                         default:
                             break;
                     }
+
                     br_inst->setHasCond(false);
                     if (cond_result) {
                         br_inst->setLable(true_label);
