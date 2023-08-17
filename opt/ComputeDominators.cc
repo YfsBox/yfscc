@@ -8,7 +8,6 @@
 #include "../ir/Function.h"
 
 void ComputeDominators::clearSets() {
-    dominators_matrix_.clear();
     dom_tree_.clear();
     basicblock_doms_.clear();
     imm_doms_map_.clear();
@@ -38,49 +37,6 @@ void ComputeDominators::initForBasicBlockIndexMap() {
     }
 }
 
-void ComputeDominators::initForMatrix() {
-    assert(basicblock2index_map_[top_basicblock_] == 0);
-    for (int i = 0; i < basicblock_n_; ++i) {
-        dominators_matrix_[0][i] = 0;
-    }
-    dominators_matrix_[0][0] = 1;
-
-    std::vector<int8_t> tmp_bitset(basicblock_n_);
-    bool has_changed = true;
-    while (has_changed) {
-        has_changed = false;
-        for (int i = basicblock_n_ - 1; i >= 0; i--) {
-            if (i == 0) {
-                continue;
-            }
-            for (int j = 0; j < basicblock_n_; ++j) {
-                tmp_bitset[j] = 1;
-            }
-
-            auto bbs = index2basicblock_map_[i]->getPreDecessorBlocks();
-            for (auto bb : bbs) {
-                int index = basicblock2index_map_[bb];
-                for (int m = 0; m < basicblock_n_; ++m) {
-                    tmp_bitset[m] &= dominators_matrix_[index][m];
-                }
-            }
-
-            tmp_bitset[i] = 1;
-            bool is_same = true;
-
-            for (int j = 0; j < basicblock_n_; ++j) {
-                if (tmp_bitset[j] != dominators_matrix_[i][j]) {
-                    is_same = false;
-                }
-                dominators_matrix_[i][j] = tmp_bitset[j];
-            }
-
-            if (!is_same) {
-                has_changed = true;
-            }
-        }
-    }
-}
 
 bool ComputeDominators::isEqual(const BasicBlockSet &seta, const BasicBlockSet &setb) {
     if (seta.size() != setb.size()) {
@@ -134,25 +90,6 @@ void ComputeDominators::computeDoms() {
 
         }
     }
-
-    // 计算深度
-    std::unordered_set<BasicBlock *> visited_blocks;
-    std::queue<BasicBlock *> blockq;
-    blockq.push(enter_block);
-    doms_depth_map_[enter_block] = 0;
-    visited_blocks.insert(enter_block);
-
-    while (!blockq.empty()) {
-        auto block = blockq.front();
-        blockq.pop();
-        for (auto succ: dom_tree_[block]) {
-            if (!visited_blocks.count(succ)) {
-                visited_blocks.insert(succ);
-                blockq.push(succ);
-                doms_depth_map_[succ] = doms_depth_map_[block] + 1;
-            }
-        }
-    }
 }
 
 void ComputeDominators::run() {
@@ -162,11 +99,6 @@ void ComputeDominators::run() {
     auto &blocks_list = curr_func_->getBlocks();
     basicblock_n_ = blocks_list.size();
     top_basicblock_ = blocks_list.front().get();
-    for (int i = 0; i < basicblock_n_; ++i) {
-        std::vector<int8_t> line(basicblock_n_, 1);
-        dominators_matrix_.push_back(line);
-    }
-
     auto enter_bb = curr_func_->getBlocks().front().get();
     getPostOrderList(enter_bb);
 

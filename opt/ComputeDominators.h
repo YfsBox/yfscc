@@ -70,8 +70,6 @@ private:
 
     void initForBasicBlockIndexMap();
 
-    void initForMatrix();
-
     BasicBlock *intersect(BasicBlock *bb1, BasicBlock *bb2);
 
     void computeImmDoms();
