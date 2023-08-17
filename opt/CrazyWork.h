@@ -21,10 +21,6 @@ public:
 
 protected:
 
-    void moveStore();
-
-    void global2Const();
-
     void crazyInline();
 
     void crazyElim();
