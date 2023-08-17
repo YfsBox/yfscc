@@ -46,6 +46,8 @@ public:
         return lib_func_decl_.size();
     }
 
+    size_t getNotDeadFunctionCnt() const;
+
     Function *getFunction(int idx) const {
         return functions_[idx].get();
     }
