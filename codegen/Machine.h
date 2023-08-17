@@ -84,6 +84,8 @@ public:
 
     void addFrontInstruction(MachineInst *inst);
 
+    void addFrontInstruction(MachineInstPtr inst);
+
     void insertInstruction(MachineInstListIt it, MachineInst *inst);
 
     void insertInstructionBefore(MachineInstListIt it, MachineInst *inst);

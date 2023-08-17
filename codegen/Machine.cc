@@ -37,6 +37,10 @@ void MachineBasicBlock::addFrontInstruction(MachineInst *inst) {
     instructions_.push_front(GET_UNIQUEPTR(inst));
 }
 
+void MachineBasicBlock::addFrontInstruction(MachineInstPtr inst) {
+    instructions_.push_front(std::move(inst));
+}
+
 void MachineBasicBlock::insertInstruction(MachineInstListIt it, MachineInst *inst) {
     ++it;
     assert(inst);
