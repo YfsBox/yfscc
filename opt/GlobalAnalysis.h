@@ -7,7 +7,9 @@
 
 #include <unordered_map>
 #include <unordered_set>
+#include <set>
 #include "PassManager.h"
+#include "../ir/Instruction.h"
 
 
 class GlobalVariable;
@@ -60,6 +62,51 @@ private:
     Function *curr_func_;
 
     std::unordered_map<Value *, UserInsts> user_map_;
+
+};
+// 基于ssa以及gvn，但是必须用于split gep之前
+class ArrayAnalysis {
+public:
+
+    struct ArrayInfo {
+
+        Value *array_base_;
+
+        std::set<CallInstruction *> memset_call_insts_;
+
+        std::set<GEPInstruction *> const_index_gep_insts_;
+
+        std::set<StoreInstruction *>  store_insts_;     // 与上面的GEP相关联的store指令的集合, 不仅仅包含了const的GEP
+
+        std::set<LoadInstruction *> load_insts_;
+
+    };
+
+    using ArrayInfoUptr = std::unique_ptr<ArrayInfo>;
+
+    using ArrayInfoMap = std::unordered_map<Value *, ArrayInfoUptr>;
+
+    explicit ArrayAnalysis();
+
+    ~ArrayAnalysis() = default;
+
+    void analysis(Function *function);
+
+    ArrayInfoMap &getArrayInfoMap() {
+        return array_info_map_;
+    }
+
+    ArrayInfo *getArrayInfo(Value *value) {
+        return array_info_map_[value].get();
+    }
+
+private:
+
+    Function *curr_func_;
+
+    ArrayInfoMap array_info_map_;         // key有可能是一个alloca数组的指令，也有可能是一个Global
+
+    std::unordered_map<Value *, Value *> gep_owner_array_map_;
 
 };
 

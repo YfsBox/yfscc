@@ -22,19 +22,24 @@ void GlobalAnalysis::initWorkList() {
 }
 
 void GlobalAnalysis::findGlobalOwnerByOneFunc() {
-    for (auto global : work_global_list_) {
-        std::unordered_set<Function *> use_func_set;
-        auto user_map = global->getUserMap();
-        for (auto user: user_map) {
-            if (auto user_inst = dynamic_cast<Instruction *>(user); user_inst) {
-                if (!user_inst->getParent()->getFunction()->isDead()) {
-                    use_func_set.insert(user_inst->getParent()->getFunction());
-                }
+    std::unordered_map<GlobalVariable *, std::unordered_set<Function *> > use_function_map;
+    for (int i = 0; i < module_->getFuncSize(); ++i) {
+        auto function = module_->getFunction(i);
+        if (function->isDead()) {
+            continue;
+        }
+        UserAnalysis user_analysis;
+        user_analysis.analysis(function);
+        for (auto global: work_global_list_) {
+            if (!user_analysis.getUserInsts(global).empty()) {
+                use_function_map[global].insert(function);
             }
         }
+    }
 
-        if (use_func_set.size() == 1) {
-            auto func = *use_func_set.begin();
+    for (auto global: work_global_list_) {
+        if (use_function_map[global].size() == 1) {
+            auto func = *use_function_map[global].begin();
             if (func->getName() == "main") {
                 function_global_map_[func].insert(global);
             }
@@ -115,4 +120,77 @@ void UserAnalysis::replaceAllUseWith(Value *value, Value *replaced_value) {
     for (auto user: getUserInsts(value)) {
         user->replaceWithValue(value, replaced_value);
     }
+}
+
+ArrayAnalysis::ArrayAnalysis(): curr_func_(nullptr) {}
+
+
+void ArrayAnalysis::analysis(Function *function) {
+    curr_func_ = function;
+
+    std::unordered_set<Value *> array_values;
+    for (auto global: function->getParent()->getGlobalSet()) {
+        if (global->isArray()) {
+            array_values.insert(const_cast<GlobalVariable *>(global));
+        }
+    }
+
+    auto enter_block = function->getBlocks().begin()->get();
+    for (auto &inst_uptr: enter_block->getInstructionList()) {
+        if (auto alloca_inst = dynamic_cast<AllocaInstruction *>(inst_uptr.get()); alloca_inst && alloca_inst->isArray()) {
+            array_values.insert(inst_uptr.get());
+        }
+    }
+
+    for (auto array_value: array_values) {
+        array_info_map_[array_value] = std::make_unique<ArrayInfo>();
+        array_info_map_[array_value]->array_base_ = array_value;
+    }
+
+    // 收集其中的gep指令，需要都是const的index才可以
+    UserAnalysis user_analysis;
+    user_analysis.analysis(curr_func_);
+
+    for (auto array_value: array_values) {
+        for (auto user: user_analysis.getUserInsts(array_value)) {
+            if (auto gep_inst = dynamic_cast<GEPInstruction *>(user); gep_inst) {
+                // 如果都是const的index
+                bool has_not_const = false;
+                for (int i = 0; i < gep_inst->getIndexSize(); ++i) {
+                    auto index_value = gep_inst->getIndexValue(i);
+                    if (auto const_var = dynamic_cast<ConstantVar *>(index_value); !const_var) {
+                        has_not_const = true;
+                    }
+                }
+                if (!has_not_const) {
+                    array_info_map_[array_value]->const_index_gep_insts_.insert(gep_inst);
+                    gep_owner_array_map_[gep_inst] = array_value;
+                }
+
+                // 收集所有个该数组所关联的GEP指令有关的store以及load语句，
+                for (auto gep_user: user_analysis.getUserInsts(gep_inst)) {
+                    if (auto store_inst = dynamic_cast<StoreInstruction *>(gep_user); store_inst) {
+                        array_info_map_[array_value]->store_insts_.insert(store_inst);
+                    }
+                    if (auto load_inst = dynamic_cast<LoadInstruction *>(gep_user); load_inst) {
+                        array_info_map_[array_value]->load_insts_.insert(load_inst);
+                    }
+                }
+            }
+        }
+    }
+    // 收集相关的memset指令
+    for (auto &bb_uptr: curr_func_->getBlocks()) {
+        for (auto &inst_uptr: bb_uptr->getInstructionList()) {
+            auto inst = inst_uptr.get();
+            if (auto call_inst = dynamic_cast<CallInstruction *>(inst); call_inst && call_inst->getFunction()->getName() == "memset") {
+                auto memset_base_ptr = call_inst->getActual(0);
+                if (gep_owner_array_map_.count(memset_base_ptr)) {
+                    auto base_ptr = gep_owner_array_map_[memset_base_ptr];
+                    array_info_map_[base_ptr]->memset_call_insts_.insert(call_inst);
+                }
+            }
+        }
+    }
+
 }
