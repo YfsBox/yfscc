@@ -24,6 +24,9 @@
 #include "opt/CrazyWork.h"
 #include "opt/DeadFunctionElim.h"
 #include "opt/EndRename.h"
+#include "opt/GlobalArray2Const.h"
+#include "opt/LoopSimplify.h"
+#include "opt/MoveStorePass.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -93,6 +96,7 @@ int main(int argc, char **argv) {
     GlobalCodeMotion gcm1(ir_module);
     Svn svn2(ir_module);
     GlobalCodeMotion gcm2(ir_module);
+    GlobalCodeMotion gcm3(ir_module);
     GlobalValueNumber gvn(ir_module);
 
     LoopUnrolling loopunrolling(ir_module);
@@ -110,6 +114,9 @@ int main(int argc, char **argv) {
     DeadFunctionElim dead_func_elim1(ir_module);
     DeadFunctionElim dead_func_elim2(ir_module);
     DeadFunctionElim dead_func_elim3(ir_module);
+    GlobalArray2Const global_array2const(ir_module);
+    LoopSimplify loop_simplify(ir_module);
+    MoveStorePass move_store_pass(ir_module);
 
     if (enable_opt) {
         mem2reg.ir_dumper_ = new IrDumper(std::cout);
@@ -148,34 +155,38 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&gcm1);
         pass_manager.addPass(&dead_code_elim1);
-        pass_manager.addPass(&split_geps);
-
+        pass_manager.addPass(&global_array2const);
+        // pass_manager.addPass(&split_geps);
         pass_manager.addPass(&const_propagation);
         pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);
+        pass_manager.addPass(&loop_simplify);
         pass_manager.addPass(&dead_code_elim1);
-
         pass_manager.addPass(&loopunrolling);
         pass_manager.addPass(&dead_code_elim1);
         pass_manager.addPass(&const_propagation);
         pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);
+
         pass_manager.addPass(&gvn);
         pass_manager.addPass(&svn2);
         pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&gcm2);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&simplify_phiinsts);
         pass_manager.addPass(&dead_code_elim1);
-        pass_manager.addPass(&gcm2);
         pass_manager.addPass(&mem_analysis);
         pass_manager.addPass(&const_propagation);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&simplify_phiinsts);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&move_store_pass);
+        pass_manager.addPass(&split_geps);
+
         pass_manager.addPass(&svn2);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&branch_opt);
@@ -188,7 +199,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&simplify_phiinsts);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&dead_code_elim1);
-        pass_manager.addPass(&gcm2);
+        pass_manager.addPass(&gcm3);
 
         pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&algebric_simplify);
