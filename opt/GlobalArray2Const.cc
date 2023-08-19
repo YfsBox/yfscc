@@ -49,7 +49,6 @@ void GlobalArray2Const::runOnFunction() {
         user_analysis.analysis(curr_func_);
 
         for (auto &[load_inst, const_value]: replace_map) {
-            printf("replace %s in global2const pass\n");
             for (auto user: user_analysis.getUserInsts(load_inst)) {
                 user->replaceWithValue(load_inst, const_value);
             }
