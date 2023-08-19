@@ -14,9 +14,9 @@ CrazyWork::CrazyWork(Module *module): Pass(module) {
 
 void CrazyWork::runOnFunction() {
     if (crazy_work_flag_ == 1){
-        crazyRewrite();
-        crazyBranch();
-        crazyElim();
+        // crazyRewrite();
+        // crazyBranch();
+        // crazyElim();
         crazyInline();
     }
 }
