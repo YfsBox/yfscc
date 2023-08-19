@@ -60,6 +60,9 @@ set(IROPT_SRC
         opt/CrazyWork.cc
         opt/DeadFunctionElim.cc
         opt/EndRename.cc
+        opt/GlobalArray2Const.cc
+        opt/LoopSimplify.cc
+        opt/MoveStorePass.cc
 )
 
 set(BACKEND_SRC
