@@ -21,7 +21,6 @@
 #include "opt/GlobalValueNumber.h"
 #include "opt/MemoryAnalysis.h"
 #include "opt/SplitGEPInsts.h"
-#include "opt/CrazyWork.h"
 #include "opt/DeadFunctionElim.h"
 #include "opt/EndRename.h"
 #include "opt/GlobalArray2Const.h"
@@ -104,36 +103,17 @@ int main(int argc, char **argv) {
     SimplifyPhiInsts simplify_phiinsts(ir_module);
     MemoryAnalysis mem_analysis(ir_module);
     SplitGEPInsts split_geps(ir_module);
-    CrazyWork crazy_work0(ir_module);
-    crazy_work0.setCrazyWork(0);
-    CrazyWork crazy_work1(ir_module);
-    crazy_work1.setCrazyWork(1);
-    CrazyWork crazy_work2(ir_module);
-    crazy_work2.setCrazyWork(2);
+
     DeadFunctionElim dead_func_elim0(ir_module);
     DeadFunctionElim dead_func_elim1(ir_module);
     DeadFunctionElim dead_func_elim2(ir_module);
     DeadFunctionElim dead_func_elim3(ir_module);
-    GlobalArray2Const global_array2const(ir_module);
+    // GlobalArray2Const global_array2const(ir_module);
     LoopSimplify loop_simplify(ir_module);
-    MoveStorePass move_store_pass(ir_module);
+    // MoveStorePass move_store_pass(ir_module);
 
     if (enable_opt) {
-        mem2reg.ir_dumper_ = new IrDumper(std::cout);
-        inst_combine.ir_dumper_ = new IrDumper(std::cout);
-        dead_code_elim.ir_dumper_ = new IrDumper(std::cout);
-        dead_code_elim1.ir_dumper_ = new IrDumper(std::cout);
-        svn1.ir_dumper_ = new IrDumper(std::cout);
-        function_inline.ir_dumper_ = new IrDumper(std::cout);
-        loopunrolling.ir_dumper_ = new IrDumper(std::cout);
-        algebric_simplify.ir_dumper_ = new IrDumper(std::cout);
-        gcm1.ir_dumper_ = new IrDumper(std::cout);
-        gcm2.ir_dumper_ = new IrDumper(std::cout);
-        mem_analysis.ir_dumper_ = new IrDumper(std::cout);
-        gvn.ir_dumper_ = new IrDumper(std::cout);
-        split_geps.ir_dumper_ = new IrDumper(std::cout);
 
-        pass_manager.addPass(&crazy_work0);
         pass_manager.addPass(&dead_code_elim);
         pass_manager.addPass(&mem2reg);
 
@@ -143,7 +123,6 @@ int main(int argc, char **argv) {
 
         pass_manager.addPass(&mem_analysis);
         pass_manager.addPass(&dead_code_elim);
-        pass_manager.addPass(&crazy_work1);
         pass_manager.addPass(&dead_code_elim);
 
         for (int i = 0; i < 5; ++i) {
@@ -155,7 +134,6 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&gcm1);
         pass_manager.addPass(&dead_code_elim1);
-        pass_manager.addPass(&global_array2const);
         // pass_manager.addPass(&split_geps);
         pass_manager.addPass(&const_propagation);
         pass_manager.addPass(&dead_bb_elim);
@@ -184,7 +162,6 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&simplify_phiinsts);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&dead_code_elim1);
-        pass_manager.addPass(&move_store_pass);
         pass_manager.addPass(&split_geps);
 
         pass_manager.addPass(&svn2);
@@ -205,7 +182,6 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&dead_code_elim1);
 
-        pass_manager.addPass(&crazy_work2);
         pass_manager.addPass(&branch_opt);
         pass_manager.addPass(&dead_bb_elim);
         pass_manager.addPass(&dead_code_elim1);
