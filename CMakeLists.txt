@@ -61,7 +61,7 @@ set(IROPT_SRC
         opt/EndRename.cc
         opt/GlobalArray2Const.cc
         opt/LoopSimplify.cc
-        opt/MoveStorePass.cc
+        opt/DeadStoreElim.cc
 )
 
 set(BACKEND_SRC
