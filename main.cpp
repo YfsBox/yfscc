@@ -27,6 +27,7 @@
 #include "opt/LoopSimplify.h"
 #include "opt/MoveStorePass.h"
 #include "opt/DeadStoreElim.h"
+#include "opt/RecursiveSimplify.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -113,6 +114,7 @@ int main(int argc, char **argv) {
     LoopSimplify loop_simplify(ir_module);
     // MoveStorePass move_store_pass(ir_module);
     DeadStoreElim dead_store_elim(ir_module);
+    RecursiveSimplify recursive_simplify(ir_module);
 
     if (enable_opt) {
 
@@ -184,6 +186,8 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&algebric_simplify);
         pass_manager.addPass(&dead_code_elim1);
+
+        pass_manager.addPass(&recursive_simplify);
 
         pass_manager.addPass(&branch_opt);
         pass_manager.addPass(&dead_bb_elim);
