@@ -26,6 +26,7 @@
 #include "opt/GlobalArray2Const.h"
 #include "opt/LoopSimplify.h"
 #include "opt/MoveStorePass.h"
+#include "opt/DeadStoreElim.h"
 #include "semantic/SemanticCheck.h"
 #include "codegen/CodeGen.h"
 #include "codegen/MachineDumper.h"
@@ -111,6 +112,7 @@ int main(int argc, char **argv) {
     // GlobalArray2Const global_array2const(ir_module);
     LoopSimplify loop_simplify(ir_module);
     // MoveStorePass move_store_pass(ir_module);
+    DeadStoreElim dead_store_elim(ir_module);
 
     if (enable_opt) {
 
@@ -162,6 +164,7 @@ int main(int argc, char **argv) {
         pass_manager.addPass(&simplify_phiinsts);
         pass_manager.addPass(&inst_combine);
         pass_manager.addPass(&dead_code_elim1);
+        pass_manager.addPass(&dead_store_elim);
         pass_manager.addPass(&split_geps);
 
         pass_manager.addPass(&svn2);
