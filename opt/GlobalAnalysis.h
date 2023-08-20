@@ -76,7 +76,7 @@ public:
 
         std::set<GEPInstruction *> const_index_gep_insts_;
 
-        std::set<StoreInstruction *>  store_insts_;     // 与上面的GEP相关联的store指令的集合, 不仅仅包含了const的GEP
+        std::list<StoreInstruction *>  store_insts_;     // 与上面的GEP相关联的store指令的集合, 不仅仅包含了const的GEP
 
         std::set<LoadInstruction *> load_insts_;
 

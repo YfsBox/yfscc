@@ -37,55 +37,42 @@ void MoveStorePass::runOnFunction() {
         if (!array_base_alloc_inst || !array_base_alloc_inst->isArray()) {
             continue;
         }
-        if (array_info->memset_call_insts_.size() != 1) {
+        if (array_info->memset_call_insts_.size() > 1) {
             continue;
         }
-        // printf("has one memset call inst and base is alloca\n");
-        auto memset_call_inst = *array_info->memset_call_insts_.begin();
-        auto memset_base_offset = dynamic_cast<ConstantVar *>(memset_call_inst->getActual(1))->getIValue();
-        auto memset_len_offset = dynamic_cast<ConstantVar *>(memset_call_inst->getActual(2))->getIValue();
 
-        auto array_dimension_size = array_base_alloc_inst->getArrayDimensionSize();
-        // 表明这个memset可以处理
-        if (array_dimension_size.size() == 1 && array_dimension_size[0] == memset_len_offset / 4 && memset_base_offset == 0) {
-            move_insts.push_back(memset_call_inst);
-            move_insts_set.insert(memset_call_inst);
+        for (auto store_inst: array_info->store_insts_) {
+            if (store_inst->getValue()->getValueType() == ConstantValue && array_info->const_index_gep_insts_.count(dynamic_cast<GEPInstruction *>(store_inst->getPtr()))) {
+                move_insts.push_back(store_inst);
+                move_insts_set.insert(store_inst);
+            }
+        }
+        if (move_insts.size() != 2 * array_info->const_index_gep_insts_.size() - 1) {
+            printf("the gep size is %d and the move insts size is %d\n", move_insts.size(), array_info->const_index_gep_insts_.size());
+            continue;
         }
 
-        if (memset_len_offset / 4 == array_info->const_index_gep_insts_.size()) {
-            for (auto store_inst: array_info->store_insts_) {
-                if (store_inst->getValue()->getValueType() == ConstantValue && array_info->const_index_gep_insts_.count(dynamic_cast<GEPInstruction *>(store_inst->getPtr()))) {
-                    move_insts.push_back(store_inst);
-                    move_insts_set.insert(store_inst);
+        // 之后可以从原处消除掉
+        for (auto &bb_uptr: curr_func_->getBlocks()) {
+            auto &insts_list = bb_uptr->getInstructionList();
+            for (auto inst_it = insts_list.begin(); inst_it != insts_list.end();) {
+                if (move_insts_set.count(inst_it->get())) {
+                    inst_it->release();
+                    inst_it = insts_list.erase(inst_it);
+                } else {
+                    ++inst_it;
                 }
             }
-            if (move_insts.size() - 1 != array_info->const_index_gep_insts_.size()) {
-                // printf("the gep size is %d and the move insts size is %d\n", move_insts.size(), array_info->const_index_gep_insts_.size());
-                continue;
-            }
+        }
+        // 插入到enter block中
+        auto enter_block = curr_func_->getBlocks().front().get();
+        auto end_inst_it = enter_block->getInstructionList().end();
+        end_inst_it--;
 
-            // 之后可以从原处消除掉
-            for (auto &bb_uptr: curr_func_->getBlocks()) {
-                auto &insts_list = bb_uptr->getInstructionList();
-                for (auto inst_it = insts_list.begin(); inst_it != insts_list.end();) {
-                    if (move_insts_set.count(inst_it->get())) {
-                        inst_it->release();
-                        inst_it = insts_list.erase(inst_it);
-                    } else {
-                        ++inst_it;
-                    }
-                }
-            }
-            // 插入到enter block中
-            auto enter_block = curr_func_->getBlocks().front().get();
-            auto end_inst_it = enter_block->getInstructionList().end();
-            end_inst_it--;
-
-            for (auto inst: move_insts) {
-                // printf("move inst %s to block %s\n", inst->getName().c_str(), enter_block->getName().c_str());
-                inst->setParent(enter_block);
-                enter_block->insertInstruction(end_inst_it, inst);
-            }
+        for (auto inst: move_insts) {
+            // printf("move inst %s to block %s\n", inst->getName().c_str(), enter_block->getName().c_str());
+            inst->setParent(enter_block);
+            enter_block->insertInstruction(end_inst_it, inst);
         }
     }
 }

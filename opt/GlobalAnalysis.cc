@@ -167,10 +167,13 @@ void ArrayAnalysis::analysis(Function *function) {
                     gep_owner_array_map_[gep_inst] = array_value;
                 }
 
-                // 收集所有个该数组所关联的GEP指令有关的store以及load语句，
+                // 收集所有个该数组所关联的GEP指令有关的store以及load语句
+                auto gep_inst_users = user_analysis.getUserInsts(gep_inst);
+
+
                 for (auto gep_user: user_analysis.getUserInsts(gep_inst)) {
                     if (auto store_inst = dynamic_cast<StoreInstruction *>(gep_user); store_inst) {
-                        array_info_map_[array_value]->store_insts_.insert(store_inst);
+                        array_info_map_[array_value]->store_insts_.push_back(store_inst);
                     }
                     if (auto load_inst = dynamic_cast<LoadInstruction *>(gep_user); load_inst) {
                         array_info_map_[array_value]->load_insts_.insert(load_inst);
