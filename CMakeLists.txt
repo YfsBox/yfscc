@@ -57,7 +57,6 @@ set(IROPT_SRC
         opt/GlobalValueNumber.cc
         opt/MemoryAnalysis.cc
         opt/SplitGEPInsts.cc
-        opt/CrazyWork.cc
         opt/DeadFunctionElim.cc
         opt/EndRename.cc
         opt/GlobalArray2Const.cc
