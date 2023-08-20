@@ -29,7 +29,7 @@ protected:
     void runOnFunction() override;  // 这里的runOnFunction并不是针对某个function的，而是整个module的所有
 private:
 
-    static const constexpr int32_t inline_insts_size = 200;
+    static const constexpr int32_t inline_insts_size = 450;
 
     bool canBeInline(Function *function);
 
