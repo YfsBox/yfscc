@@ -13,7 +13,7 @@ SimplifyForAddMod::SimplifyForAddMod(Module *module): Pass(module), compute_loop
 
 // 分析出循环中的两个归纳变量:(1)初始化为0，并且限制为n, 步长为1(每一步都是+1); (2)另外一个满足首先加一个固定的常量，然后在一个常量上取模的情况
 std::list<Instruction *> SimplifyForAddMod::simpleLoopAnalysis(const std::shared_ptr<ComputeLoops::LoopInfo> &loopinfo) {
-    printf("begin simple loop analysis, the block size is %d\n", loopinfo->loop_body_.size());
+    // printf("begin simple loop analysis, the block size is %d\n", loopinfo->loop_body_.size());
     if (loopinfo->loop_body_.size() != 1) {
         return {};
     }
@@ -21,7 +21,7 @@ std::list<Instruction *> SimplifyForAddMod::simpleLoopAnalysis(const std::shared
     if (body_block->getInstructionList().size() != 4 || loopinfo->iterator_var_phi_insts_.size() != 2) {
         return {};
     }
-    printf("begin analysis index value\n");
+    // printf("begin analysis index value\n");
     PhiInstruction *index_value = nullptr;
     BranchInstruction *br_inst = nullptr;
     for (auto &inst_uptr: loopinfo->enter_block_->getInstructionList()) {
@@ -40,7 +40,7 @@ std::list<Instruction *> SimplifyForAddMod::simpleLoopAnalysis(const std::shared
         return {};
     }
 
-    printf("init value ok\n");
+    // printf("init value ok\n");
     Value *index_limit_value = nullptr;
     SetCondInstruction *cmp_cond_inst = nullptr;
     BinaryOpInstruction *add_inst = nullptr;
@@ -71,7 +71,7 @@ std::list<Instruction *> SimplifyForAddMod::simpleLoopAnalysis(const std::shared
     if (!add_const_step || add_const_step->isFloat() || add_const_step->getIValue() != 1) {
         return {};
     }
-    printf("can get index value\n");
+    // printf("can get index value\n");
 
     // 以上过程都是对index变量的分析，之后对另一个归纳变量进行分析，满足每一步都累加固定常量，并且对固定常量取模的形式
     // 首先找到这个phi指令
