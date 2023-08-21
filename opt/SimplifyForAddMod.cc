@@ -132,6 +132,7 @@ std::list<Instruction *> SimplifyForAddMod::simpleLoopAnalysis(const std::shared
         auto false_label = br_inst->getFalseLabel();
         br_inst->setHasCond(false);
         br_inst->setLable(false_label);
+        body_block->clearPresuccessors();
 
         return result_list;
     }
