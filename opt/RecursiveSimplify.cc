@@ -71,7 +71,7 @@ void RecursiveSimplify::runOnFunction() {
                 auto curr_call_inst = dynamic_cast<CallInstruction *>(inst_it->get());
 
                 if (last_call_inst && curr_call_inst && isRecursiveCurrFunction(last_call_inst) &&
-                        isRecursiveCurrFunction(curr_call_inst)) {
+                    isRecursiveCurrFunction(curr_call_inst)) {
                     int diff_index = getOnlyDiffArgumentIndex(last_call_inst, curr_call_inst);
                     if (diff_index >= 0) {
                         diff_arg1 = last_call_inst->getActual(diff_index);
@@ -123,9 +123,7 @@ void RecursiveSimplify::runOnFunction() {
         bb_uptr->setHasRet(false);
 
         // 之后再往else中增加新的指令
-        auto ret_value_inst = new BinaryOpInstruction(SubType, getBasicType(diff_arg1), else_block, diff_arg2, last_last_inst);
-        else_block->addInstruction(ret_value_inst);
-        auto ret_inst = new RetInstruction(else_block, ret_value_inst->getBasicType(), ret_value_inst);
+        auto ret_inst = new RetInstruction(else_block, getBasicType(diff_arg2), diff_arg2);
         else_block->addInstruction(ret_inst);
 
         break;
