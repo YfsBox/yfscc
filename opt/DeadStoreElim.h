@@ -9,6 +9,7 @@
 #include <unordered_set>
 
 class Instruction;
+class ArrayAnalysis;
 // 分析main函数栈上数组相关的store是否是dead的
 // 放置在split GEP之前
 class DeadStoreElim: public Pass {
@@ -23,6 +24,8 @@ protected:
     void runOnFunction() override;
 
 private:
+
+    void replaceOnlyLoad(ArrayAnalysis& analysis);
 
     std::unordered_set<Instruction *> dead_store_insts_;
 
