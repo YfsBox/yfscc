@@ -9,6 +9,6 @@
 > make
 # run it
 > ./yfscc -S -o tmp.s src.sy
-# run it with optimition
+# run it with majorization
 > ./yfscc -S -O2 -o tmp.s src.sy
 ```
