@@ -8,5 +8,7 @@
 > cd build
 > make
 # run it
-> ./yfscc code.sy
+> ./yfscc -S -o tmp.s src.sy
+# run it with optimition
+> ./yfscc -S -O2 -o tmp.s src.sy
 ```
